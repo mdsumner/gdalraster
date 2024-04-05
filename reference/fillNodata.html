@@ -26,7 +26,7 @@ artifacts."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/
     
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@ artifacts."><!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a>
+    <a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
     <a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a>
@@ -90,7 +91,8 @@ artifacts.</p>
 <span>  <span class="va">band</span>,</span>
 <span>  mask_file <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  max_dist <span class="op">=</span> <span class="fl">100</span>,</span>
-<span>  smooth_iterations <span class="op">=</span> <span class="fl">0L</span></span>
+<span>  smooth_iterations <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  quiet <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -119,6 +121,11 @@ will search out for values to interpolate (100 pixels by default).</p></dd>
 iterations to run after the interpolation to dampen artifacts
 (0 by default).</p></dd>
 
+
+<dt>quiet</dt>
+<dd><p>Logical scalar. If <code>TRUE</code>, a progress bar will not be
+displayed. Defaults to <code>FALSE</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -140,7 +147,7 @@ An error is raised if the operation fails.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co">## get count of nodata</span></span></span>
 <span class="r-in"><span><span class="va">tbl</span> <span class="op">&lt;-</span> <span class="fu"><a href="buildRAT.html">buildRAT</a></span><span class="op">(</span><span class="va">elev_file</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanning raster...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> scanning raster...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 0...10...20...30...40...50...60...70...80...90...100 - done.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">tbl</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   VALUE COUNT</span>
@@ -163,7 +170,7 @@ An error is raised if the operation fails.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 0...10...20...30...40...50...60...70...80...90...100 - done.</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">mod_tbl</span> <span class="op">=</span> <span class="fu"><a href="buildRAT.html">buildRAT</a></span><span class="op">(</span><span class="va">mod_file</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Scanning raster...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> scanning raster...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 0...10...20...30...40...50...60...70...80...90...100 - done.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">mod_tbl</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   VALUE COUNT</span>
@@ -176,6 +183,9 @@ An error is raised if the operation fails.</p>
 <span class="r-in"><span><span class="va">mod_tbl</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">mod_tbl</span><span class="op">$</span><span class="va">VALUE</span><span class="op">)</span>,<span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] VALUE COUNT</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;0 rows&gt; (or 0-length row.names)</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu"><a href="deleteDataset.html">deleteDataset</a></span><span class="op">(</span><span class="va">mod_file</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>

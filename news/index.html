@@ -10,7 +10,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -25,6 +25,7 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a>
+    <a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
     <a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a>
@@ -55,11 +56,164 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.7.0.9000" id="gdalraster-1709000-dev">gdalraster 1.7.0.9000 dev<a class="anchor" aria-label="anchor" href="#gdalraster-1709000-dev"></a></h2>
-<ul><li><p>switch to using the R convention for x.x.x.9000 development versioning (2023-12-03)</p></li>
-<li><p>add <code>GDALRaster::clearStatistics()</code>: clear statistics (PAM supported datasets GDAL &gt;= 3.2) (2023-11-29)</p></li>
-<li><p>Documentation: the example for <code><a href="../reference/calc.html">calc()</a></code> using Landsat bands should have applied scale/offset as given in the .json metadata - this has been corrected; include <code><a href="../reference/translate.html">translate()</a></code> and <code><a href="../reference/warp.html">warp()</a></code> in <a href="https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html#see-also">Raster API Tutorial - See also</a></p></li>
+<h2 class="pkg-version" data-toc-text="1.10.9010" id="gdalraster-1109010-dev">gdalraster 1.10.9010 (dev)<a class="anchor" aria-label="anchor" href="#gdalraster-1109010-dev"></a></h2>
+<ul><li><p>new additional geometry functions operating on WKT (GEOS via GDAL headers): <code><a href="../reference/g_is_empty.html">g_is_empty()</a></code>, <code><a href="../reference/g_is_valid.html">g_is_valid()</a></code>, <code><a href="../reference/g_intersects.html">g_intersects()</a></code>, <code><a href="../reference/g_equals.html">g_equals()</a></code>, <code><a href="../reference/g_disjoint.html">g_disjoint()</a></code>, <code><a href="../reference/g_touches.html">g_touches()</a></code>, <code><a href="../reference/g_contains.html">g_contains()</a></code>, <code><a href="../reference/g_within.html">g_within()</a></code>, <code><a href="../reference/g_crosses.html">g_crosses()</a></code>,<code><a href="../reference/g_overlaps.html">g_overlaps()</a></code>, <code><a href="../reference/g_intersection.html">g_intersection()</a></code>, <code><a href="../reference/g_union.html">g_union()</a></code>, <code><a href="../reference/g_difference.html">g_difference()</a></code>, <code><a href="../reference/g_sym_difference.html">g_sym_difference()</a></code>, <code><a href="../reference/g_distance.html">g_distance()</a></code>, <code><a href="../reference/g_length.html">g_length()</a></code>, <code><a href="../reference/g_area.html">g_area()</a></code>, <code><a href="../reference/g_centroid.html">g_centroid()</a></code> (2024-03-30)</p></li>
+<li><p>add <code><a href="../reference/bbox_transform.html">bbox_transform()</a></code>: transform a bounding box to a different projection (2024-03-30)</p></li>
+<li><p><code><a href="../reference/g_transform.html">g_transform()</a></code>: now uses <code>OGR_GeomTransformer_Create()</code> and <code>OGR_GeomTransformer_Transform()</code> in the GDAL API, enhanced version of <code>OGR_G_Transform()</code>; add arguments <code>wrap_date_line</code> and <code>date_line_offset</code> (2024-03-30)</p></li>
+<li><p>GDAL &gt;= 3.1.0 is now required (previously &gt;= 2.4.0) (2024-03-30)</p></li>
+<li><p>add <code><a href="../reference/g_name.html">g_name()</a></code>: extract the geometry type name from a WKT geometry (2024-03-28)</p></li>
 </ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.10.0" id="gdalraster-1100">gdalraster 1.10.0<a class="anchor" aria-label="anchor" href="#gdalraster-1100"></a></h2><p class="text-muted">CRAN release: 2024-03-26</p>
+<div class="section level3">
+<h3 id="system-requirements-1-10-0">System requirements<a class="anchor" aria-label="anchor" href="#system-requirements-1-10-0"></a></h3>
+<ul><li>GDAL built against GEOS is now required</li>
+</ul></div>
+<div class="section level3">
+<h3 id="gdal-vsi-for-operations-on-virtual-file-systems-1-10-0">GDAL VSI for operations on virtual file systems<a class="anchor" aria-label="anchor" href="#gdal-vsi-for-operations-on-virtual-file-systems-1-10-0"></a></h3>
+<ul><li>add <code><a href="../reference/vsi_get_fs_prefixes.html">vsi_get_fs_prefixes()</a></code>: get the list of prefixes for virtual file system handlers currently registered</li>
+<li>add <code><a href="../reference/vsi_get_fs_options.html">vsi_get_fs_options()</a></code>: get the list of options associated with a virtual file system handler (for setting with <code><a href="../reference/set_config_option.html">set_config_option()</a></code>)</li>
+<li>add <code><a href="../reference/vsi_supports_rnd_write.html">vsi_supports_rnd_write()</a></code> and <code><a href="../reference/vsi_supports_seq_write.html">vsi_supports_seq_write()</a></code>: test whether the filesystem supports random write or sequential write, conditional on whether a local temp file is allowed before uploading to the target location</li>
+<li>add <code><a href="../reference/vsi_get_disk_free_space.html">vsi_get_disk_free_space()</a></code>: return the free disk space available on the filesystem</li>
+<li>fixed misspelled argument in <code><a href="../reference/vsi_copy_file.html">vsi_copy_file()</a></code> and <code><a href="../reference/vsi_sync.html">vsi_sync()</a></code> (<a href="https://github.com/USDAForestService/gdalraster/issues/233" class="external-link">#233</a>)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="other-stand-alone-functions-1-10-0">Other stand-alone functions<a class="anchor" aria-label="anchor" href="#other-stand-alone-functions-1-10-0"></a></h3>
+<ul><li>add <code><a href="../reference/ogrinfo.html">ogrinfo()</a></code>: wrapper of the <code>ogrinfo</code> command-line utility, retrieve information about a vector data source and potentially edit data with SQL statements (GDAL &gt;= 3.7)</li>
+<li>add <code><a href="../reference/ogr2ogr.html">ogr2ogr()</a></code>: wrapper of the <code>ogr2ogr</code> command-line utility, convert vector data between different formats</li>
+<li>add <code><a href="../reference/g_transform.html">g_transform()</a></code>: apply a coordinate transformation to a WKT geometry</li>
+<li>add <code><a href="../reference/geos_version.html">geos_version()</a></code>: get version information for the GEOS library in use by GDAL</li>
+<li>add <code><a href="../reference/push_error_handler.html">push_error_handler()</a></code>: wrapper for <code>CPLPushErrorHandler()</code> in the GDAL Common Portability Library</li>
+<li>add <code><a href="../reference/pop_error_handler.html">pop_error_handler()</a></code>: wrapper for <code>CPLPopErrorHandler()</code> in the GDAL Common Portability Library</li>
+<li>
+<code><a href="../reference/calc.html">calc()</a></code>: the argument <code>usePixelLonLat</code> is deprecated as unnecessary, variables <code>pixelLon</code> / <code>pixelLat</code> are now auto-detected if used in the calc expression; small performance improvement from computing <code>pixelY</code> only when needed</li>
+<li>add optional argument <code>quiet</code> in several functions to configure progress reporting (<a href="https://github.com/USDAForestService/gdalraster/issues/237" class="external-link">#237</a>)</li>
+<li>make the dataset management functions quieter (<a href="https://github.com/USDAForestService/gdalraster/issues/282" class="external-link">#282</a>)</li>
+<li>
+<code><a href="../reference/gdal_formats.html">gdal_formats()</a></code> now returns a data frame with the supported raster and vector formats, and information about the capabilities of each format driver</li>
+</ul></div>
+<div class="section level3">
+<h3 id="cmbtable-class-1-10-0">CmbTable-class<a class="anchor" aria-label="anchor" href="#cmbtable-class-1-10-0"></a></h3>
+<ul><li>
+<code>new()</code>: assign default variable names in the constructor if names are not given</li>
+</ul></div>
+<div class="section level3">
+<h3 id="internal-1-10-0">Internal<a class="anchor" aria-label="anchor" href="#internal-1-10-0"></a></h3>
+<ul><li>
+<code>src/geos_wkt.cpp</code>, <code>src/transform.cpp</code>, <code>src/wkt_conv.cpp</code>: deallocate some OGR geometry and OSR spatial ref objects to fix memory leaks</li>
+<li>add more unit tests for geometry operations using GEOS via GDAL headers</li>
+<li>
+<code>GDALRaster::getMetadataDomainList()</code>: deallocate the returned string list to avoid memory leak</li>
+<li>
+<code>GDALRaster::close()</code>: clear cache if needed, and check the return values of <code>GDALClose()</code> and <code>GDALFlushCache()</code> if GDAL &gt;= 3.7</li>
+<li>
+<code>configure.ac</code>: add back <code>proj-include</code> and <code>proj-lib</code>, the latter needed in some cases for source install on macOS; rework for the system requirement of GDAL built against GEOS</li>
+<li>remove internal <code><a href="../reference/has_geos.html">has_geos()</a></code> checks and update the documentation, since GDAL with GEOS is now required</li>
+<li>add <code>.editorconfig</code> file and bulk reformat code style</li>
+<li>fix up R code for <code>lintr</code> and add <code>.lintr</code> file</li>
+<li>mass replace <code>NULL</code> -&gt; <code>nullptr</code> in C++ code</li>
+<li>format diagnostic messages throughout for consistency and follow guidelines given in “Writing R Extensions”</li>
+<li>clean up temp files in the examples throughout</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.9.0" id="gdalraster-190">gdalraster 1.9.0<a class="anchor" aria-label="anchor" href="#gdalraster-190"></a></h2><p class="text-muted">CRAN release: 2024-02-25</p>
+<div class="section level3">
+<h3 id="behavior-change-1-9-0">Behavior change<a class="anchor" aria-label="anchor" href="#behavior-change-1-9-0"></a></h3>
+<ul><li>remove <code>OSR_DEFAULT_AXIS_MAPPING_STRATEGY=TRADITIONAL_GIS_ORDER</code> from <code>_gdal_init()</code> (<a href="https://github.com/USDAForestService/gdalraster/issues/209" class="external-link">#209</a>), since this could give a different SRS comparison result depending on GDAL version in cases where axis mapping matters and the default options in <code>OSRIsSameEx()</code> are used</li>
+</ul></div>
+<div class="section level3">
+<h3 id="gdal-vsi-for-operations-on-virtual-file-systems-1-9-0">GDAL VSI for operations on virtual file systems<a class="anchor" aria-label="anchor" href="#gdal-vsi-for-operations-on-virtual-file-systems-1-9-0"></a></h3>
+<ul><li>add <code><a href="../reference/vsi_copy_file.html">vsi_copy_file()</a></code>: wrapper for <code>VSICopyFile()</code>
+</li>
+<li>add <code><a href="../reference/vsi_curl_clear_cache.html">vsi_curl_clear_cache()</a></code>: wrapper for <code>VSICurlClearCache()</code> and <code>VSICurlPartialClearCache()</code>
+</li>
+<li>add <code><a href="../reference/vsi_mkdir.html">vsi_mkdir()</a></code>: wrapper for <code>VSIMkdir()</code>
+</li>
+<li>add <code><a href="../reference/vsi_read_dir.html">vsi_read_dir()</a></code>: wrapper for <code>VSIReadDirEx()</code>
+</li>
+<li>add <code><a href="../reference/vsi_rename.html">vsi_rename()</a></code>: wrapper for <code>VSIRename()</code>
+</li>
+<li>add <code><a href="../reference/vsi_rmdir.html">vsi_rmdir()</a></code>: wrapper for <code>VSIRmdir()</code>
+</li>
+<li>add <code><a href="../reference/vsi_stat.html">vsi_stat()</a></code>: wrapper for <code>VSIStatExL()</code>
+</li>
+<li>add <code><a href="../reference/vsi_sync.html">vsi_sync()</a></code>: wrapper for <code>VSISync()</code>
+</li>
+<li>add <code><a href="../reference/vsi_unlink.html">vsi_unlink()</a></code>: wrapper for <code>VSIUnlink()</code>
+</li>
+<li>add <code><a href="../reference/vsi_unlink_batch.html">vsi_unlink_batch()</a></code>: wrapper for <code>VSIUnlinkBatch()</code>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="gdalraster-class-1-9-0">GDALRaster-class<a class="anchor" aria-label="anchor" href="#gdalraster-class-1-9-0"></a></h3>
+<ul><li>
+<code>GDALRaster$new()</code>: add a constructor for passing dataset open options</li>
+</ul></div>
+<div class="section level3">
+<h3 id="stand-alone-functions-1-9-0">Stand-alone functions<a class="anchor" aria-label="anchor" href="#stand-alone-functions-1-9-0"></a></h3>
+<ul><li>add <code><a href="../reference/footprint.html">footprint()</a></code>: wrapper of the <code>gdal_footprint</code> command-line utility, compute footprint of a raster (GDAL &gt;= 3.8)</li>
+<li>
+<code><a href="../reference/read_ds.html">read_ds()</a></code>: add <code>as_list</code> argument for option to return multi-band output in list form; attach attribute <code>gis</code> to the output, a list containing bbox, dimension and spatial reference (thanks to input from <a href="https://github.com/mdsumner" class="external-link">@mdsumner</a> <a href="https://github.com/USDAForestService/gdalraster/issues/185" class="external-link">#185</a>)</li>
+<li>
+<code><a href="../reference/plot_raster.html">plot_raster()</a></code>: accept pixel data in list form (band vectors as list elements), and make use of <code>gis</code> attribute if present (thanks to input from <a href="https://github.com/mdsumner" class="external-link">@mdsumner</a> <a href="https://github.com/USDAForestService/gdalraster/issues/185" class="external-link">#185</a>)</li>
+<li>
+<code><a href="../reference/srs_is_same.html">srs_is_same()</a></code>: add arguments for <code>criterion</code>, <code>ignore_axis_mapping</code> and <code>ignore_coord_epoch</code>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-1-9-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-1-9-0"></a></h3>
+<ul><li>organize the website <a href="https://usdaforestservice.github.io/gdalraster/reference/index.html">reference index</a>
+</li>
+<li>add Microsoft Azure information in <a href="https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
+</li>
+<li>update DESCRIPTION</li>
+</ul></div>
+<div class="section level3">
+<h3 id="internal-1-9-0">Internal<a class="anchor" aria-label="anchor" href="#internal-1-9-0"></a></h3>
+<ul><li>add <code>_check_gdal_filename()</code>: minimal filename check and UTF-8</li>
+<li>add <code>_get_physical_RAM()</code>: wrapper for <code>CPLGetUsablePhysicalRAM()</code> for internal use</li>
+<li>set test coverage target minimum to 90%, codecov range: 70..90 (previously 80%, 60..80)</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="1.8.0" id="gdalraster-180">gdalraster 1.8.0<a class="anchor" aria-label="anchor" href="#gdalraster-180"></a></h2><p class="text-muted">CRAN release: 2024-01-27</p>
+<div class="section level3">
+<h3 id="dependencies-1-8-0">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies-1-8-0"></a></h3>
+<ul><li>libxml2 is listed in <code>SystemRequirements</code> since it is required by the imported package <strong>xml2</strong>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="gdalraster-class-1-8-0">GDALRaster-class<a class="anchor" aria-label="anchor" href="#gdalraster-class-1-8-0"></a></h3>
+<ul><li>
+<code>read_only=TRUE</code> is now an optional default in the class constructor</li>
+<li>add <code>clearStatistics()</code>: clear statistics on PAM supported datasets (GDAL &gt;= 3.2)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="stand-alone-functions-1-8-0">Stand-alone functions<a class="anchor" aria-label="anchor" href="#stand-alone-functions-1-8-0"></a></h3>
+<ul><li>add <code><a href="../reference/addFilesInZip.html">addFilesInZip()</a></code>: create/append to Seek-Optimized ZIP files (GDAL &gt;= 3.7)</li>
+<li>
+<code><a href="../reference/plot_raster.html">plot_raster()</a></code>: now uses georeferenced coordinates by default instead of pixel/line (<a href="https://github.com/USDAForestService/gdalraster/issues/184" class="external-link">#184</a> thanks to <a href="https://github.com/mdsumner" class="external-link">@mdsumner</a>)</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-1-8-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-1-8-0"></a></h3>
+<ul><li>example code for <code><a href="../reference/calc.html">calc()</a></code> using Landsat bands should have applied scale/offset as given in the .json metadata - this has been corrected</li>
+<li>add <code>AWS_REGION</code>, and a section for SOZip to <a href="https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html">GDAL Config Quick Ref</a>
+</li>
+<li>update documentation and examples throughout for default <code>read_only=TRUE</code> in the constructor for <code>GDALRaster</code>
+</li>
+<li>add <code><a href="../reference/translate.html">translate()</a></code> and <code><a href="../reference/warp.html">warp()</a></code> in <a href="https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html#see-also">Raster API Tutorial</a>
+</li>
+</ul></div>
+<div class="section level3">
+<h3 id="internal-1-8-0">Internal<a class="anchor" aria-label="anchor" href="#internal-1-8-0"></a></h3>
+<ul><li>configure.ac: remove parts of PROJ config that were unneeded since <strong>gdalraster</strong> only uses PROJ via GDAL headers; use <code>autoconf</code> macros for compiler invocations; get the PROJ data directory from <code>pkg-config</code> if possible; add <code>action-if-cross-compiling</code> argument (<a href="https://github.com/USDAForestService/gdalraster/issues/190" class="external-link">#190</a> and <a href="https://github.com/USDAForestService/gdalraster/issues/197" class="external-link">#197</a>; thanks to Simon Urbanek for debugging an initial issue and providing helpful feedback)</li>
+<li>get GDAL libs from <code>pkg-config</code> on Windows when possible (<a href="https://github.com/USDAForestService/gdalraster/issues/125" class="external-link">#125</a> thanks to <a href="https://github.com/kalibera" class="external-link">@kalibera</a>)</li>
+<li>
+<code><a href="../reference/translate.html">translate()</a></code> and <code><a href="../reference/warp.html">warp()</a></code>: close the output dataset before closing source dataset(s) in case the output is VRT</li>
+<li>switch to using the R convention for x.x.x.9000 development versioning</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="1.7.0" id="gdalraster-170">gdalraster 1.7.0<a class="anchor" aria-label="anchor" href="#gdalraster-170"></a></h2><p class="text-muted">CRAN release: 2023-11-29</p>
 <div class="section level3">

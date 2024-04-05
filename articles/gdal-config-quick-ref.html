@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,7 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a>
+    <a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
     <a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a>
@@ -102,7 +103,7 @@ string) will unset a value previously set by
 <code><a href="../reference/set_config_option.html">set_config_option()</a></code>:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://usdaforestservice.github.io/gdalraster/">gdalraster</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; GDAL 3.4.1, released 2021/12/27, PROJ 8.2.1</span></span>
+<span><span class="co">#&gt; GDAL 3.4.1, released 2021/12/27, GEOS 3.10.2, PROJ 8.2.1</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"GDAL_NUM_THREADS"</span>, <span class="st">"ALL_CPUS"</span><span class="op">)</span></span>
 <span><span class="co"># unset:</span></span>
@@ -137,8 +138,9 @@ directory. This can be changed with:</p>
 <p><strong><code>GDAL_NUM_THREADS</code></strong></p>
 <p>Sets the number of worker threads to be used by GDAL operations that
 support multithreading. This affects several different parts of GDAL
-including multi-threaded compression for GeoTiff and multithreaded
-computation during <code><a href="../reference/warp.html">warp()</a></code> (see topics below).</p>
+including multi-threaded compression for GeoTiff and SOZip, and
+multithreaded computation during <code><a href="../reference/warp.html">warp()</a></code> (see topics
+below).</p>
 <p><strong><code>GDAL_CACHEMAX</code></strong></p>
 <p>The size limit of the block cache is set upon first use (first I/O).
 Setting <code>GDAL_CACHEMAX</code> after that point will not resize the
@@ -238,8 +240,7 @@ layer in GeoPackage (.gpkg) or Spatialite (.sqlite) formats (see
 or <code>AUTHORITY_COMPLIANT</code>. GDAL &gt;= 3.5 defaults to
 <code>AUTHORITY_COMPLIANT</code>. Determines whether to honor the
 declared axis mapping of a CRS or override it with the traditional GIS
-ordering (x = longitude, y = latitude). <strong>Note:</strong> On load,
-gdalraster sets this option to <code>TRADITIONAL_GIS_ORDER</code>.</p>
+ordering (x = longitude, y = latitude).</p>
 <p><strong><code>OSR_WKT_FORMAT</code></strong></p>
 <p>As of GDAL 3.0, the default format for exporting a spatial reference
 definition to Well Known Text is WKT 1. This can be overridden with:</p>
@@ -342,6 +343,12 @@ require an AWS account:</p>
 <span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"AWS_SESSION_TOKEN"</span>, <span class="st">"&lt;value&gt;"</span><span class="op">)</span> <span class="co"># session token</span></span>
 <span><span class="co"># if requester pays:</span></span>
 <span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"AWS_REQUEST_PAYER"</span>, <span class="st">"&lt;value&gt;"</span><span class="op">)</span> <span class="co"># requester</span></span></code></pre></div>
+<p><strong><code>AWS_REGION</code></strong></p>
+<p>Sets the AWS region to which requests should be sent. Defaults to
+<code>us-east-1</code>.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># specify region</span></span>
+<span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"AWS_REGION"</span>, <span class="st">"us-west-2"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="google-cloud-storage">Google Cloud Storage<a class="anchor" aria-label="anchor" href="#google-cloud-storage"></a>
@@ -350,10 +357,67 @@ require an AWS account:</p>
 (Google Cloud Storage files)</p>
 </div>
 <div class="section level2">
-<h2 id="microsoft-azure">Microsoft Azure<a class="anchor" aria-label="anchor" href="#microsoft-azure"></a>
+<h2 id="microsoft-azure-blob">Microsoft Azure Blob<a class="anchor" aria-label="anchor" href="#microsoft-azure-blob"></a>
 </h2>
 <p>GDAL doc: <a href="https://gdal.org/user/virtual_file_systems.html#vsiaz-microsoft-azure-blob-files" class="external-link">/vsiaz/</a>
 (Microsoft Azure Blob files)</p>
+<p>Recognized filenames are of the form
+<code>/vsiaz/container/key</code>, where <code>container</code> is the
+name of the container and <code>key</code> is the object “key”, i.e. a
+filename potentially containing subdirectories.</p>
+<p><strong><code>AZURE_NO_SIGN_REQUEST</code></strong></p>
+<p>Controls whether requests are signed.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># public access</span></span>
+<span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"AZURE_NO_SIGN_REQUEST"</span>, <span class="st">"YES"</span><span class="op">)</span></span></code></pre></div>
+<p><strong><code>AZURE_STORAGE_CONNECTION_STRING</code></strong></p>
+<p>Credential string provided in the Access Keys section of the
+administrative interface, containing both the account name and a secret
+key.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"AZURE_STORAGE_CONNECTION_STRING"</span>, <span class="st">"&lt;my_connection_string&gt;"</span><span class="op">)</span></span></code></pre></div>
+<p>Several other authentication methods are possible for Azure. See the
+GDAL documentation for details.</p>
+</div>
+<div class="section level2">
+<h2 id="microsoft-azure-data-lake">Microsoft Azure Data Lake<a class="anchor" aria-label="anchor" href="#microsoft-azure-data-lake"></a>
+</h2>
+<p>GDAL doc: <a href="https://gdal.org/user/virtual_file_systems.html#vsiadls-microsoft-azure-data-lake-storage-gen2" class="external-link">/vsiadls/</a>
+(Microsoft Azure Data Lake Storage Gen2)</p>
+</div>
+<div class="section level2">
+<h2 id="sozip">SOZip<a class="anchor" aria-label="anchor" href="#sozip"></a>
+</h2>
+<p>GDAL doc: <a href="https://gdal.org/user/virtual_file_systems.html#vsizip-zip-archives" class="external-link">/vsizip/</a>
+(Seek-Optimized ZIP files, GDAL &gt;= 3.7)</p>
+<p>The function <code><a href="../reference/addFilesInZip.html">gdalraster::addFilesInZip()</a></code> can be used to
+create new or append to existing ZIP files, potentially using the seek
+optimization extension. Function arguments are available for the options
+below, or the configuration options can be set to change the default
+behavior.</p>
+<p><strong><code>GDAL_NUM_THREADS</code></strong></p>
+<p>The <code>GDAL_NUM_THREADS</code> configuration option can be set to
+<code>ALL_CPUS</code> or an integer value to specify the number of
+threads to use for SOZip-compressed files. This option is similarly
+described above for compression in <a href="#geotiff">GeoTiff</a>. Note
+that this option also affects several other parts of GDAL.</p>
+<p><strong><code>CPL_SOZIP_ENABLED</code></strong></p>
+<p>Defaults to <code>AUTO</code>. Determines whether the SOZip
+optimization should be enabled. If <code>AUTO</code>, SOZip will be
+enabled for uncompressed files larger than
+<code>CPL_SOZIP_MIN_FILE_SIZE</code>.</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># SOZip optimization defaults to AUTO</span></span>
+<span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"CPL_SOZIP_ENABLED"</span>, <span class="st">"YES"</span><span class="op">)</span></span></code></pre></div>
+<p><strong><code>CPL_SOZIP_MIN_FILE_SIZE</code></strong></p>
+<p>Defaults to <code>1M</code>. Determines the minimum file size for
+SOZip to be automatically enabled. Specified in bytes, or
+<code>K</code>, <code>M</code> or <code>G</code> suffix can be used
+respectively to specify a value in kilobytes, megabytes or
+gigabytes.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># SOZip minimum file size</span></span>
+<span><span class="fu"><a href="../reference/set_config_option.html">set_config_option</a></span><span class="op">(</span><span class="st">"CPL_SOZIP_MIN_FILE_SIZE"</span>, <span class="st">"100K"</span><span class="op">)</span></span></code></pre></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>
     </nav></aside>

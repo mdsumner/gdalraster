@@ -26,7 +26,7 @@
     
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,7 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a>
+    <a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
     <a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a>
@@ -142,7 +143,7 @@ assigned on the data frame and its columns that define usage as a GDAL
 RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://usdaforestservice.github.io/gdalraster/">gdalraster</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; GDAL 3.4.1, released 2021/12/27, PROJ 8.2.1</span></span>
+<span><span class="co">#&gt; GDAL 3.4.1, released 2021/12/27, GEOS 3.10.2, PROJ 8.2.1</span></span>
 <span></span>
 <span><span class="co"># LANDFIRE Existing Vegetation Type (EVT)</span></span>
 <span><span class="va">evt_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/storml_evt.tif"</span>, package<span class="op">=</span><span class="st">"gdalraster"</span><span class="op">)</span></span>
@@ -184,7 +185,7 @@ RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <span>                table_type <span class="op">=</span> <span class="st">"thematic"</span>,</span>
 <span>                na_value <span class="op">=</span> <span class="op">-</span><span class="fl">9999</span>,</span>
 <span>                join_df <span class="op">=</span> <span class="va">evt_df</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Scanning raster...</span></span>
+<span><span class="co">#&gt; scanning raster...</span></span>
 <span><span class="co">#&gt; 0...10...20...30...40...50...60...70...80...90...100 - done.</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tbl</span><span class="op">)</span></span>
@@ -262,23 +263,23 @@ RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 table for display. Colors are shown if the RAT contains RGB columns:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/displayRAT.html">displayRAT</a></span><span class="op">(</span><span class="va">tbl</span>, title <span class="op">=</span> <span class="st">"Raster Attribute Table for Storm Lake EVT"</span><span class="op">)</span></span></code></pre></div>
-<div id="jpttwzrzfa" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#jpttwzrzfa table {
+<div id="ybjfuyukkb" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#ybjfuyukkb table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#jpttwzrzfa thead, #jpttwzrzfa tbody, #jpttwzrzfa tfoot, #jpttwzrzfa tr, #jpttwzrzfa td, #jpttwzrzfa th {
+#ybjfuyukkb thead, #ybjfuyukkb tbody, #ybjfuyukkb tfoot, #ybjfuyukkb tr, #ybjfuyukkb td, #ybjfuyukkb th {
   border-style: none;
 }
 
-#jpttwzrzfa p {
+#ybjfuyukkb p {
   margin: 0;
   padding: 0;
 }
 
-#jpttwzrzfa .gt_table {
+#ybjfuyukkb .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -304,12 +305,12 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-left-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_caption {
+#ybjfuyukkb .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#jpttwzrzfa .gt_title {
+#ybjfuyukkb .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -321,7 +322,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-bottom-width: 0;
 }
 
-#jpttwzrzfa .gt_subtitle {
+#ybjfuyukkb .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -333,7 +334,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-top-width: 0;
 }
 
-#jpttwzrzfa .gt_heading {
+#ybjfuyukkb .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -345,13 +346,13 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-right-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_bottom_border {
+#ybjfuyukkb .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_col_headings {
+#ybjfuyukkb .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -366,7 +367,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-right-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_col_heading {
+#ybjfuyukkb .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -386,7 +387,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   overflow-x: hidden;
 }
 
-#jpttwzrzfa .gt_column_spanner_outer {
+#ybjfuyukkb .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -398,15 +399,15 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 4px;
 }
 
-#jpttwzrzfa .gt_column_spanner_outer:first-child {
+#ybjfuyukkb .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#jpttwzrzfa .gt_column_spanner_outer:last-child {
+#ybjfuyukkb .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#jpttwzrzfa .gt_column_spanner {
+#ybjfuyukkb .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -418,11 +419,11 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   width: 100%;
 }
 
-#jpttwzrzfa .gt_spanner_row {
+#ybjfuyukkb .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#jpttwzrzfa .gt_group_heading {
+#ybjfuyukkb .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -448,7 +449,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   text-align: left;
 }
 
-#jpttwzrzfa .gt_empty_group_heading {
+#ybjfuyukkb .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -463,15 +464,15 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   vertical-align: middle;
 }
 
-#jpttwzrzfa .gt_from_md > :first-child {
+#ybjfuyukkb .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#jpttwzrzfa .gt_from_md > :last-child {
+#ybjfuyukkb .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#jpttwzrzfa .gt_row {
+#ybjfuyukkb .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -490,7 +491,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   overflow-x: hidden;
 }
 
-#jpttwzrzfa .gt_stub {
+#ybjfuyukkb .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -503,7 +504,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 5px;
 }
 
-#jpttwzrzfa .gt_stub_row_group {
+#ybjfuyukkb .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -517,15 +518,15 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   vertical-align: top;
 }
 
-#jpttwzrzfa .gt_row_group_first td {
+#ybjfuyukkb .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#jpttwzrzfa .gt_row_group_first th {
+#ybjfuyukkb .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#jpttwzrzfa .gt_summary_row {
+#ybjfuyukkb .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -535,16 +536,16 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 5px;
 }
 
-#jpttwzrzfa .gt_first_summary_row {
+#ybjfuyukkb .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_first_summary_row.thick {
+#ybjfuyukkb .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#jpttwzrzfa .gt_last_summary_row {
+#ybjfuyukkb .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -554,7 +555,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-bottom-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_grand_summary_row {
+#ybjfuyukkb .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -564,7 +565,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 5px;
 }
 
-#jpttwzrzfa .gt_first_grand_summary_row {
+#ybjfuyukkb .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -574,7 +575,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-top-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_last_grand_summary_row_top {
+#ybjfuyukkb .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -584,11 +585,11 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-bottom-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_striped {
+#ybjfuyukkb .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#jpttwzrzfa .gt_table_body {
+#ybjfuyukkb .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -597,7 +598,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-bottom-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_footnotes {
+#ybjfuyukkb .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -611,7 +612,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-right-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_footnote {
+#ybjfuyukkb .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -620,7 +621,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 5px;
 }
 
-#jpttwzrzfa .gt_sourcenotes {
+#ybjfuyukkb .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -634,7 +635,7 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   border-right-color: #D3D3D3;
 }
 
-#jpttwzrzfa .gt_sourcenote {
+#ybjfuyukkb .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -642,63 +643,63 @@ table for display. Colors are shown if the RAT contains RGB columns:</p>
   padding-right: 5px;
 }
 
-#jpttwzrzfa .gt_left {
+#ybjfuyukkb .gt_left {
   text-align: left;
 }
 
-#jpttwzrzfa .gt_center {
+#ybjfuyukkb .gt_center {
   text-align: center;
 }
 
-#jpttwzrzfa .gt_right {
+#ybjfuyukkb .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#jpttwzrzfa .gt_font_normal {
+#ybjfuyukkb .gt_font_normal {
   font-weight: normal;
 }
 
-#jpttwzrzfa .gt_font_bold {
+#ybjfuyukkb .gt_font_bold {
   font-weight: bold;
 }
 
-#jpttwzrzfa .gt_font_italic {
+#ybjfuyukkb .gt_font_italic {
   font-style: italic;
 }
 
-#jpttwzrzfa .gt_super {
+#ybjfuyukkb .gt_super {
   font-size: 65%;
 }
 
-#jpttwzrzfa .gt_footnote_marks {
+#ybjfuyukkb .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#jpttwzrzfa .gt_asterisk {
+#ybjfuyukkb .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#jpttwzrzfa .gt_indent_1 {
+#ybjfuyukkb .gt_indent_1 {
   text-indent: 5px;
 }
 
-#jpttwzrzfa .gt_indent_2 {
+#ybjfuyukkb .gt_indent_2 {
   text-indent: 10px;
 }
 
-#jpttwzrzfa .gt_indent_3 {
+#ybjfuyukkb .gt_indent_3 {
   text-indent: 15px;
 }
 
-#jpttwzrzfa .gt_indent_4 {
+#ybjfuyukkb .gt_indent_4 {
   text-indent: 20px;
 }
 
-#jpttwzrzfa .gt_indent_5 {
+#ybjfuyukkb .gt_indent_5 {
   text-indent: 25px;
 }
 </style>

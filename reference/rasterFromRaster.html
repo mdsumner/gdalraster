@@ -16,7 +16,7 @@ sets driver-specific dataset creation options, and initializes to a value."><!--
     
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.7.0.9000</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@ sets driver-specific dataset creation options, and initializes to a value."><!--
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a>
+    <a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
     <a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a>
@@ -138,7 +139,7 @@ during creation of a GTiff file).</p></dd>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># band 2 in a FARSITE landscape file has slope degrees</span></span></span>
 <span class="r-in"><span><span class="co"># convert slope degrees to slope percent in a new raster</span></span></span>
 <span class="r-in"><span><span class="va">lcp_file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/storm_lake.lcp"</span>, package<span class="op">=</span><span class="st">"gdalraster"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ds_lcp</span> <span class="op">&lt;-</span> <span class="fu">new</span><span class="op">(</span><span class="va">GDALRaster</span>, <span class="va">lcp_file</span>, read_only<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ds_lcp</span> <span class="op">&lt;-</span> <span class="fu">new</span><span class="op">(</span><span class="va">GDALRaster</span>, <span class="va">lcp_file</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ds_lcp</span><span class="op">$</span><span class="fu">getMetadata</span><span class="op">(</span>band<span class="op">=</span><span class="fl">2</span>, domain<span class="op">=</span><span class="st">""</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "SLOPE_FILE=/netapp/sharedwebfs1/shared/landfire/public/temp_q8dTbIJ4w6Qi36Omkzk0/LCP_LF2022_FBFM40_220_CONUS/temp/merged_modified.tif"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [2] "SLOPE_MAX=54"                                                                                                                         </span>
@@ -155,8 +156,8 @@ during creation of a GTiff file).</p></dd>
 <span class="r-in"><span>                 dtName <span class="op">=</span> <span class="st">"Int16"</span>,</span></span>
 <span class="r-in"><span>                 options <span class="op">=</span> <span class="va">opt</span>,</span></span>
 <span class="r-in"><span>                 init <span class="op">=</span> <span class="op">-</span><span class="fl">32767</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Initializing destination raster...</span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Done.</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> initializing destination raster...</span>
+<span class="r-msg co"><span class="r-pr">#&gt;</span> done</span>
 <span class="r-in"><span><span class="va">ds_slp</span> <span class="op">&lt;-</span> <span class="fu">new</span><span class="op">(</span><span class="va">GDALRaster</span>, <span class="va">slpp_file</span>, read_only<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># slpp_file is initialized to -32767 and nodata value set</span></span></span>
@@ -178,7 +179,7 @@ during creation of a GTiff file).</p></dd>
 <span class="r-in"><span><span class="va">ncols</span> <span class="op">&lt;-</span> <span class="va">ds_slp</span><span class="op">$</span><span class="fu">getRasterXSize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">nrows</span> <span class="op">&lt;-</span> <span class="va">ds_slp</span><span class="op">$</span><span class="fu">getRasterYSize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="kw">for</span> <span class="op">(</span><span class="va">row</span> <span class="kw">in</span> <span class="fl">0</span><span class="op">:</span><span class="op">(</span><span class="va">nrows</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="va">rowdata</span> <span class="op">&lt;-</span> <span class="va">ds_lcp</span><span class="op">$</span><span class="fu">read</span><span class="op">(</span>band<span class="op">=</span><span class="fl">2</span>, </span></span>
+<span class="r-in"><span>    <span class="va">rowdata</span> <span class="op">&lt;-</span> <span class="va">ds_lcp</span><span class="op">$</span><span class="fu">read</span><span class="op">(</span>band<span class="op">=</span><span class="fl">2</span>,</span></span>
 <span class="r-in"><span>                           xoff<span class="op">=</span><span class="fl">0</span>, yoff<span class="op">=</span><span class="va">row</span>,</span></span>
 <span class="r-in"><span>                           xsize<span class="op">=</span><span class="va">ncols</span>, ysize<span class="op">=</span><span class="fl">1</span>,</span></span>
 <span class="r-in"><span>                           out_xsize<span class="op">=</span><span class="va">ncols</span>, out_ysize<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
@@ -195,6 +196,8 @@ during creation of a GTiff file).</p></dd>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">ds_slp</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ds_lcp</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="deleteDataset.html">deleteDataset</a></span><span class="op">(</span><span class="va">slpp_file</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc"><h2>On this page</h2>

@@ -168,6 +168,8 @@ class GDALRaster {
 
     int getChecksum(int band, int xoff, int yoff, int xsize, int ysize) const;
 
+    SEXP read_col_row(int band, Rcpp::NumericVector col, Rcpp::NumericVector row) const;
+    
     void close();
 
     bool readByteAsRaw;

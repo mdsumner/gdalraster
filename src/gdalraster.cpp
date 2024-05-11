@@ -928,6 +928,67 @@ SEXP GDALRaster::read(int band, int xoff, int yoff, int xsize, int ysize,
     }
 }
 
+SEXP GDALRaster::read_col_row(int band, Rcpp::NumericVector col, Rcpp::NumericVector row) const {
+  
+  _checkAccess(GA_ReadOnly);
+  
+  GDALRasterBandH hBand = GDALGetRasterBand(hDataset, band);
+  if (hBand == nullptr)
+    Rcpp::stop("failed to access the requested band");
+  GDALDataType eDT = GDALGetRasterDataType(hBand);
+  
+  CPLErr err;
+  
+ 
+      // UInt32, Float32, Float64
+      // use double buffer
+      // (Int64, UInt64 would currently be handled here but would lose
+      //  precision when > 9,007,199,254,740,992 (2^53). Support for
+      //  Int64/UInt64 raster could potentially be added using {bit64}.)
+      
+      std::vector<double> buf(col.size());
+      double val = 0; 
+      for (int i = 0; i < col.size(); i++) {
+      err = GDALRasterIO(hBand, GF_Read, col[i], row[i], 1, 1,
+                         &val, 1, 1,
+                         GDT_Float64, 0, 0);
+      
+      
+      if (err == CE_Failure) {
+        Rcpp::stop("read raster failed");
+      }
+      buf[i] = val; 
+      // if (hasNoDataValue(band)) {
+      //   // with a nodata value
+      //   double nodata_value = getNoDataValue(band);
+      //   if (GDALDataTypeIsFloating(eDT)) {
+      //     // floating point
+      //     for (double& val : buf) {
+      //       if (CPLIsNan(val))
+      //         val = NA_REAL;
+      //       else if (ARE_REAL_EQUAL(val, nodata_value))
+      //         val = NA_REAL;
+      //     }
+      //   }
+      //   else {
+      //     // integer
+      //     std::replace(buf.begin(), buf.end(), nodata_value, NA_REAL);
+      //   }
+      // }
+      // // without a nodata value
+      // else if (GDALDataTypeIsFloating(eDT)) {
+      //   for (double& val : buf) {
+      //     if (CPLIsNan(val))
+      //       val = NA_REAL;
+      //   }
+      // }
+      }
+      Rcpp::NumericVector v = Rcpp::wrap(buf);
+      return v;
+    
+  
+}
+
 void GDALRaster::write(int band, int xoff, int yoff, int xsize, int ysize,
                        Rcpp::RObject rasterData) {
 
@@ -1571,7 +1632,8 @@ RCPP_MODULE(mod_GDALRaster) {
         "Compute checksum for raster region")
     .method("close", &GDALRaster::close,
         "Close the GDAL dataset for proper cleanup")
-
+    .method("read_col_row", &GDALRaster::read_col_row, 
+        "Read specific values at positions in col and row input vectors")
     .field("readByteAsRaw", &GDALRaster::readByteAsRaw)
     ;
 }

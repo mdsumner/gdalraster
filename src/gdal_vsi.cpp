@@ -900,3 +900,6 @@ void vsi_clear_path_options(Rcpp::CharacterVector path_prefix) {
 
 #endif
 }
+
+
+

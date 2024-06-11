@@ -29,7 +29,7 @@ class GDALMDIMRaster {
   GDALDatasetH hDataset;
   bool shared_in;
   GDALMDArrayH hActiveMDArray;
-  bool b_mdarray_open;
+  bool b_mdarray_open = false;
   GDALGroupH hRootGroup;
 
  public:
@@ -46,6 +46,8 @@ class GDALMDIMRaster {
    void close();
    void openMDArray(Rcpp::CharacterVector array_name);
    Rcpp::CharacterVector activeMDArrayName();
+
+   Rcpp::IntegerVector shape(Rcpp::CharacterVector array_name);
 };
 
 RCPP_EXPOSED_CLASS(GDALMDIMRaster)

@@ -25,14 +25,17 @@
                   true,
                   Rcpp::CharacterVector::create(),
                   false)
- {}
+ {
+   b_mdarray_open = false;
+ }
  GDALMDIMRaster::GDALMDIMRaster(Rcpp::CharacterVector dsn,
                                 bool read_only,
                                 Rcpp::Nullable<Rcpp::CharacterVector> open_options,
                                 bool shared_in) :
    dsn_in(dsn),
    open_options_in(open_options),
-   hDataset(nullptr)
+   hDataset(nullptr),
+   b_mdarray_open(false)
  {
    rootGroupName = Rcpp::CharacterVector::create(NA_STRING);
    if (read_only) {
@@ -125,6 +128,44 @@
 
    return GDALMDArrayGetName(hActiveMDArray);
  }
+// this is no good because we release the dataset opened above, what about reopening?
+
+// yes ok but don't try opening a non-existent array
+// x$shape("elev")
+//    ERROR 10: Pointer 'hArray' is NULL in 'GDALMDArrayGetDimensions'.
+//
+//  Error: cannot allocate vector of size 350340.4 Gb
+//
+ Rcpp::IntegerVector GDALMDIMRaster::shape(Rcpp::CharacterVector array_name) {
+   //if (!b_mdarray_open) return Rcpp::IntegerVector::create(NA_INTEGER);
+
+   GDALGroupH hGroup = GDALDatasetGetRootGroup(hDataset);
+   GDALReleaseDataset(hDataset);
+   GDALMDArrayH hVar = GDALGroupOpenMDArray(hGroup, array_name[0], NULL);
+   GDALGroupRelease(hGroup);
+   size_t nDimCount;
+   if (hVar == nullptr) {
+     open(true);
+     Rcpp::warning("array of that name does not exist");
+     return Rcpp::IntegerVector::create(NA_INTEGER);
+   }
+   GDALDimensionH* dims = GDALMDArrayGetDimensions(hVar, &nDimCount);
+
+   size_t nValues;
+   size_t i;
+   nValues = 1;
+   Rcpp::IntegerVector out(nDimCount);
+
+   for( i = 0; i < nDimCount; i++ )
+   {
+     out[i] = GDALDimensionGetSize(dims[i]);
+     nValues *= out[i];
+   }
+   GDALReleaseDimensions(dims, nDimCount);
+   GDALMDArrayRelease(hVar);
+   open(true);
+   return out;
+ }
 RCPP_MODULE(mod_GDALMDIMRaster) {
     Rcpp::class_<GDALMDIMRaster>("GDALMDIMRaster")
 
@@ -142,6 +183,8 @@ RCPP_MODULE(mod_GDALMDIMRaster) {
    .method("openMDArray", &GDALMDIMRaster::openMDArray)
    .method("activeMDArrayName", &GDALMDIMRaster::activeMDArrayName)
    .method("close", &GDALMDIMRaster::close)
+   .method("shape", &GDALMDIMRaster::shape)
+
     ;
 }
 

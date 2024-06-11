@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "gdal_priv.h"
 #include "rcpp_util.h"
 
 #ifndef SRC_GDALRASTER_TYPES_H_
@@ -114,6 +115,8 @@ class GDALRaster {
     std::string getFilename() const;
     void setFilename(std::string filename);
     void open(bool read_only);
+    void open_multidim(bool read_only);
+
     bool isOpen() const;
     Rcpp::CharacterVector getFileList() const;
 
@@ -200,6 +203,8 @@ class GDALRaster {
     int getChecksum(int band, int xoff, int yoff, int xsize, int ysize) const;
 
     void close();
+
+    GDALGroup GetRootGroup();
 
     // methods for internal use not exported to R
     void checkAccess_(GDALAccess access_needed) const;

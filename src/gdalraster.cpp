@@ -168,39 +168,6 @@ void GDALRaster::open(bool read_only) {
     if (hDataset == nullptr)
         Rcpp::stop("open raster failed");
 }
-
-void GDALRaster::open_multidim(bool read_only) {
-  if (fname_in == "")
-    Rcpp::stop("'filename' is not set");
-
-  if (hDataset != nullptr)
-    close();
-
-  if (read_only)
-    eAccess = GA_ReadOnly;
-  else
-    eAccess = GA_Update;
-
-  std::vector<char *> dsoo(open_options_in.size() + 1);
-  if (open_options_in.size() > 0) {
-    for (R_xlen_t i = 0; i < open_options_in.size(); ++i) {
-      dsoo[i] = (char *) (open_options_in[i]);
-    }
-  }
-  dsoo.push_back(nullptr);
-
-  unsigned int nOpenFlags = GDAL_OF_MULTIDIM_RASTER  | GDAL_OF_SHARED;
-  if (read_only)
-    nOpenFlags |= GDAL_OF_READONLY;
-  else
-    nOpenFlags |= GDAL_OF_UPDATE;
-
-  hDataset = GDALOpenEx(fname_in.c_str(), nOpenFlags, nullptr,
-                        dsoo.data(), nullptr);
-
-  if (hDataset == nullptr)
-    Rcpp::stop("open multidim raster failed");
-}
 bool GDALRaster::isOpen() const {
     if (hDataset == nullptr)
         return false;
@@ -1578,8 +1545,6 @@ RCPP_MODULE(mod_GDALRaster) {
         "Set the raster filename")
     .method("open", &GDALRaster::open,
         "(Re-)open the raster dataset on the existing filename")
-    .method("open_multidim", &GDALRaster::open_multidim,
-        "(Re-)open the multidim raster dataset on the existing filename")
     .const_method("isOpen", &GDALRaster::isOpen,
         "Is the raster dataset open")
     .const_method("getFileList", &GDALRaster::getFileList,

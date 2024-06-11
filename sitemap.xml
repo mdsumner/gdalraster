@@ -64,7 +64,13 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/RunningStats-class.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/VSIFile-class.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/addFilesInZip.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/apply_geotransform.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/bandCopyWholeRaster.html</loc>
@@ -115,6 +121,9 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/displayRAT.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/dump_open_datasets.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/epsg_to_wkt.html</loc>
   </url>
   <url>
@@ -127,34 +136,19 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_area.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_binary_op.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_binary_pred.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_buffer.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_centroid.html</loc>
   </url>
   <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_contains.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_crosses.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_difference.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_disjoint.html</loc>
-  </url>
-  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_distance.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_equals.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_intersection.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_intersects.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_is_empty.html</loc>
@@ -169,22 +163,7 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_name.html</loc>
   </url>
   <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_overlaps.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_sym_difference.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_touches.html</loc>
-  </url>
-  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/g_transform.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_union.html</loc>
-  </url>
-  <url>
-    <loc>https://usdaforestservice.github.io/gdalraster/reference/g_within.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/gdal_formats.html</loc>
@@ -208,10 +187,22 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/get_config_option.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/get_num_cpus.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/get_pixel_line.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/get_usable_physical_ram.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/has_geos.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/has_spatialite.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/http_enabled.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/index.html</loc>
@@ -224,6 +215,12 @@
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/ogr2ogr.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/ogr_define.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/ogr_manage.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/ogrinfo.html</loc>
@@ -289,6 +286,12 @@
     <loc>https://usdaforestservice.github.io/gdalraster/reference/translate.html</loc>
   </url>
   <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_clear_path_options.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_constants.html</loc>
+  </url>
+  <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_copy_file.html</loc>
   </url>
   <url>
@@ -296,6 +299,9 @@
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_get_disk_free_space.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_get_file_metadata.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_get_fs_options.html</loc>
@@ -314,6 +320,9 @@
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_rmdir.html</loc>
+  </url>
+  <url>
+    <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_set_path_option.html</loc>
   </url>
   <url>
     <loc>https://usdaforestservice.github.io/gdalraster/reference/vsi_stat.html</loc>

@@ -5,56 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<meta name="description" content="Interface to the Raster API of the Geospatial Data Abstraction
-    Library (GDAL, &lt;https://gdal.org&gt;). Bindings are implemented in an
-    exposed C++ class encapsulating a GDALDataset and its raster band
-    objects, along with several stand-alone functions. These support manual
-    creation of uninitialized datasets, creation from existing raster as
-    template, read/set dataset parameters, low level I/O, color tables, raster
-    attribute tables, virtual raster (VRT), and gdalwarp wrapper for
-    reprojection and mosaicing. Includes GDAL algorithms (dem_proc(),
-    polygonize(), rasterize(), etc.), and functions for coordinate
-    transformation and spatial reference systems. Calling signatures resemble
-    the native C, C++ and Python APIs provided by the GDAL project. Includes
-    raster calc() to evaluate a given R expression on a layer or stack of
-    layers, with pixel x/y available as variables in the expression; and raster
-    combine() to identify and count unique pixel combinations across multiple
-    input layers, with optional output of the pixel-level combination IDs.
-    Provides raster display using base graphics. Bindings to a subset of
-    the Virtual Systems Interface (VSI) are also included to support
-    operations on GDAL virtual file systems. These are general utility
-    functions that abstract file system operations on URLs, cloud storage
-    services, Zip/GZip/7z/RAR archives, and in-memory files.
-    gdalraster may be useful in applications that need scalable, low-level
-    I/O, or prefer a direct GDAL API.">
+<meta name="description" content="Interface to the Raster API of the Geospatial Data Abstraction Library (GDAL, &lt;https://gdal.org&gt;). Bindings are implemented in an exposed C++ class encapsulating a GDALDataset and its raster band objects, along with several stand-alone functions. These support manual creation of uninitialized datasets, creation from existing raster as template, read/set dataset parameters, low level I/O, color tables, raster attribute tables, virtual raster (VRT), and gdalwarp wrapper for reprojection and mosaicing. Includes GDAL algorithms (dem_proc(), polygonize(), rasterize(), etc.), and functions for coordinate transformation and spatial reference systems. Calling signatures resemble the native C, C++ and Python APIs provided by the GDAL project. Includes raster calc() to evaluate a given R expression on a layer or stack of layers, with pixel x/y available as variables in the expression; and raster combine() to identify and count unique pixel combinations across multiple input layers, with optional output of the pixel-level combination IDs. Provides raster display using base graphics. Bindings to a subset of the OGR API are also included for managing vector data sources. Bindings to a subset of the Virtual Systems Interface (VSI) are also included to support operations on GDAL virtual file systems. These are general utility functions that abstract file system operations on URLs, cloud storage services, Zip/GZip/7z/RAR archives, and in-memory files. gdalraster may be useful in applications that need scalable, low-level I/O, or prefer a direct GDAL API.">
 <title>R Bindings to the GDAL Raster API • gdalraster</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="R Bindings to the GDAL Raster API">
-<meta property="og:description" content="Interface to the Raster API of the Geospatial Data Abstraction
-    Library (GDAL, &lt;https://gdal.org&gt;). Bindings are implemented in an
-    exposed C++ class encapsulating a GDALDataset and its raster band
-    objects, along with several stand-alone functions. These support manual
-    creation of uninitialized datasets, creation from existing raster as
-    template, read/set dataset parameters, low level I/O, color tables, raster
-    attribute tables, virtual raster (VRT), and gdalwarp wrapper for
-    reprojection and mosaicing. Includes GDAL algorithms (dem_proc(),
-    polygonize(), rasterize(), etc.), and functions for coordinate
-    transformation and spatial reference systems. Calling signatures resemble
-    the native C, C++ and Python APIs provided by the GDAL project. Includes
-    raster calc() to evaluate a given R expression on a layer or stack of
-    layers, with pixel x/y available as variables in the expression; and raster
-    combine() to identify and count unique pixel combinations across multiple
-    input layers, with optional output of the pixel-level combination IDs.
-    Provides raster display using base graphics. Bindings to a subset of
-    the Virtual Systems Interface (VSI) are also included to support
-    operations on GDAL virtual file systems. These are general utility
-    functions that abstract file system operations on URLs, cloud storage
-    services, Zip/GZip/7z/RAR archives, and in-memory files.
-    gdalraster may be useful in applications that need scalable, low-level
-    I/O, or prefer a direct GDAL API.">
+<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.11/clipboard.min.js" integrity="sha512-7O5pXpc0oCRrxk8RUfDYFgn0nO1t+jLuIOQdOMRp4APB7uZ4vSjspzp5y6YDtDs4VzUSTbWzBFZ/LKJhnyFOKw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="R Bindings to the GDAL Raster API">
+<meta property="og:description" content="Interface to the Raster API of the Geospatial Data Abstraction Library (GDAL, &lt;https://gdal.org&gt;). Bindings are implemented in an exposed C++ class encapsulating a GDALDataset and its raster band objects, along with several stand-alone functions. These support manual creation of uninitialized datasets, creation from existing raster as template, read/set dataset parameters, low level I/O, color tables, raster attribute tables, virtual raster (VRT), and gdalwarp wrapper for reprojection and mosaicing. Includes GDAL algorithms (dem_proc(), polygonize(), rasterize(), etc.), and functions for coordinate transformation and spatial reference systems. Calling signatures resemble the native C, C++ and Python APIs provided by the GDAL project. Includes raster calc() to evaluate a given R expression on a layer or stack of layers, with pixel x/y available as variables in the expression; and raster combine() to identify and count unique pixel combinations across multiple input layers, with optional output of the pixel-level combination IDs. Provides raster display using base graphics. Bindings to a subset of the OGR API are also included for managing vector data sources. Bindings to a subset of the Virtual Systems Interface (VSI) are also included to support operations on GDAL virtual file systems. These are general utility functions that abstract file system operations on URLs, cloud storage services, Zip/GZip/7z/RAR archives, and in-memory files. gdalraster may be useful in applications that need scalable, low-level I/O, or prefer a direct GDAL API.">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
 <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
@@ -64,11 +22,11 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
     
 
-    <nav class="navbar fixed-top navbar-light navbar-expand-lg bg-light"><div class="container">
+    <nav class="navbar fixed-top navbar-light navbar-expand-lg bg-light" data-bs-theme="light"><div class="container">
     
     <a class="navbar-brand me-2" href="index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.10.9010</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.11.0.9040</small>
 
     
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -84,11 +42,11 @@
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
     <a class="dropdown-item" href="articles/gdal-block-cache.html">GDAL Block Cache</a>
-    <a class="dropdown-item" href="articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
-    <a class="dropdown-item" href="articles/raster-display.html">Raster Display</a>
     <a class="dropdown-item" href="articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a>
+    <a class="dropdown-item" href="articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a>
     <a class="dropdown-item" href="articles/raster-api-tutorial.html">Raster API Tutorial</a>
     <a class="dropdown-item" href="articles/raster-attribute-tables.html">Raster Attribute Tables</a>
+    <a class="dropdown-item" href="articles/raster-display.html">Raster Display</a>
   </div>
 </li>
 <li class="nav-item">
@@ -121,12 +79,12 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p><strong>gdalraster</strong> is an R interface to the Raster API of the Geospatial Data Abstraction Library (<a href="https://gdal.org/" class="external-link">GDAL</a>). Bindings to a subset of the GDAL Virtual Systems Interface (<a href="https://gdal.org/api/cpl.html#cpl-vsi-h" class="external-link">VSI</a>) are also provided to support filesystem operations on URLs, cloud storage services, Zip/GZip/7z/RAR, and in-memory files. Calling signatures resemble the native C, C++ and Python APIs provided by the GDAL project.</p>
+<p><strong>gdalraster</strong> is an R interface to the <a href="https://gdal.org/api/raster_c_api.html" class="external-link">Raster API</a> of the Geospatial Data Abstraction Library (<a href="https://gdal.org/" class="external-link">GDAL</a>). Bindings to a subset of the GDAL <a href="https://gdal.org/api/vector_c_api.html" class="external-link">Vector API</a> are included to provide utilities for managing vector data sources. Bindings to the GDAL Virtual Systems Interface (<a href="https://gdal.org/api/cpl.html#cpl-vsi-h" class="external-link">VSI</a>) support file system operations and binary I/O on URLs, cloud storage services, Zip/GZip/7z/RAR, and in-memory files, as well as regular file systems. Calling signatures resemble the native C, C++ and Python APIs provided by the GDAL project.</p>
 <p>Bindings to GDAL are implemented in the exposed C++ class <a href="https://usdaforestservice.github.io/gdalraster/reference/GDALRaster-class.html"><code>GDALRaster</code></a> along with several <a href="https://usdaforestservice.github.io/gdalraster/reference/index.html#stand-alone-functions">stand-alone functions</a>, supporting:</p>
 <ul>
 <li>manual creation of uninitialized raster datasets</li>
 <li>creation from existing raster as template</li>
-<li>read/set raster dataset parameters</li>
+<li>read/set raster dataset parameters and metadata</li>
 <li>low-level I/O</li>
 <li>build/read/set color tables and raster attribute tables</li>
 <li>virtual raster (VRT) for virtual cropping, resampling, kernel filtering, mosaicing</li>
@@ -135,10 +93,11 @@
 <li>coordinate transformation</li>
 <li>spatial reference systems</li>
 <li>GDAL algorithms (<code><a href="reference/dem_proc.html">dem_proc()</a></code>, <code><a href="reference/polygonize.html">polygonize()</a></code>, <code><a href="reference/rasterize.html">rasterize()</a></code>, <a href="https://usdaforestservice.github.io/gdalraster/reference/index.html#algorithms"><code>...</code></a>)</li>
-<li>OGR vector utilities (<code><a href="reference/ogrinfo.html">ogrinfo()</a></code>, <code><a href="reference/ogr2ogr.html">ogr2ogr()</a></code>)</li>
-<li>copy files/move/rename/delete datasets</li>
-<li>abstraction of filesystem operations on URLs and cloud storage</li>
+<li>OGR vector utilities (<code><a href="reference/ogrinfo.html">ogrinfo()</a></code>, <code><a href="reference/ogr2ogr.html">ogr2ogr()</a></code>, <a href="https://usdaforestservice.github.io/gdalraster/reference/ogr_manage.html"><code>ogr_manage</code></a> interface)</li>
+<li>copy files/move/rename/delete raster and vector datasets</li>
 <li>create/append to Seek-Optimized ZIP (<a href="https://github.com/sozip/sozip-spec" class="external-link">SOZip</a>)</li>
+<li>abstraction of file system operations on URLs and cloud storage</li>
+<li>Standard C binary file I/O through VSI (class <a href="https://usdaforestservice.github.io/gdalraster/reference/VSIFile-class.html"><code>VSIFile</code></a>)</li>
 </ul>
 <p>Additional functionality includes:</p>
 <ul>
@@ -166,7 +125,7 @@
 <div class="section level4">
 <h4 id="linux">Linux<a class="anchor" aria-label="anchor" href="#linux"></a>
 </h4>
-<p>GDAL &gt;= 3.1.0 is required, but a more recent version is recommended (e.g., &gt;= 3.6.4). GDAL built with GEOS is a system requirement as of <strong>gdalraster</strong> 1.10. GDAL as of 3.9 requires PROJ &gt;= 6.3.1, but a more recent version of PROJ is recommended. PROJ requires sqlite3, and libxml2 is required for the imported R package <strong>xml2</strong>.</p>
+<p>GDAL &gt;= 3.1.0 built with GEOS is required, but a more recent GDAL version is recommended, e.g., &gt;= 3.6.4. GDAL as of version 3.9 requires PROJ &gt;= 6.3.1, but a more recent version of PROJ is also recommended. PROJ requires sqlite3, and libxml2 is required for the imported R package <strong>xml2</strong>.</p>
 <p>On Ubuntu, recent versions of geospatial libraries can be installed from the <a href="https://launchpad.net/~ubuntugis/+archive/ubuntu/ubuntugis-unstable" class="external-link">ubuntugis-unstable PPA</a> with the following commands:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a>sudo add<span class="sc">-</span>apt<span class="sc">-</span>repository ppa<span class="sc">:</span>ubuntugis<span class="sc">/</span>ubuntugis<span class="sc">-</span>unstable</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>sudo apt update</span>
@@ -183,7 +142,7 @@
 <div class="section level4">
 <h4 id="windows">Windows<a class="anchor" aria-label="anchor" href="#windows"></a>
 </h4>
-<p><a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">RTools</a> is needed to install from source on Windows. RTools since version 4.2 includes GDAL, PROJ and all other dependent libraries that are needed to compile <strong>gdalraster</strong>. Note that CRAN releases periodic revisions to RTools that often include updates to the libraries as new versions become available. For example, <a href="https://cran.r-project.org/bin/windows/Rtools/rtools43/rtools.html" class="external-link">revision 5958</a> of RTools 4.3 contains GDAL 3.8.2 and PROJ 9.3.1.</p>
+<p><a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">RTools</a> is needed to install from source on Windows. RTools since version 4.2 includes GDAL, PROJ and all other dependent libraries that are needed to compile <strong>gdalraster</strong>. Note that CRAN releases periodic revisions to RTools that often include updates to the libraries as new versions become available. For example, <a href="https://cran.r-project.org/bin/windows/Rtools/rtools44/rtools.html" class="external-link">release 6104</a> of RTools 4.4 contains GDAL 3.8.4 and PROJ 9.3.1.</p>
 <p>With RTools installed:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install the development version from GitHub</span></span>
@@ -194,11 +153,20 @@
 </h4>
 <p>GDAL and PROJ can be installed with Homebrew:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>brew install pkg<span class="sc">-</span>config gdal proj</span></code></pre></div>
-<p>Then <code>configure.args</code> is needed:</p>
+<p>Then <code>configure.args</code> may be needed:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install the development version from GitHub</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"USDAForestService/gdalraster"</span>, configure.args <span class="op">=</span> <span class="st">"--with-proj-lib=$(brew --prefix)/lib/"</span><span class="op">)</span></span></code></pre></div>
+<p>Caution seems warranted on macOS with regard to mixing a source installation with installation of binaries from CRAN.</p>
 </div>
+</div>
+<div class="section level3">
+<h3 id="from-r-universe">From R-universe<a class="anchor" aria-label="anchor" href="#from-r-universe"></a>
+</h3>
+<p><a href="https://usdaforestservice.r-universe.dev/gdalraster" class="external-link">R-universe</a> provides pre-compiled binary packages for Windows and macOS that track the development version of <strong>gdalraster</strong>. New packages are built usually within ~1 hour of the most recent commit.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Install the development version from r-universe</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"gdalraster"</span>, repos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"https://usdaforestservice.r-universe.dev"</span>, <span class="st">"https://cran.r-project.org"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -218,7 +186,8 @@
 <h2 data-toc-skip>Dev status</h2>
 <ul class="list-unstyled">
 <li><a href="https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/USDAForestService/gdalraster/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://app.codecov.io/gh/ctoney/gdalraster" class="external-link"><img src="https://codecov.io/gh/ctoney/gdalraster/branch/main/graph/badge.svg?token=MXIOPZQ2IU" alt="codecov"></a></li>
+<li><a href="https://app.codecov.io/gh/ctoney/gdalraster" class="external-link"><img src="https://codecov.io/gh/ctoney/gdalraster/graph/badge.svg?token=MXIOPZQ2IU" alt="codecov"></a></li>
+<li><a href="https://github.com/USDAForestService/gdalraster/actions/workflows/rhub.yaml" class="external-link"><img src="https://github.com/USDAForestService/gdalraster/actions/workflows/rhub.yaml/badge.svg" alt="R-hub"></a></li>
 <li><a href="https://CRAN.R-project.org/package=gdalraster" class="external-link"><img src="https://www.r-pkg.org/badges/version/gdalraster" alt="CRAN status"></a></li>
 <li><a href="https://usdaforestservice.r-universe.dev/gdalraster" class="external-link"><img src="https://usdaforestservice.r-universe.dev/badges/gdalraster" alt="r-universe status"></a></li>
 </ul>
@@ -230,6 +199,7 @@
 <li><a href="https://cloud.r-project.org/package=gdalraster" class="external-link">View on CRAN</a></li>
 <li><a href="https://github.com/USDAForestService/gdalraster/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/USDAForestService/gdalraster/issues" class="external-link">Report a bug</a></li>
+<li><a href="https://github.com/USDAForestService/gdalraster/discussions" class="external-link">Discussions</a></li>
 </ul>
 </div>
 
@@ -270,13 +240,11 @@
 
 
     <footer><div class="pkgdown-footer-left">
-  <p></p>
-<p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
+  <p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.9.</p>
 </div>
 
     </footer>

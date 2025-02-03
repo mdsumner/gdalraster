@@ -9,7 +9,7 @@
 #' in the GDAL Common Portability Library, but optionally creates a new ZIP
 #' file first (with `CPLCreateZip()`). It provides a subset of functionality
 #' in the GDAL `sozip` command-line utility
-#' (\url{https://gdal.org/programs/sozip.html}). Requires GDAL >= 3.7.
+#' (\url{https://gdal.org/en/stable/programs/sozip.html}). Requires GDAL >= 3.7.
 #'
 #' @details
 #' A Seek-Optimized ZIP file (SOZip) contains one or more compressed files
@@ -83,7 +83,7 @@
 #'   print(unzip(zip_file, list=TRUE))
 #'
 #'   # Open with GDAL using Virtual File System handler '/vsizip/'
-#'   # see: https://gdal.org/user/virtual_file_systems.html#vsizip-zip-archives
+#'   # see: https://gdal.org/en/stable/user/virtual_file_systems.html#vsizip-zip-archives
 #'   lcp_in_zip <- file.path("/vsizip", zip_file, "storm_lake.lcp")
 #'   print("SOZip metadata:")
 #'   print(vsi_get_file_metadata(lcp_in_zip, domain="ZIP"))
@@ -91,8 +91,7 @@
 #'   ds <- new(GDALRaster, lcp_in_zip)
 #'   ds$info()
 #'   ds$close()
-#'
-#'   vsi_unlink(zip_file)
+#'   \dontshow{vsi_unlink(zip_file)}
 #' }
 #' @export
 addFilesInZip <- function(
@@ -281,7 +280,7 @@ getCreationOptions <- function(format, filter=NULL) {
 #' @seealso
 #' [set_config_option()], [vsi_get_fs_prefixes()]
 #'
-#' \url{https://gdal.org/user/virtual_file_systems.html}
+#' \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 #'
 #' @examples
 #' vsi_get_fs_options("/vsimem/")
@@ -312,12 +311,13 @@ vsi_get_fs_options <- function(filename, as_list = TRUE) {
 #' georeferenced (x/y) coordinates. Wrapper of `GDALApplyGeoTransform()` in
 #' the GDAL API, operating on matrix input.
 #'
-#' @param col_row Numeric matrix of raster column/row (pixel/line) coordinates
-#' (or two-column data frame that will be coerced to numeric matrix).
+#' @param col_row Numeric matrix of raster column, row (pixel/line) coordinates
+#' (or two-column data frame that will be coerced to numeric matrix, or a
+#' vector of column, row for one coordinate).
 #' @param gt Either a numeric vector of length six containing the affine
 #' geotransform for the raster, or an object of class `GDALRaster` from
 #' which the geotransform will be obtained.
-#' @returns Numeric matrix of geospatia x/y coordinates.
+#' @returns Numeric matrix of geospatial x/y coordinates.
 #'
 #' @note
 #' Bounds checking on the input coordinates is done if `gt` is obtained from an
@@ -348,11 +348,16 @@ vsi_get_fs_options <- function(filename, as_list = TRUE) {
 #'
 #' ds$close()
 apply_geotransform <- function(col_row, gt) {
-    if (!(is.matrix(col_row) || is.data.frame(col_row)))
+    if (!(is.vector(col_row) || is.matrix(col_row) || is.data.frame(col_row)))
         stop("'col_row' must be a data frame or numeric matrix", call. = FALSE)
 
-    if (ncol(col_row) != 2)
+    if ((is.matrix(col_row) || is.data.frame(col_row)) && ncol(col_row) != 2)
         stop("'col_row' must have 2 columns", call. = FALSE)
+    else if (is.vector(col_row) && length(col_row) != 2)
+        stop("'col_row' as vector must have length 2", call. = FALSE)
+
+    if ((is.vector(col_row) || is.matrix(col_row)) && !is.numeric(col_row))
+        stop("'col_row' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {
         return(.apply_geotransform_ds(col_row, gt))
@@ -371,9 +376,9 @@ apply_geotransform <- function(col_row, gt) {
 #' The upper left corner pixel is the raster origin (0,0) with column, row
 #' increasing left to right, top to bottom.
 #'
-#' @param xy Numeric matrix of geospatial x,y coordinates in the same spatial
+#' @param xy Numeric matrix of geospatial x, y coordinates in the same spatial
 #' reference system as \code{gt} (or two-column data frame that will be coerced
-#' to numeric matrix).
+#' to numeric matrix, or a vector x, y for one coordinate).
 #' @param gt Either a numeric vector of length six containing the affine
 #' geotransform for the raster, or an object of class `GDALRaster` from
 #' which the geotransform will be obtained (see Note).
@@ -414,11 +419,16 @@ apply_geotransform <- function(col_row, gt) {
 #'
 #' ds$close()
 get_pixel_line <- function(xy, gt) {
-    if (!(is.matrix(xy) || is.data.frame(xy)))
+    if (!(is.vector(xy) || is.matrix(xy) || is.data.frame(xy)))
         stop("'xy' must be a data frame or numeric matrix", call. = FALSE)
 
-    if (ncol(xy) != 2)
+    if ((is.matrix(xy) || is.data.frame(xy)) && ncol(xy) != 2)
         stop("'xy' must have 2 columns", call. = FALSE)
+    else if (is.vector(xy) && length(xy) != 2)
+        stop("'xy' as vector must have length 2", call. = FALSE)
+
+    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy))
+        stop("'xy' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {
         return(.get_pixel_line_ds(xy, gt))
@@ -467,4 +477,101 @@ dump_open_datasets <- function() {
     unlink(f)
     writeLines(out)
     return(nopen)
+}
+
+#' Obtain information about a GDAL raster or vector dataset
+#'
+#' `inspectDataset()` returns information about the format and content
+#' of a dataset. The function first calls `identifyDriver()`, and then opens
+#' the dataset as raster and/or vector to obtain information about its content.
+#' The return value is a list with named elements.
+#'
+#' @param filename Character string containing the name of the file to access.
+#' This may not refer to a physical file, but instead contain information for
+#' the driver on how to access a dataset (e.g., connection string, URL, etc.)
+#' @param ... Additional arguments passed to `identifyDriver()`.
+#'
+#' @returns
+#' A list with the following named elements:
+#' * `$format`: character string, the format short name
+#' * `$supports_raster`: logical, `TRUE` if the format supports raster data
+#' * `$contains_raster`: logical, `TRUE` if this is a raster dataset or the
+#' source contains raster subdatasets
+#' * `$supports_subdatasets`: logical, `TRUE` if the format supports raster
+#' subdatasets
+#' * `$contains_subdatasets`: logical, `TRUE` if the source contains subdatasets
+#' * `$subdataset_names`: character vector containing the subdataset names, or
+#' empty vector if subdatasets are not supported or not present
+#' * `$supports_vector`: logical, `TRUE` if the format supports vector data
+#' * `$contains_vector`: logical, `TRUE` if the source contains one or more
+#' vector layers
+#' * `$layer_names`: character vector containing the vector layer names, or
+#' empty vector if the format does not support vector or the source does not
+#' contain any vector layers
+#'
+#'@note
+#' Subdataset names are the character strings that can be used to
+#' instantiate `GDALRaster` objects.
+#' See https://gdal.org/en/stable/en/latest/user/raster_data_model.html#subdatasets-domain.
+#'
+#' @seealso
+#' [gdal_formats()], [identifyDriver()]
+#'
+#' @examples
+#' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#'
+#' inspectDataset(src)
+inspectDataset <- function(filename, ...) {
+    if (!is.character(filename))
+        stop("'filename' must be a character string", call. = FALSE)
+
+    filename_in <- .check_gdal_filename(filename)
+    fmt <- identifyDriver(filename = filename_in, ...)
+    if (is.null(fmt))
+        return(NULL)
+
+    out <- list()
+    out$format <- fmt
+    fmt_info <- gdal_formats(fmt)
+
+    out$supports_raster <- fmt_info$raster
+    out$contains_raster <- FALSE
+    if (out$supports_raster) {
+        ds <- try(new(GDALRaster, filename_in), silent = TRUE)
+        if (is(ds, "Rcpp_GDALRaster"))
+            out$contains_raster <- TRUE
+    }
+
+    out$supports_subdatasets <- fmt_info$subdatasets
+    out$contains_subdatasets <- FALSE
+    out$subdataset_names <- character(0)
+    if (out$contains_raster) {
+        md <- ds$getMetadata(band = 0, domain = "SUBDATASETS")
+        if (length(md) > 1) {
+            out$contains_subdatasets <- TRUE
+            Encoding(md) <- "UTF-8"
+            for (i in seq_along(md)) {
+                mdi <- strsplit(md[i], "=", fixed = TRUE)
+                if (grepl("_NAME", mdi[[1]][1], ignore.case = TRUE)) {
+                    out$subdataset_names <- c(out$subdataset_names, mdi[[1]][2])
+                }
+            }
+        }
+    }
+
+    if (out$supports_raster && is(ds, "Rcpp_GDALRaster")) {
+        ds$close()
+    }
+
+    out$supports_vector <- fmt_info$vector
+    out$contains_vector <- FALSE
+    out$layer_names <- character(0)
+    if (out$supports_vector) {
+        if (ogr_ds_layer_count(filename_in) > 0) {
+            out$contains_vector <- TRUE
+            out$layer_names <- ogr_ds_layer_names(filename_in)
+        }
+    }
+
+    return(out)
 }

@@ -12,17 +12,21 @@
 status](https://www.r-pkg.org/badges/version/gdalraster)](https://CRAN.R-project.org/package=gdalraster)
 [![r-universe
 status](https://usdaforestservice.r-universe.dev/badges/gdalraster)](https://usdaforestservice.r-universe.dev/gdalraster)
+[![OpenSSF Best
+Practices](https://www.bestpractices.dev/projects/9382/badge)](https://www.bestpractices.dev/projects/9382)
+[![OpenSSF
+Scorecard](https://api.scorecard.dev/projects/github.com/USDAForestService/gdalraster/badge)](https://scorecard.dev/viewer/?uri=github.com/USDAForestService/gdalraster)
 <!-- badges: end -->
 
 ## Overview
 
 **gdalraster** is an R interface to the [Raster
-API](https://gdal.org/api/raster_c_api.html) of the Geospatial Data
-Abstraction Library ([GDAL](https://gdal.org/)). Bindings to a subset of
-the GDAL [Vector API](https://gdal.org/api/vector_c_api.html) are
+API](https://gdal.org/en/stable/api/raster_c_api.html) of the Geospatial Data
+Abstraction Library ([GDAL](https://gdal.org/en/stable/)). Bindings to a subset of
+the GDAL [Vector API](https://gdal.org/en/stable/api/vector_c_api.html) are
 included to provide utilities for managing vector data sources. Bindings
 to the GDAL Virtual Systems Interface
-([VSI](https://gdal.org/api/cpl.html#cpl-vsi-h)) support file system
+([VSI](https://gdal.org/en/stable/api/cpl.html#cpl-vsi-h)) support file system
 operations and binary I/O on URLs, cloud storage services,
 Zip/GZip/7z/RAR, and in-memory files, as well as regular file systems.
 Calling signatures resemble the native C, C++ and Python APIs provided
@@ -144,9 +148,9 @@ install from source on Windows. RTools since version 4.2 includes GDAL,
 PROJ and all other dependent libraries that are needed to compile
 **gdalraster**. Note that CRAN releases periodic revisions to RTools
 that often include updates to the libraries as new versions become
-available. For example,
-[release 6104](https://cran.r-project.org/bin/windows/Rtools/rtools44/rtools.html)
-of RTools 4.4 contains GDAL 3.8.4 and PROJ 9.3.1.
+available.
+[Release 6335](https://cran.r-project.org/bin/windows/Rtools/rtools44/rtools.html)
+of RTools 4.4 contains GDAL 3.9.3, GEOS 3.12.2 and PROJ 9.4.1.
 
 With RTools installed:
 

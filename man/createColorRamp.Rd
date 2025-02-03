@@ -25,7 +25,7 @@ A color entry value to end the ramp (e.g., RGB values).}
 
 \item{palette_interp}{One of "Gray", "RGB" (the default), "CMYK" or "HLS"
 describing interpretation of \code{start_color} and \code{end_color} values
-(see \href{https://gdal.org/user/raster_data_model.html#color-table}{GDAL
+(see \href{https://gdal.org/en/stable/user/raster_data_model.html#color-table}{GDAL
 Color Table}).}
 }
 \value{
@@ -84,8 +84,7 @@ ds_tcc$open(read_only=TRUE)
 plot_raster(ds_tcc, interpolate=FALSE, legend=TRUE,
             main="Storm Lake Tree Canopy Cover (\%)")
 ds_tcc$close()
-
-deleteDataset(tcc_file)
+\dontshow{deleteDataset(tcc_file)}
 }
 \seealso{
 \code{\link[=GDALRaster]{GDALRaster$getColorTable()}},

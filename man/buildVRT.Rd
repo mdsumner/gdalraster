@@ -25,7 +25,7 @@ An error is raised if the operation fails.
 \code{buildVRT()} is a wrapper of the \command{gdalbuildvrt} command-line
 utility for building a VRT (Virtual Dataset) that is a mosaic of the list
 of input GDAL datasets
-(see \url{https://gdal.org/programs/gdalbuildvrt.html}).
+(see \url{https://gdal.org/en/stable/programs/gdalbuildvrt.html}).
 }
 \details{
 Several command-line options are described in the GDAL documentation at the
@@ -58,8 +58,7 @@ ds <- new(GDALRaster, vrt_file)
 ds$getRasterCount()
 plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
 ds$close()
-
-vsi_unlink(vrt_file)
+\dontshow{vsi_unlink(vrt_file)}
 }
 \seealso{
 \code{\link[=rasterToVRT]{rasterToVRT()}}

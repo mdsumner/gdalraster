@@ -3,15 +3,15 @@
    Copyright (c) 2023-2024 gdalraster authors
 */
 
-#include <Rcpp.h>
-#include <string>
+#include "wkt_conv.h"
 
+#include "cpl_port.h"
 #include "cpl_conv.h"
 #include "ogr_srs_api.h"
 #include "ogr_spatialref.h"
 #include "ogrsf_frmts.h"
 
-#include "geos_wkt.h"
+#include "geom_api.h"
 
 //' Convert spatial reference from EPSG code to OGC Well Known Text
 //'
@@ -128,7 +128,7 @@ std::string epsg_to_wkt(int epsg, bool pretty = false) {
 //' writeLines(srs_to_wkt("NAD83", pretty=TRUE))
 //' set_config_option("OSR_WKT_FORMAT", "")
 // [[Rcpp::export]]
-std::string srs_to_wkt(std::string srs, bool pretty = false) {
+std::string srs_to_wkt(const std::string &srs, bool pretty = false) {
     if (srs == "")
         return "";
 
@@ -161,6 +161,145 @@ std::string srs_to_wkt(std::string srs, bool pretty = false) {
     return wkt;
 }
 
+//' Try to identify a matching EPSG code for a given SRS definition
+//'
+//' `srs_find_epsg()` accepts a spatial reference system definition
+//' in various text formats and tries to find a matching EPSG code.
+//' See [srs_to_wkt()] for a description of the possible input formats.
+//' This function is an interface to `OSRFindMatches()` in the GDAL Spatial
+//' Reference System API.
+//'
+//' @details
+//' Matching may be partial, or may fail. Returned entries will be sorted by
+//' decreasing match confidence (first entry has the highest match confidence).
+//'
+//' @param srs Character string containing an SRS definition in various
+//' formats (e.g., WKT, PROJ.4 string, well known name such as NAD27, NAD83,
+//' WGS84, etc).
+//' @param all_matches Logical scalar. `TRUE` to return all identified matches
+//' in a data frame, including a confidence value (0-100) for each match. The
+//' default is `FALSE` which returns a character string in the form
+//' `"EPSG:<code>"` for the first match (highest confidence).
+//'
+//' @return Character string or data frame, or `NULL` if matching failed.
+//'
+//' @seealso
+//' [epsg_to_wkt()], [srs_to_wkt()]
+//'
+//' @examples
+//' srs_find_epsg("WGS84")
+//'
+//' srs_find_epsg("WGS84", all_matches = TRUE)
+// [[Rcpp::export]]
+SEXP srs_find_epsg(const std::string &srs, bool all_matches = false) {
+    if (srs == "")
+        return R_NilValue;
+
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+
+    if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
+        if (hSRS != nullptr)
+            OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("error importing SRS from user input");
+    }
+
+    int nEntries = 0;
+    int *panConfidence = nullptr;
+    OGRSpatialReferenceH *pahSRS = nullptr;
+    OGRSpatialReference oSRS;
+    std::string identified_code = "";
+    Rcpp::CharacterVector authority_name = Rcpp::CharacterVector::create();
+    Rcpp::CharacterVector authority_code = Rcpp::CharacterVector::create();
+    Rcpp::IntegerVector confidence = Rcpp::IntegerVector::create();
+
+    pahSRS = OSRFindMatches(hSRS, nullptr, &nEntries, &panConfidence);
+    OSRDestroySpatialReference(hSRS);
+
+    if (pahSRS == nullptr)
+        return R_NilValue;
+
+    for (int i = 0; i < nEntries; i++) {
+        oSRS = *reinterpret_cast<OGRSpatialReference *>(pahSRS[i]);
+        const char *pszAuthorityName = oSRS.GetAuthorityName(nullptr);
+        const char *pszAuthorityCode = oSRS.GetAuthorityCode(nullptr);
+
+        if (!all_matches) {
+            if (panConfidence[i] != 100) {
+                Rcpp::Rcout << "confidence in this match: " <<
+                        panConfidence[i] << "%" << std::endl;
+            }
+            if (pszAuthorityName && pszAuthorityCode) {
+                identified_code = pszAuthorityName;
+                identified_code += ":";
+                identified_code += pszAuthorityCode;
+            }
+            break;
+        }
+
+        authority_name.push_back(pszAuthorityName);
+        authority_code.push_back(pszAuthorityCode);
+        confidence.push_back(panConfidence[i]);
+    }
+
+    OSRFreeSRSArray(pahSRS);
+    CPLFree(panConfidence);
+
+    if (nEntries == 0) {
+        return R_NilValue;
+    }
+    else if (!all_matches) {
+        return Rcpp::wrap(identified_code);
+    }
+    else {
+        Rcpp::DataFrame df_out = Rcpp::DataFrame::create();
+        df_out.push_back(authority_name, "authority_name");
+        df_out.push_back(authority_code, "authority_code");
+        df_out.push_back(confidence, "confidence");
+        return df_out;
+    }
+}
+
+//' Return the spatial reference system name
+//'
+//' `srs_get_name()` accepts a spatial reference system definition
+//' in various text formats and returns the name.
+//' See [srs_to_wkt()] for a description of the possible input formats.
+//' Wrapper of `OSRGetName()` in the GDAL Spatial Reference System API.
+//'
+//' @param srs Character string containing an SRS definition in various
+//' formats (e.g., WKT, PROJ.4 string, well known name such as NAD27, NAD83,
+//' WGS84, etc).
+//'
+//' @return Character string containing the name, or empty string.
+//'
+//' @seealso
+//' [epsg_to_wkt()], [srs_find_epsg()], [srs_to_wkt()]
+//'
+//' @examples
+//' srs_get_name("EPSG:5070")
+// [[Rcpp::export]]
+std::string srs_get_name(const std::string &srs) {
+    if (srs == "")
+        return "";
+
+    const char *pszName = nullptr;
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+
+    if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
+        if (hSRS != nullptr)
+            OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("error importing SRS from user input");
+    }
+
+    pszName = OSRGetName(hSRS);
+    std::string ret = "";
+    if (pszName != nullptr)
+        ret = pszName;
+
+    OSRDestroySpatialReference(hSRS);
+    return ret;
+}
+
 //' Check if WKT definition is a geographic coordinate system
 //'
 //' `srs_is_geographic()` will attempt to import the given WKT string as a
@@ -178,7 +317,7 @@ std::string srs_to_wkt(std::string srs, bool pretty = false) {
 //' srs_is_geographic(epsg_to_wkt(5070))
 //' srs_is_geographic(srs_to_wkt("WGS84"))
 // [[Rcpp::export]]
-bool srs_is_geographic(std::string srs) {
+bool srs_is_geographic(const std::string &srs) {
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
     char* pszWKT;
     pszWKT = (char*) srs.c_str();
@@ -211,7 +350,7 @@ bool srs_is_geographic(std::string srs) {
 //' srs_is_projected(epsg_to_wkt(5070))
 //' srs_is_projected(srs_to_wkt("WGS84"))
 // [[Rcpp::export]]
-bool srs_is_projected(std::string srs) {
+bool srs_is_projected(const std::string &srs) {
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
     char* pszWKT;
     pszWKT = (char*) srs.c_str();
@@ -257,7 +396,7 @@ bool srs_is_projected(std::string srs) {
 //' srs_is_same(ds$getProjectionRef(), epsg_to_wkt(5070))
 //' ds$close()
 // [[Rcpp::export]]
-bool srs_is_same(std::string srs1, std::string srs2,
+bool srs_is_same(const std::string &srs1, const std::string &srs2,
         std::string criterion = "",
         bool ignore_axis_mapping = false,
         bool ignore_coord_epoch = false) {
@@ -343,7 +482,7 @@ bool srs_is_same(std::string srs1, std::string srs2,
 //' 325298.1 5104929.4, 325298.1 5104929.4, 324467.3 5104814.2))"
 //' bbox_from_wkt(bnd, 100, 100)
 // [[Rcpp::export]]
-Rcpp::NumericVector bbox_from_wkt(std::string wkt,
+Rcpp::NumericVector bbox_from_wkt(const std::string &wkt,
         double extend_x = 0, double extend_y = 0) {
 
     OGRGeometryH hGeometry = nullptr;
@@ -397,7 +536,7 @@ Rcpp::NumericVector bbox_from_wkt(std::string wkt,
 //' bbox_to_wkt(ds$bbox())
 //' ds$close()
 // [[Rcpp::export]]
-Rcpp::String bbox_to_wkt(Rcpp::NumericVector bbox,
+Rcpp::String bbox_to_wkt(const Rcpp::NumericVector &bbox,
         double extend_x = 0, double extend_y = 0) {
 
     if (bbox.size() != 4)

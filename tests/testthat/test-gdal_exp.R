@@ -74,8 +74,16 @@ test_that("createCopy writes correct output", {
     ds$close()
 })
 
+test_that("internal apply_geotransform gives correct result", {
+    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    ds <- new(GDALRaster, elev_file, read_only=TRUE)
+    gt <- ds$getGeoTransform()
+    ds$close()
+    expect_equal(.apply_geotransform(gt, 1, 1), c(323506.1, 5105052.0))
+})
+
 test_that("apply_geotransform gives correct results", {
-    raster_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
+    raster_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
     ds <- new(GDALRaster, raster_file)
 
     # compute some raster coordinates in column/row space
@@ -93,13 +101,18 @@ test_that("apply_geotransform gives correct results", {
     dimnames(xy_expected) <- NULL
 
     gt <- ds$getGeoTransform()
-    expect_equal(apply_geotransform(col_row, gt), xy_expected, tolerance = 1)
+    expect_equal(apply_geotransform(col_row, gt), xy_expected, tolerance = 0.1)
 
     # or, using the class method
-    expect_equal(ds$apply_geotransform(col_row), xy_expected,  tolerance = 1)
+    expect_equal(ds$apply_geotransform(col_row), xy_expected, tolerance = 0.1)
 
     expect_equal(ds$apply_geotransform(col_row) |> ds$get_pixel_line(),
                  trunc(col_row))
+
+    # one coordinate as vector input
+    res <- ds$apply_geotransform(c(col_coords[1], row_coords[1]))
+    dim(res) <- NULL
+    expect_equal(res, xy_expected[1, ], tolerance = 0.1)
 
     ds$close()
 })
@@ -115,47 +128,20 @@ test_that("get_pixel_line gives correct results", {
     res <- get_pixel_line(as.matrix(pts[, -1]), gt)
     expect_equal(as.vector(res), pix_line)
 
+    # or, using the class method and data frame input
+    res <- ds$get_pixel_line(pts[, -1])
+    expect_equal(as.vector(res), pix_line)
+
     pts[11, ] <- c(11, 323318, 5105104)
     expect_warning(res2 <- ds$get_pixel_line(pts[, -1]))
     res <- rbind(res, c(NA, NA))
     expect_equal(res2, res)
 
+    # one coordinate as vector input
+    res <- get_pixel_line(c(pts[1, 2], pts[1, 3]), gt)  # col 2 x, col 3 y
+    expect_equal(as.vector(res), c(pix_line[1], pix_line[11]))
+
     ds$close()
-})
-
-test_that("_apply_geotransform gives correct result", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-    ds <- new(GDALRaster, elev_file, read_only=TRUE)
-    gt <- ds$getGeoTransform()
-    ds$close()
-    expect_equal(.apply_geotransform(gt, 1, 1), c(323506.1, 5105052.0))
-})
-
-test_that("warp runs without error", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-    args <- c("-tr", "90", "90", "-r", "cubic", "-tap")
-    args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
-    alb83_file <- paste0(tempdir(), "/", "storml_elev_alb83.img")
-    expect_true(warp(elev_file, alb83_file, t_srs="EPSG:5070", cl_arg = args))
-
-    # incorrect source file
-    expect_error(warp(c(elev_file, "_err_"), alb83_file, t_srs="EPSG:5070",
-                    cl_arg = args))
-
-    # process without reprojection
-    resample_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
-    expect_true(warp(elev_file, resample_file, t_srs="", cl_arg = args))
-    ds1 <- new(GDALRaster, elev_file, read_only=TRUE)
-    srs1 <- ds1$getProjectionRef()
-    ds1$close()
-    ds2 <- new(GDALRaster, resample_file, read_only=TRUE)
-    srs2 <- ds2$getProjectionRef()
-    ds2$close()
-    expect_true(srs_is_same(srs1, srs2))
-
-    # clean up
-    deleteDataset(alb83_file)
-    deleteDataset(resample_file)
 })
 
 test_that("fillNodata writes correct output", {
@@ -325,15 +311,6 @@ test_that("buildVRT works", {
     deleteDataset(vrt_file)
 })
 
-test_that("translate runs without error", {
-    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-    args <- c("-tr", "90", "90", "-r", "average")
-    args <- c(args, "-of", "HFA", "-co", "COMPRESSED=YES")
-    img_file <- paste0(tempdir(), "/", "storml_elev_90m.img")
-    expect_true(translate(elev_file, img_file, args))
-    deleteDataset(img_file)
-})
-
 test_that("footprint runs without error", {
     skip_if(.gdal_version_num() < 3080000)
 
@@ -413,4 +390,38 @@ test_that("ogrinfo works", {
     expect_equal(idx, 9)
 
     vsi_unlink(src_mem)
+})
+
+test_that("autoCreateWarpedVRT works", {
+    elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    ds <- new(GDALRaster, elev_file)
+
+    expect_no_error(ds2 <- autoCreateWarpedVRT(ds, epsg_to_wkt(5070),
+                                               "Bilinear"))
+    expect_equal(ds2$getProjection(), epsg_to_wkt(5070))
+    ds2$close()
+
+    # with creation of alpha band
+    expect_no_error(ds3 <- autoCreateWarpedVRT(ds, epsg_to_wkt(5070),
+                                               "Cubic", alpha_band = TRUE))
+    expect_equal(ds3$getRasterCount(), 2)
+    ds3$close()
+
+    # errors
+    expect_error(ds4 <- autoCreateWarpedVRT(ds, epsg_to_wkt(5070),
+                                            resample_alg = "invalid"))
+
+    ds$close()
+})
+
+test_that("identifyDriver works", {
+    src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+
+    expect_equal(identifyDriver(src), "GPKG")
+    expect_equal(identifyDriver(src, raster = FALSE), "GPKG")
+    expect_equal(identifyDriver(src, vector = FALSE), "GPKG")
+    expect_equal(identifyDriver(src), "GPKG")
+    expect_equal(identifyDriver(src, allowed_drivers = c("GPKG", "GTiff")), "GPKG")
+    expect_true(is.null(identifyDriver(src, allowed_drivers = c("GTiff", "GeoJSON"))))
+    expect_equal(identifyDriver(src, file_list = "ynp_fires_1984_2022.gpkg"), "GPKG")
 })

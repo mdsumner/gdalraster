@@ -12,6 +12,7 @@
 \alias{ogr_layer_test_cap}
 \alias{ogr_layer_create}
 \alias{ogr_layer_field_names}
+\alias{ogr_layer_rename}
 \alias{ogr_layer_delete}
 \alias{ogr_field_index}
 \alias{ogr_field_create}
@@ -38,7 +39,8 @@ ogr_ds_create(
   fld_type = NULL,
   dsco = NULL,
   lco = NULL,
-  overwrite = FALSE
+  overwrite = FALSE,
+  return_obj = FALSE
 )
 
 ogr_ds_layer_count(dsn)
@@ -47,7 +49,7 @@ ogr_ds_layer_names(dsn)
 
 ogr_layer_exists(dsn, layer)
 
-ogr_layer_test_cap(dsn, layer, with_update = TRUE)
+ogr_layer_test_cap(dsn, layer = NULL, with_update = TRUE)
 
 ogr_layer_create(
   dsn,
@@ -55,10 +57,13 @@ ogr_layer_create(
   layer_defn = NULL,
   geom_type = NULL,
   srs = NULL,
-  lco = NULL
+  lco = NULL,
+  return_obj = FALSE
 )
 
-ogr_layer_field_names(dsn, layer)
+ogr_layer_field_names(dsn, layer = NULL)
+
+ogr_layer_rename(dsn, layer, new_name)
 
 ogr_layer_delete(dsn, layer)
 
@@ -74,7 +79,6 @@ ogr_field_create(
   fld_width = 0L,
   fld_precision = 0L,
   is_nullable = TRUE,
-  is_ignored = FALSE,
   is_unique = FALSE,
   default_value = ""
 )
@@ -86,8 +90,7 @@ ogr_geom_field_create(
   geom_fld_defn = NULL,
   geom_type = NULL,
   srs = NULL,
-  is_nullable = TRUE,
-  is_ignored = FALSE
+  is_nullable = TRUE
 )
 
 ogr_field_rename(dsn, layer, fld_name, new_name)
@@ -107,7 +110,10 @@ opening the dataset, or \code{FALSE} to open read-only.}
 Examples of some common output formats include: \code{"GPKG"}, \code{"FlatGeobuf"},
 \code{"ESRI Shapefile"}, \code{"SQLite"}.}
 
-\item{layer}{Character string for a layer name in a vector dataset.}
+\item{layer}{Character string for a layer name in a vector dataset.
+The \code{layer} argument may be given as empty string (\code{""}) in which case the
+first layer by index will be opened (except with \code{ogr_layer_delete()} and
+\code{ogr_layer_rename()} for which a layer name must be specified).}
 
 \item{layer_defn}{A feature class definition for \code{layer} as a list of
 zero or more attribute field definitions, and at least one geometry field
@@ -144,6 +150,13 @@ for \code{layer} (\code{"NAME=VALUE"} pairs).}
 \item{overwrite}{Logical scalar. \code{TRUE} to overwrite \code{dsn} if it already
 exists when calling \code{ogr_ds_create()}. Default is \code{FALSE}.}
 
+\item{return_obj}{Logical scalar. If \code{TRUE}, an object of class
+\code{\link{GDALVector}} open on the newly created layer will be
+returned. Defaults to \code{FALSE}. Must be used with either the \code{layer} or
+\code{layer_defn} arguments.}
+
+\item{new_name}{Character string containing a new name to assign.}
+
 \item{fld_defn}{A field definition as list (see \code{\link[=ogr_def_field]{ogr_def_field()}}).
 Additional arguments in \code{ogr_field_create()} will be ignored if a \code{fld_defn}
 is given.}
@@ -160,9 +173,6 @@ after the decimal point.}
 \item{is_nullable}{Optional NOT NULL field constraint (logical scalar).
 Defaults to \code{TRUE}.}
 
-\item{is_ignored}{Whether field is ignored when retrieving features (logical
-scalar). Defaults to \code{FALSE}.}
-
 \item{is_unique}{Optional UNIQUE constraint on the field (logical scalar).
 Defaults to \code{FALSE}.}
 
@@ -173,8 +183,6 @@ string.}
 (see \code{\link[=ogr_def_geom_field]{ogr_def_geom_field()}}).
 Additional arguments in \code{ogr_geom_field_create()} will be ignored if a
 \code{geom_fld_defn} is given.}
-
-\item{new_name}{Character string containing a new name to assign.}
 
 \item{sql}{Character string containing an SQL statement (see Note).}
 
@@ -198,7 +206,7 @@ These functions are complementary to \code{ogrinfo()} and \code{ogr2ogr()} for
 vector data management. They are also intended to support vector I/O in a
 future release of gdalraster. Bindings to OGR wrap portions of the GDAL
 Vector API (ogr_core.h and ogr_api.h,
-\url{https://gdal.org/api/vector_c_api.html}).
+\url{https://gdal.org/en/stable/api/vector_c_api.html}).
 
 \code{ogr_ds_exists()} tests whether a vector dataset can be opened from the
 given data source name (DSN), potentially testing for update access.
@@ -236,8 +244,11 @@ a layer, and optionally creating one or more fields on the layer.
 The attribute fields and geometry field(s) to create can be specified as a
 feature class definition (\code{layer_defn} as list, see \link{ogr_define}), or
 alternatively, by giving the \code{geom_type} and \code{srs}, optionally along with
-one \code{fld_name} and \code{fld_type} to be created in the layer. Returns a logical
-scalar, \code{TRUE} indicating success.
+one \code{fld_name} and \code{fld_type} to be created in the layer.
+By default, returns logical \code{TRUE} indicating success (output written to
+\code{dst_filename}), or an object of class \code{\link{GDALVector}} for the
+output layer will be returned if \code{return_obj = TRUE}. An error is raised if
+the operation fails.
 
 \code{ogr_ds_layer_count()} returns the number of layers in a vector dataset.
 
@@ -255,10 +266,10 @@ cannot be found. The returned list contains the following named elements:
 \code{RandomRead}, \code{SequentialWrite}, \code{RandomWrite}, \code{UpsertFeature},
 \code{FastSpatialFilter}, \code{FastFeatureCount}, \code{FastGetExtent},
 \code{FastSetNextByIndex}, \code{CreateField}, \code{CreateGeomField}, \code{DeleteField},
-\code{ReorderFields}, \code{AlterFieldDefn}, \code{AlterGeomFieldDefn}, \code{DeleteFeature},
-\code{StringsAsUTF8}, \code{Transactions}, \code{CurveGeometries}.
+\code{ReorderFields}, \code{AlterFieldDefn}, \code{AlterGeomFieldDefn}, \code{IgnoreFields},
+\code{DeleteFeature}, \code{Rename}, \code{StringsAsUTF8}, \code{CurveGeometries}.
 See the GDAL documentation for
-\href{https://gdal.org/api/vector_c_api.html#_CPPv420OGR_L_TestCapability9OGRLayerHPKc}{\code{OGR_L_TestCapability()}}.
+\href{https://gdal.org/en/stable/api/vector_c_api.html#_CPPv420OGR_L_TestCapability9OGRLayerHPKc}{\code{OGR_L_TestCapability()}}.
 
 \code{ogr_layer_create()} creates a new layer in an existing vector data source,
 with a specified geometry type and spatial reference definition.
@@ -266,10 +277,19 @@ This function also accepts a feature class definition given as a list of
 field names and their definitions (see \link{ogr_define}).
 (Note: use \code{ogr_ds_create()} to create single-layer formats such as "ESRI
 Shapefile", "FlatGeobuf", "GeoJSON", etc.)
-Returns a logical scalar, \code{TRUE} indicating success.
+By default, returns logical \code{TRUE} indicating success, or an object of class
+\code{\link{GDALVector}} will be returned if \code{return_obj = TRUE}.
+An error is raised if the operation fails.
 
 \code{ogr_layer_field_names()} returns a character vector of field names on a
-layer, or \code{NULL} if no fields are found.
+layer, or \code{NULL} if no fields are found. The first layer by index is opened
+if \code{NULL} is given for the \code{layer} argument.
+
+\code{ogr_layer_rename()} renames a layer in a vector dataset. This operation is
+implemented only by layers that expose the \code{Rename} capability (see
+\code{ogr_layer_test_cap()} above). This operation will fail if a layer with the
+new name already exists. Returns a logical scalar, \code{TRUE} indicating success.
+Requires GDAL >= 3.5.
 
 \code{ogr_layer_delete()} deletes an existing layer in a vector dataset.
 Returns a logical scalar, \code{TRUE} indicating success.
@@ -299,9 +319,10 @@ Returns a logical scalar, \code{TRUE} indicating success.
 \code{ogr_execute_sql()} executes an SQL statement against the data store.
 This function can be used to modify the schema or edit data using SQL
 (e.g., \verb{ALTER TABLE}, \verb{DROP TABLE}, \verb{CREATE INDEX}, \verb{DROP INDEX}, \code{INSERT},
-\code{UPDATE}, \code{DELETE}). Currently, this function does not return a result set
-for a \code{SELECT} statement. Returns \code{NULL} invisibly.
-Wrapper of \code{GDALDatasetExecuteSQL()} in the GDAL C API.
+\code{UPDATE}, \code{DELETE}), or to execute a query (i.e., \code{SELECT}).
+Returns \code{NULL} (invisibly) for statements that are in error, or that have no
+results set, or an object of class \code{GDALVector} representing a results set
+from the query. Wrapper of \code{GDALDatasetExecuteSQL()} in the GDAL API.
 }
 \note{
 The OGR SQL document linked under \strong{See Also} contains information on the
@@ -315,7 +336,7 @@ functions. The GDAL document for SQLite dialect has detailed information.
 
 Other SQL dialects may also be present for some vector formats.
 For example, the \code{"INDIRECT_SQLITE"} dialect might potentially be used with
-GeoPackage format (\url{https://gdal.org/drivers/vector/gpkg.html#sql}).
+GeoPackage format (\url{https://gdal.org/en/stable/drivers/vector/gpkg.html#sql}).
 
 The function \code{\link[=ogrinfo]{ogrinfo()}} can also be used to edit data with SQL statements
 (GDAL >= 3.7).
@@ -326,103 +347,90 @@ dialect used. See the GDAL documentation for the "OGR SQL" and "SQLite"
 dialects for details.
 }
 \examples{
+## Create GeoPackage and manage schema
 dsn <- file.path(tempdir(), "test1.gpkg")
 ogr_ds_create("GPKG", dsn)
 ogr_ds_exists(dsn, with_update = TRUE)
-ogr_ds_layer_count(dsn)
+# dataset capabilities
 ogr_ds_test_cap(dsn)
-ogr_layer_exists(dsn, "layer1")
-if (ogr_ds_test_cap(dsn)$CreateLayer) {
-  opt <- c("GEOMETRY_NULLABLE=NO", "DESCRIPTION=test layer")
-  ogr_layer_create(dsn, "layer1", geom_type = "Polygon", srs = "EPSG:5070",
-                   lco = opt)
-}
-ogr_ds_layer_count(dsn)
-ogr_layer_exists(dsn, "layer1")
-ogr_ds_layer_names(dsn)
 
-ogr_layer_field_names(dsn, "layer1")
-ogr_field_index(dsn, "layer1", "field1")
-if (ogr_layer_test_cap(dsn, "layer1")$CreateField) {
-  ogr_field_create(dsn, "layer1", "field1",
-                   fld_type = "OFTInteger64",
-                   is_nullable = FALSE)
-  ogr_field_create(dsn, "layer1", "field2",
-                   fld_type = "OFTString")
-}
-ogr_field_index(dsn, "layer1", "field1")
-ogr_layer_field_names(dsn, "layer1")
+ogr_layer_create(dsn, layer = "layer1", geom_type = "Polygon",
+                 srs = "EPSG:5070")
+
+ogr_field_create(dsn, layer = "layer1",
+                 fld_name = "field1",
+                 fld_type = "OFTInteger64",
+                 is_nullable = FALSE)
+ogr_field_create(dsn, layer = "layer1",
+                 fld_name = "field2",
+                 fld_type = "OFTString")
+
+ogr_ds_layer_count(dsn)
+ogr_ds_layer_names(dsn)
+ogr_layer_field_names(dsn, layer = "layer1")
 
 # delete a field
 if (ogr_layer_test_cap(dsn, "layer1")$DeleteField) {
-  ogr_field_delete(dsn, "layer1", "field2")
+  ogr_field_delete(dsn, layer = "layer1", fld_name = "field2")
 }
+
 ogr_layer_field_names(dsn, "layer1")
 
-# define a feature class (layer definition)
+# define a feature class and create layer
 defn <- ogr_def_layer("Point", srs = epsg_to_wkt(4326))
 # add the attribute fields
-defn$fld1_name <- ogr_def_field("OFTInteger64",
-                                is_nullable = FALSE,
-                                is_unique = TRUE)
-defn$fld2_name <- ogr_def_field("OFTString",
+defn$id_field <- ogr_def_field(fld_type = "OFTInteger64",
+                               is_nullable = FALSE,
+                               is_unique = TRUE)
+defn$str_field <- ogr_def_field(fld_type = "OFTString",
                                 fld_width = 25,
                                 is_nullable = FALSE,
                                 default_value = "'a default string'")
-defn$third_field <- ogr_def_field("OFTReal",
-                                  default_value = "0.0")
+defn$numeric_field <- ogr_def_field(fld_type = "OFTReal",
+                                    default_value = "0.0")
 
-ogr_layer_create(dsn, "layer2", layer_defn = defn)
+ogr_layer_create(dsn, layer = "layer2", layer_defn = defn)
 ogr_ds_layer_names(dsn)
-ogr_layer_field_names(dsn, "layer2")
+ogr_layer_field_names(dsn, layer = "layer2")
 
 # add a field using SQL instead
-sql <- "ALTER TABLE layer2 ADD field4 float"
-ogr_execute_sql(dsn, sql)
-ogr_layer_field_names(dsn, "layer2")
+ogr_execute_sql(dsn, sql = "ALTER TABLE layer2 ADD field4 float")
 
 # rename a field
 if (ogr_layer_test_cap(dsn, "layer1")$AlterFieldDefn) {
-  ogr_field_rename(dsn, "layer2", "field4", "renamed_field")
+  ogr_field_rename(dsn, layer = "layer2",
+                   fld_name = "field4",
+                   new_name = "renamed_field")
 }
-ogr_layer_field_names(dsn, "layer2")
+ogr_layer_field_names(dsn, layer = "layer2")
 
 # GDAL >= 3.7
 if (as.integer(gdal_version()[2]) >= 3070000)
   ogrinfo(dsn, "layer2")
 
-deleteDataset(dsn)
-
-# edit data using SQL
+\dontshow{deleteDataset(dsn)}
+## Edit data using SQL
 src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
 perims_shp <- file.path(tempdir(), "mtbs_perims.shp")
-ogr2ogr(src, perims_shp, src_layers = "mtbs_perims")
-ogr_ds_format(perims_shp)
-ogr_ds_layer_names(perims_shp)
-ogr_layer_field_names(perims_shp, "mtbs_perims")
+ogr2ogr(src_dsn = src, dst_dsn = perims_shp, src_layers = "mtbs_perims")
+ogr_ds_format(dsn = perims_shp)
+ogr_ds_layer_names(dsn = perims_shp)
+ogr_layer_field_names(dsn = perims_shp, layer = "mtbs_perims")
 
-if (ogr_layer_test_cap(perims_shp, "mtbs_perims")$CreateField) {
-  sql <- "ALTER TABLE mtbs_perims ADD burn_bnd_ha float"
-  ogr_execute_sql(perims_shp, sql)
-  # with GDAL >= 3.7, equivalent to:
-  # ogrinfo(perims_shp, cl_arg = c("-sql", sql), read_only = FALSE)
-}
+alt_tbl <- "ALTER TABLE mtbs_perims ADD burn_bnd_ha float"
+ogr_execute_sql(dsn = perims_shp, sql = alt_tbl)
 
-sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
-ogr_execute_sql(perims_shp, sql, dialect = "SQLite")
-ogr_layer_field_names(perims_shp, "mtbs_perims")
+upd <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
+ogr_execute_sql(dsn = perims_shp, sql = upd, dialect = "SQLite")
+ogr_layer_field_names(dsn = perims_shp, layer = "mtbs_perims")
 
 # if GDAL >= 3.7:
-#   ogrinfo(perims_shp, "mtbs_perims")
+#   ogrinfo(dsn = perims_shp, layer = "mtbs_perims")
 # or, for output incl. the feature data (omit the default "-so" arg):
-#   ogrinfo(perims_shp, "mtbs_perims", cl_arg = "-nomd")
-
-deleteDataset(perims_shp)
+#   ogrinfo(dsn = perims_shp, layer = "mtbs_perims", cl_arg = "-nomd")
+\dontshow{deleteDataset(perims_shp)}
 }
 \seealso{
-\code{\link[=gdal_formats]{gdal_formats()}}, \code{\link[=has_spatialite]{has_spatialite()}}, \code{\link[=ogr_def_field]{ogr_def_field()}}, \code{\link[=ogr_def_layer]{ogr_def_layer()}},
-\code{\link[=ogrinfo]{ogrinfo()}}, \code{\link[=ogr2ogr]{ogr2ogr()}}
-
 OGR SQL dialect and SQLite SQL dialect:\cr
-\url{https://gdal.org/user/ogr_sql_sqlite_dialect.html}
+\url{https://gdal.org/en/stable/user/ogr_sql_sqlite_dialect.html}
 }

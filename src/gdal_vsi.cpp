@@ -1,22 +1,25 @@
-/* GDAL VSI wrapper functions supporting virtual file systems
+/* GDAL VSI wrappers for virtual file system operations
    Chris Toney <chris.toney at usda.gov>
    Copyright (c) 2023-2024 gdalraster authors
 */
+
+#include <algorithm>
 
 #include "gdal.h"
 #include "cpl_port.h"
 #include "cpl_string.h"
 #include "cpl_vsi.h"
 
-#include "RcppInt64"
 #include "gdalraster.h"
+#include "gdal_vsi.h"
+
 
 //' Copy a source file to a target filename
 //'
 //' `vsi_copy_file()` is a wrapper for `VSICopyFile()` in the GDAL Common
 //' Portability Library. The GDAL VSI functions allow virtualization of disk
 //' I/O so that non file data sources can be made to appear as files.
-//' See \url{https://gdal.org/user/virtual_file_systems.html}.
+//' See \url{https://gdal.org/en/stable/user/virtual_file_systems.html}.
 //' Requires GDAL >= 3.7.
 //'
 //' @details
@@ -59,16 +62,17 @@ int vsi_copy_file(Rcpp::CharacterVector src_file,
                   Rcpp::CharacterVector target_file,
                   bool show_progress = false) {
 
-#if GDAL_VERSION_NUM < 3070000
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 7, 0)
     Rcpp::stop("vsi_copy_file() requires GDAL >= 3.7");
 
 #else
-    GDALProgressFunc pfnProgress = nullptr;
-    std::string src_file_in;
-    src_file_in = Rcpp::as<std::string>(check_gdal_filename(src_file));
-    std::string target_file_in;
-    target_file_in = Rcpp::as<std::string>(check_gdal_filename(target_file));
+    std::string src_file_in = Rcpp::as<std::string>(
+            check_gdal_filename(src_file));
 
+    std::string target_file_in = Rcpp::as<std::string>(
+            check_gdal_filename(target_file));
+
+    GDALProgressFunc pfnProgress = nullptr;
     if (show_progress)
         pfnProgress = GDALTermProgressR;
 
@@ -123,8 +127,9 @@ void vsi_curl_clear_cache(bool partial = false,
         VSICurlClearCache();
     }
     else {
-        std::string f_prefix_in;
-        f_prefix_in = Rcpp::as<std::string>(check_gdal_filename(file_prefix));
+        std::string f_prefix_in = Rcpp::as<std::string>(
+                check_gdal_filename(file_prefix));
+
         VSICurlPartialClearCache(f_prefix_in.c_str());
     }
 
@@ -137,23 +142,34 @@ void vsi_curl_clear_cache(bool partial = false,
 //'
 //' `vsi_read_dir()` abstracts access to directory contents. It returns a
 //' character vector containing the names of files and directories in this
-//' directory. This function is a wrapper for `VSIReadDirEx()` in the GDAL
-//' Common Portability Library.
+//' directory. With `recursive = TRUE`, reads the list of entries in the
+//' directory and subdirectories.
+//' This function is a wrapper for `VSIReadDirEx()` and `VSIReadDirRecursive()`
+//' in the GDAL Common Portability Library.
 //'
 //' @param path Character string. The relative or absolute path of a
 //' directory to read.
 //' @param max_files Integer scalar. The maximum number of files after which to
-//' stop, or 0 for no limit (see Note).
+//' stop, or 0 for no limit (see Note). Ignored if `recursive = TRUE`.
+//' @param recursive Logical scalar. `TRUE` to read the directory and its
+//' subdirectories. Defaults to `FALSE`.
+//' @param all_files Logical scalar. If `FALSE` (the default), only the names
+//' of visible files are returned (following Unix-style visibility, that is
+//' files whose name does not start with a dot). If `TRUE`, all file names
+//' will be returned.
 //' @returns A character vector containing the names of files and directories
-//' in the directory given by `path`. An empty string (`""`) is returned if
-//' `path` does not exist.
+//' in the directory given by `path`. The listing is in alphabetical order, and
+//' does not include the special entries '.' and '..' even if they are present
+//' in the directory. An empty string (`""`) is returned if `path` does not
+//' exist.
 //'
 //' @note
 //' If `max_files` is set to a positive number, directory listing will stop
 //' after that limit has been reached. Note that to indicate truncation, at
 //' least one element more than the `max_files` limit will be returned. If the
 //' length of the returned character vector is lesser or equal to `max_files`,
-//' then no truncation occurred.
+//' then no truncation occurred. The `max_files` parameter is ignored when
+//' `recursive = TRUE`.
 //'
 //' @seealso
 //' [vsi_mkdir()], [vsi_rmdir()], [vsi_stat()], [vsi_sync()]
@@ -164,22 +180,31 @@ void vsi_curl_clear_cache(bool partial = false,
 //' vsi_read_dir(data_dir)
 // [[Rcpp::export()]]
 Rcpp::CharacterVector vsi_read_dir(Rcpp::CharacterVector path,
-                                   int max_files = 0) {
+                                   int max_files = 0,
+                                   bool recursive = false,
+                                   bool all_files = false) {
 
-    std::string path_in;
-    path_in = Rcpp::as<std::string>(check_gdal_filename(path));
+    std::string path_in = Rcpp::as<std::string>(check_gdal_filename(path));
 
-    char **papszFiles;
-    papszFiles = VSIReadDirEx(path_in.c_str(), max_files);
+    char **papszFiles = nullptr;
+    if (recursive)
+        papszFiles = VSIReadDirRecursive(path_in.c_str());
+    else
+        papszFiles = VSIReadDirEx(path_in.c_str(), max_files);
 
     int nItems = CSLCount(papszFiles);
     if (nItems > 0) {
-        Rcpp::CharacterVector files(nItems);
+        std::vector<std::string> files{};
         for (int i=0; i < nItems; ++i) {
-            files(i) = papszFiles[i];
+            if (!all_files && STARTS_WITH(papszFiles[i], "."))
+                continue;
+            if (!EQUAL(papszFiles[i], ".") && !EQUAL(papszFiles[i], "..")) {
+                files.push_back(papszFiles[i]);
+            }
+            std::sort(files.begin(), files.end());
         }
         CSLDestroy(papszFiles);
-        return files;
+        return Rcpp::wrap(files);
     }
     else {
         CSLDestroy(papszFiles);
@@ -311,10 +336,10 @@ bool vsi_sync(Rcpp::CharacterVector src,
               bool show_progress = false,
               Rcpp::Nullable<Rcpp::CharacterVector> options = R_NilValue) {
 
-    std::string src_file_in;
-    src_file_in = Rcpp::as<std::string>(check_gdal_filename(src));
-    std::string target_file_in;
-    target_file_in = Rcpp::as<std::string>(check_gdal_filename(target));
+    std::string src_file_in = Rcpp::as<std::string>(check_gdal_filename(src));
+
+    std::string target_file_in = Rcpp::as<std::string>(
+            check_gdal_filename(target));
 
     GDALProgressFunc pfnProgress = nullptr;
     if (show_progress)
@@ -367,8 +392,7 @@ bool vsi_sync(Rcpp::CharacterVector src,
 int vsi_mkdir(Rcpp::CharacterVector path, std::string mode = "0755",
               bool recursive = false) {
 
-    std::string path_in;
-    path_in = Rcpp::as<std::string>(check_gdal_filename(path));
+    std::string path_in = Rcpp::as<std::string>(check_gdal_filename(path));
 
     long mode_in = std::stol(mode, nullptr, 8);
 
@@ -409,8 +433,7 @@ int vsi_mkdir(Rcpp::CharacterVector path, std::string mode = "0755",
 //' vsi_rmdir(new_dir)
 // [[Rcpp::export()]]
 int vsi_rmdir(Rcpp::CharacterVector path, bool recursive = false) {
-    std::string path_in;
-    path_in = Rcpp::as<std::string>(check_gdal_filename(path));
+    std::string path_in = Rcpp::as<std::string>(check_gdal_filename(path));
 
     if (recursive)
         return VSIRmdirRecursive(path_in.c_str());
@@ -443,8 +466,8 @@ int vsi_rmdir(Rcpp::CharacterVector path, bool recursive = false) {
 //' vsi_stat(tmp_file)
 // [[Rcpp::export()]]
 int vsi_unlink(Rcpp::CharacterVector filename) {
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
 
     return VSIUnlink(filename_in.c_str());
 }
@@ -480,15 +503,19 @@ int vsi_unlink(Rcpp::CharacterVector filename) {
 //' vsi_unlink_batch(c(tmp_elev, tmp_tcc))
 // [[Rcpp::export()]]
 SEXP vsi_unlink_batch(Rcpp::CharacterVector filenames) {
-    std::vector<std::string> filenames_in(filenames.size());
-    std::vector<char *> filenames_cstr(filenames.size() + 1);
-    for (R_xlen_t i = 0; i < filenames.size(); ++i) {
-        filenames_in[i] = Rcpp::as<std::string>(
-                check_gdal_filename(
-                        Rcpp::as<Rcpp::CharacterVector>(filenames[i])));
-        filenames_cstr[i] = (char *) filenames_in[i].c_str();
+    if (filenames.size() == 0)
+        return R_NilValue;
+
+    R_xlen_t nFiles = filenames.size();
+    std::vector<std::string> filenames_in(nFiles);
+    std::vector<const char *> filenames_cstr(nFiles + 1);
+    for (R_xlen_t i = 0; i < nFiles; ++i) {
+        filenames_in[i] = Rcpp::as<std::string>(check_gdal_filename(
+                Rcpp::as<Rcpp::CharacterVector>(filenames[i])));
+
+        filenames_cstr[i] = filenames_in[i].c_str();
     }
-    filenames_cstr[filenames.size()] = nullptr;
+    filenames_cstr[nFiles] = nullptr;
 
     int *result = VSIUnlinkBatch(filenames_cstr.data());
 
@@ -496,8 +523,8 @@ SEXP vsi_unlink_batch(Rcpp::CharacterVector filenames) {
         return R_NilValue;
     }
     else {
-        Rcpp::LogicalVector ret(filenames.size());
-        for (R_xlen_t i = 0; i < filenames.size(); ++i)
+        Rcpp::LogicalVector ret(nFiles);
+        for (R_xlen_t i = 0; i < nFiles; ++i)
             ret[i] = result[i];
         VSIFree(result);
         return ret;
@@ -535,7 +562,7 @@ SEXP vsi_unlink_batch(Rcpp::CharacterVector filenames) {
 //'
 //' @seealso
 //' GDAL Virtual File Systems:\cr
-//' \url{https://gdal.org/user/virtual_file_systems.html}
+//' \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 //'
 //' @examples
 //' data_dir <- system.file("extdata", package="gdalraster")
@@ -565,10 +592,10 @@ SEXP vsi_unlink_batch(Rcpp::CharacterVector filenames) {
 //' vsi_stat(url_file, "size")
 // [[Rcpp::export()]]
 SEXP vsi_stat(Rcpp::CharacterVector filename, std::string info = "exists") {
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
-    const char *fn = filename_in.c_str();
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
 
+    const char *fn = filename_in.c_str();
     VSIStatBufL sStat;
 
     if (EQUALN(info.c_str(), "exists", 6)) {
@@ -639,10 +666,11 @@ SEXP vsi_stat(Rcpp::CharacterVector filename, std::string info = "exists") {
 //' vsi_unlink(new_file)
 // [[Rcpp::export()]]
 int vsi_rename(Rcpp::CharacterVector oldpath, Rcpp::CharacterVector newpath) {
-    std::string oldpath_in;
-    oldpath_in = Rcpp::as<std::string>(check_gdal_filename(oldpath));
-    std::string newpath_in;
-    newpath_in = Rcpp::as<std::string>(check_gdal_filename(newpath));
+    std::string oldpath_in = Rcpp::as<std::string>(
+            check_gdal_filename(oldpath));
+
+    std::string newpath_in = Rcpp::as<std::string>(
+            check_gdal_filename(newpath));
 
     return VSIRename(oldpath_in.c_str(), newpath_in.c_str());
 }
@@ -660,15 +688,13 @@ int vsi_rename(Rcpp::CharacterVector oldpath, Rcpp::CharacterVector newpath) {
 //' @seealso
 //' [vsi_get_fs_options()]
 //'
-//' \url{https://gdal.org/user/virtual_file_systems.html}
+//' \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 //'
 //' @examples
 //' vsi_get_fs_prefixes()
 // [[Rcpp::export()]]
 Rcpp::CharacterVector vsi_get_fs_prefixes() {
-    char **papszPrefixes;
-    papszPrefixes = VSIGetFileSystemsPrefixes();
-
+    char **papszPrefixes = VSIGetFileSystemsPrefixes();
     int nItems = CSLCount(papszPrefixes);
     if (nItems > 0) {
         Rcpp::CharacterVector prefixes(nItems);
@@ -691,9 +717,10 @@ Rcpp::CharacterVector vsi_get_fs_prefixes() {
 //' Called from and documented in R/gdal_helpers.R
 //' @noRd
 // [[Rcpp::export(name = ".vsi_get_fs_options")]]
-std::string _vsi_get_fs_options(Rcpp::CharacterVector filename) {
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+std::string vsi_get_fs_options_(Rcpp::CharacterVector filename) {
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
     if (VSIGetFileSystemOptions(filename_in.c_str()) != nullptr)
         return VSIGetFileSystemOptions(filename_in.c_str());
     else
@@ -729,12 +756,13 @@ std::string _vsi_get_fs_options(Rcpp::CharacterVector filename) {
 bool vsi_supports_seq_write(Rcpp::CharacterVector filename,
                             bool allow_local_tmpfile) {
 
-#if GDAL_VERSION_NUM < 3060000
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
     Rcpp::stop("vsi_supports_seq_write() requires GDAL >= 3.6");
 
 #else
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
     if (VSISupportsSequentialWrite(filename_in.c_str(), allow_local_tmpfile))
         return true;
     else
@@ -772,12 +800,13 @@ bool vsi_supports_seq_write(Rcpp::CharacterVector filename,
 bool vsi_supports_rnd_write(Rcpp::CharacterVector filename,
                             bool allow_local_tmpfile) {
 
-#if GDAL_VERSION_NUM < 3060000
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
     Rcpp::stop("vsi_supports_rnd_write() requires GDAL >= 3.6");
 
 #else
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
     if (VSISupportsRandomWrite(filename_in.c_str(), allow_local_tmpfile))
         return true;
     else
@@ -803,8 +832,7 @@ bool vsi_supports_rnd_write(Rcpp::CharacterVector filename,
 //' vsi_rmdir(tmp_dir)
 // [[Rcpp::export()]]
 Rcpp::NumericVector vsi_get_disk_free_space(Rcpp::CharacterVector path) {
-    std::string path_in;
-    path_in = Rcpp::as<std::string>(check_gdal_filename(path));
+    std::string path_in = Rcpp::as<std::string>(check_gdal_filename(path));
     std::vector<int64_t> ret(1);
     ret[0] = VSIGetDiskFreeSpace(path_in.c_str());
     return Rcpp::wrap(ret);
@@ -849,12 +877,12 @@ Rcpp::NumericVector vsi_get_disk_free_space(Rcpp::CharacterVector path) {
 void vsi_set_path_option(Rcpp::CharacterVector path_prefix, std::string key,
                          std::string value) {
 
-#if GDAL_VERSION_NUM < 3060000
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
     Rcpp::stop("vsi_set_path_option() requires GDAL >= 3.6");
 
 #else
-    std::string path_prefix_in;
-    path_prefix_in = Rcpp::as<std::string>(check_gdal_filename(path_prefix));
+    std::string path_prefix_in = Rcpp::as<std::string>(
+            check_gdal_filename(path_prefix));
 
     const char* value_in = nullptr;
     if (value != "")
@@ -884,12 +912,12 @@ void vsi_set_path_option(Rcpp::CharacterVector path_prefix, std::string key,
 //' [vsi_set_path_option()]
 // [[Rcpp::export()]]
 void vsi_clear_path_options(Rcpp::CharacterVector path_prefix) {
-#if GDAL_VERSION_NUM < 3060000
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
     Rcpp::stop("vsi_clear_path_options() requires GDAL >= 3.6");
 
 #else
-    std::string path_prefix_in;
-    path_prefix_in = Rcpp::as<std::string>(check_gdal_filename(path_prefix));
+    std::string path_prefix_in = Rcpp::as<std::string>(
+            check_gdal_filename(path_prefix));
 
     const char* path_cstr = nullptr;
     if (path_prefix_in != "")
@@ -950,8 +978,8 @@ void vsi_clear_path_options(Rcpp::CharacterVector path_prefix) {
 //' }
 // [[Rcpp::export()]]
 SEXP vsi_get_file_metadata(Rcpp::CharacterVector filename, std::string domain) {
-    std::string filename_in;
-    filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
 
     char **papszStringList = nullptr;
     papszStringList = VSIGetFileMetadata(filename_in.c_str(), domain.c_str(),
@@ -977,4 +1005,154 @@ SEXP vsi_get_file_metadata(Rcpp::CharacterVector filename, std::string domain) {
         CSLDestroy(papszStringList);
         return md;
     }
+}
+
+//' Returns the actual URL of a supplied VSI filename
+//'
+//' `vsi_get_actual_url()` returns the actual URL of a supplied filename.
+//' Currently only returns a non-NULL value for network-based virtual file
+//' systems. For example "/vsis3/bucket/filename" will be expanded as
+//' "https://bucket.s3.amazon.com/filename".
+//' Wrapper for `VSIGetActualURL()` in the GDAL API.
+//'
+//' @param filename Character string containing a /vsiPREFIX/ filename.
+//' @returns Character string containing the actual URL, or `NULL` if
+//' `filename` is not a network-based virtual file system.
+//'
+//' @seealso
+//' [vsi_get_signed_url()]
+//'
+//' @examples
+//' \dontrun{
+//' f <- "/vsiaz/items/io-lulc-9-class.parquet"
+//' set_config_option("AZURE_STORAGE_ACCOUNT", "pcstacitems")
+//' # token obtained from:
+//' # https://planetarycomputer.microsoft.com/api/sas/v1/token/pcstacitems/items
+//' set_config_option("AZURE_STORAGE_SAS_TOKEN","<token>")
+//' vsi_get_actual_url(f)
+//' #> [1] "https://pcstacitems.blob.core.windows.net/items/io-lulc-9-class.parquet"
+//' vsi_get_signed_url(f)
+//' #> [1] "https://pcstacitems.blob.core.windows.net/items/io-lulc-9-class.parquet?<token>"
+//' }
+// [[Rcpp::export()]]
+SEXP vsi_get_actual_url(Rcpp::CharacterVector filename) {
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
+    if (VSIGetActualURL(filename_in.c_str()) != nullptr)
+        return Rcpp::wrap(VSIGetActualURL(filename_in.c_str()));
+    else
+        return R_NilValue;
+}
+
+//' Returns a signed URL for a supplied VSI filename
+//'
+//' `vsi_get_signed_url()` Returns a signed URL of a supplied filename.
+//' Currently only returns a non-NULL value for /vsis3/, /vsigs/, /vsiaz/ and
+//' /vsioss/ For example "/vsis3/bucket/filename" will be expanded as
+//' "https://bucket.s3.amazon.com/filename?X-Amz-Algorithm=AWS4-HMAC-SHA256..."
+//' Configuration options that apply for file opening (typically to provide
+//' credentials), and are returned by `vsi_get_fs_options()`, are also valid
+//' in that context.
+//' Wrapper for `VSIGetSignedURL()` in the GDAL API.
+//'
+//' @details
+//' The `options` argument accepts a character vector of name=value pairs.
+//' For /vsis3/, /vsigs/, /vsiaz/ and /vsioss/, the following options are
+//' supported:
+//' * `START_DATE=YYMMDDTHHMMSSZ`: date and time in UTC following ISO 8601
+//'   standard, corresponding to the start of validity of the URL. If not
+//'   specified, current date time.
+//' * `EXPIRATION_DELAY=number_of_seconds`: number between 1 and 604800 (seven
+//'   days) for the validity of the signed URL. Defaults to 3600 (one hour).
+//' * `VERB=GET/HEAD/DELETE/PUT/POST`: HTTP VERB for which the request will be
+//'   used. Defaults to `GET`.
+//'
+//' /vsiaz/ supports additional options:
+//' * `SIGNEDIDENTIFIER=value`: to relate the given shared access signature to
+//'   a corresponding stored access policy.
+//' * `SIGNEDPERMISSIONS=r|w`: permissions associated with the shared access
+//'   signature. Normally deduced from `VERB`.
+//'
+//' @param filename Character string containing a /vsiPREFIX/ filename.
+//' @param options Character vector of `NAME=VALUE` pairs (see Details).
+//' @returns Character string containing the signed URL, or `NULL` if
+//' `filename` is not a network-based virtual file system.
+//'
+//' @seealso
+//' [vsi_get_actual_url()]
+//'
+//' @examples
+//' \dontrun{
+//' f <- "/vsiaz/items/io-lulc-9-class.parquet"
+//' set_config_option("AZURE_STORAGE_ACCOUNT", "pcstacitems")
+//' # token obtained from:
+//' # https://planetarycomputer.microsoft.com/api/sas/v1/token/pcstacitems/items
+//' set_config_option("AZURE_STORAGE_SAS_TOKEN", "<token>")
+//' vsi_get_actual_url(f)
+//' #> [1] "https://pcstacitems.blob.core.windows.net/items/io-lulc-9-class.parquet"
+//' vsi_get_signed_url(f)
+//' #> [1] "https://pcstacitems.blob.core.windows.net/items/io-lulc-9-class.parquet?<token>"
+//' }
+// [[Rcpp::export()]]
+SEXP vsi_get_signed_url(Rcpp::CharacterVector filename,
+        Rcpp::Nullable<Rcpp::CharacterVector> options = R_NilValue) {
+
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
+    std::vector<char *> opt_list = {nullptr};
+    if (options.isNotNull()) {
+        Rcpp::CharacterVector options_in(options);
+        opt_list.resize(options_in.size() + 1);
+        for (R_xlen_t i = 0; i < options_in.size(); ++i) {
+            opt_list[i] = (char *) options_in[i];
+        }
+        opt_list[options_in.size()] = nullptr;
+    }
+
+    char *pszSignedURL = VSIGetSignedURL(filename_in.c_str(), opt_list.data());
+    std::string url = "";
+    if (pszSignedURL != nullptr) {
+        url = pszSignedURL;
+        VSIFree(pszSignedURL);
+        return Rcpp::wrap(url);
+    }
+    else {
+        return R_NilValue;
+    }
+}
+
+//' Returns if the file/filesystem is "local".
+//'
+//' `vsi_is_local()` returns whether the file/filesystem is "local".
+//' Wrapper for `VSIIsLocal()` in the GDAL API. Requires GDAL >= 3.6.
+//'
+//' @param filename Character string. The path of the filesystem object to be
+//' tested.
+//' @returns Logical scalar. `TRUE` if if the input file path is local.
+//'
+//' @note
+//' The concept of local is mostly by opposition with a network / remote file
+//' system whose access time can be long.
+//'
+//' /vsimem/ is considered to be a local file system, although a
+//' non-persistent one.
+//'
+//' @examples
+//' # Requires GDAL >= 3.6
+//' if (as.integer(gdal_version()[2]) >= 3060000)
+//'   print(vsi_is_local("/vsimem/test-mem-file.tif"))
+// [[Rcpp::export()]]
+bool vsi_is_local(Rcpp::CharacterVector filename) {
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
+    Rcpp::stop("vsi_is_local() requires GDAL >= 3.6");
+
+#else
+    std::string filename_in = Rcpp::as<std::string>(
+            check_gdal_filename(filename));
+
+    return VSIIsLocal(filename_in.c_str());
+#endif
 }

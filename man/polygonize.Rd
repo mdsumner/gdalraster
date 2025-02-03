@@ -76,7 +76,7 @@ The function will create the output vector layer if it does not already
 exist, otherwise it will try to append to an existing one.
 This function is a wrapper of \code{GDALPolygonize} in the GDAL Algorithms API.
 It provides essentially the same functionality as the \code{gdal_polygonize.py}
-command-line program (\url{https://gdal.org/programs/gdal_polygonize.html}).
+command-line program (\url{https://gdal.org/en/stable/programs/gdal_polygonize.html}).
 }
 \details{
 Polygon features will be created on the output layer, with polygon
@@ -138,7 +138,7 @@ set_config_option("OGR_SQLITE_JOURNAL", "MEMORY")
 polygonize(evt_file, dsn, layer, fld)
 set_config_option("SQLITE_USE_OGR_VFS", "")
 set_config_option("OGR_SQLITE_JOURNAL", "")
-deleteDataset(dsn)
+\dontshow{deleteDataset(dsn)}
 }
 \seealso{
 \code{\link[=rasterize]{rasterize()}}

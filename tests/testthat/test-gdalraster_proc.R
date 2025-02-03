@@ -289,7 +289,7 @@ test_that("rasterToVRT works", {
 
     # subwindow outside raster extent
     expect_error(rasterToVRT(evt_file,
-                             subwindow = bbox_from_wkt(.g_buffer(bnd, 10000)),
+                             subwindow = bbox_from_wkt(g_buffer(bnd, 10000)),
                              src_align=TRUE))
 
     ## subset and pixel align two rasters
@@ -329,6 +329,15 @@ test_that("dem_proc runs without error", {
     hs_file <- paste0(tempdir(), "/", "storml_hillshade.tif")
     on.exit(deleteDataset(hs_file))
     expect_true(dem_proc("hillshade", elev_file, hs_file))
+
+    sq <- seq(2400, 3100, by = 100)
+    col <- col2rgb(hcl.colors(length(sq)))
+    pal <- tempfile(fileext = ".txt")
+    on.exit(unlink(pal))
+    writeLines(paste(sq, col[1, ], col[2, ], col[3, ]), pal)
+    cr_file <- tempfile(fileext = ".tif")
+    on.exit(deleteDataset(cr_file))
+    expect_true(dem_proc("color-relief", elev_file, cr_file, color_file = pal))
 })
 
 test_that("polygonize runs without error", {

@@ -22,7 +22,7 @@ An error is raised if the operation fails.
 }
 \description{
 \code{footprint()} is a wrapper of the \command{gdal_footprint} command-line
-utility (see \url{https://gdal.org/programs/gdal_footprint.html}).
+utility (see \url{https://gdal.org/en/stable/programs/gdal_footprint.html}).
 The function can be used to compute the footprint of a raster file, taking
 into account nodata values (or more generally the mask band attached to
 the raster bands), and generating polygons/multipolygons corresponding to
@@ -51,8 +51,7 @@ if (as.integer(gdal_version()[2]) >= 3080000) {
   # command-line arguments for gdal_footprint
   args <- c("-t_srs", "EPSG:4326")
   footprint(evt_file, out_file, args)
-
-  deleteDataset(out_file)
+  \dontshow{deleteDataset(out_file)}
 }
 }
 \seealso{

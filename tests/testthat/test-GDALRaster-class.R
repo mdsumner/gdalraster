@@ -79,6 +79,15 @@ test_that("band-level parameters are correct", {
     expect_equal(ds$getOverviewCount(1), 0)
     expect_equal(ds$getDataTypeName(1), "Int16")
     expect_equal(ds$getNoDataValue(1), 32767)
+    flags <- ds$getMaskFlags(band = 1)
+    expect_true(is.list(flags))
+    expect_false(flags$ALL_VALID)
+    expect_false(flags$PER_DATASET)
+    expect_false(flags$ALPHA)
+    expect_true(flags$NODATA)
+    mask_band <- ds$getMaskBand(band = 1)
+    expect_true(mask_band$MaskFile == "")
+    expect_true(mask_band$BandNumber == 0)
     expect_equal(ds$getUnitType(1), "")
     expect_true(is.na(ds$getScale(1)))
     expect_true(is.na(ds$getOffset(1)))
@@ -86,7 +95,7 @@ test_that("band-level parameters are correct", {
     ds$close()
 })
 
-test_that("metadata are correct", {
+test_that("get/set metadata works", {
     evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
     ds <- new(GDALRaster, evt_file, TRUE)
     expect_equal(ds$getMetadata(band=0, domain=""), "AREA_OR_POINT=Area")
@@ -106,7 +115,29 @@ test_that("metadata are correct", {
                  "")
     expect_equal(length(ds$getMetadataDomainList(band=0)), 3)
     expect_equal(length(ds$getMetadataDomainList(band=1)), 1)
+
+    f <- tempfile(fileext = ".tif")
+    ds2 <- create(format="GTiff", dst_filename=f, xsize=10, ysize=10,
+                  nbands=1, dataType="Int32", return_obj = TRUE)
+
+    srs <- ds$getProjection()
+    ds2$setProjection(srs)
+    gt <- ds$getGeoTransform()
+    ds2$setGeoTransform(gt)
+    md <- ds$getMetadata(band=0, domain="")
+    expect_true(ds2$setMetadata(band=0, metadata=md, domain=""))
+
+    expect_true(ds2$setMetadataItem(band=1, mdi_name="RepresentationType",
+                                    mdi_value="THEMATIC", domain=""))
+    ds2$close()
+    ds2$open(read_only = TRUE)
+    expect_equal(ds2$getMetadata(band=0, domain=""), "AREA_OR_POINT=Area")
+    expect_equal(ds2$getMetadata(band=1, domain=""),
+                 "RepresentationType=THEMATIC")
+
     ds$close()
+    ds2$close()
+    deleteDataset(f)
 })
 
 test_that("open/close/re-open works", {
@@ -288,17 +319,24 @@ test_that("Byte I/O: warn when data type not compatible", {
     ds$close()
 })
 
-test_that("set unit type, scale and offset works", {
+test_that("set nodata value, unit type, scale and offset works", {
     elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
     mod_file <- paste0(tempdir(), "/", "storml_elev_mod.tif")
     file.copy(elev_file,  mod_file)
     ds <- new(GDALRaster, mod_file, read_only=FALSE)
+    ds$setNoDataValue(1, -9999)
     ds$setUnitType(1, "m")
     ds$setScale(1, 1)
     ds$setOffset(1, 0)
+    expect_equal(ds$getNoDataValue(1), -9999)
     expect_equal(ds$getUnitType(1), "m")
     expect_equal(ds$getScale(1), 1)
     expect_equal(ds$getOffset(1), 0)
+
+    expect_false(ds$setNoDataValue(1, NA))
+    expect_false(ds$setScale(1, NA))
+    expect_false(ds$setOffset(1, NA))
+
     files <- ds$getFileList()
     on.exit(unlink(files))
     ds$close()
@@ -324,19 +362,22 @@ test_that("build overviews runs without error", {
 test_that("get/set color table works", {
     f <- system.file("extdata/storml_evc.tif", package="gdalraster")
     f2 <- paste0(tempdir(), "/", "storml_evc_ct.tif")
-    calc("A", f, dstfile=f2, dtName="UInt16", nodata_value=32767,
+    calc("A", f, dstfile=f2, dtName="UInt16", nodata_value=65535,
          setRasterNodataValue=TRUE)
     ds <- new(GDALRaster, f2, read_only=FALSE)
     evc_csv <- system.file("extdata/LF20_EVC_220.csv", package="gdalraster")
     vat <- read.csv(evc_csv)
     ct <- vat[,c(1,3:5)]
     expect_warning(ds$setColorTable(1, ct, "RGB"))
+    # close and re-open flushes the write cache
+    ds$open(read_only = TRUE)
     evc_ct <- ds$getColorTable(1)
-    expect_equal(nrow(evc_ct), 400)
+    expect_equal(nrow(evc_ct), 65536)
     expect_equal(ds$getPaletteInterp(1), "RGB")
-    files <- ds$getFileList()
-    on.exit(unlink(files))
+    ds$open(read_only = FALSE)
+    expect_true(ds$clearColorTable(1))
     ds$close()
+    deleteDataset(f2)
 })
 
 test_that("get/set band color interpretation works", {
@@ -424,3 +465,15 @@ test_that("get/set default RAT works", {
     deleteDataset(f)
 })
 
+test_that("add band works", {
+    ds <- create(format="MEM", dst_filename="", xsize=20, ysize=10,
+                 nbands=1, dataType="Byte", return_obj = TRUE)
+
+    ds$setProjection(epsg_to_wkt(4326))
+    ds$setGeoTransform(c(-180, 18, 0, 90, 0, -18))
+    ds$fillRaster(1, 255, 0)
+    expect_true(ds$addBand("Byte", NULL))
+    expect_no_error(ds$fillRaster(2, 255, 0))
+
+    ds$close()
+})

@@ -14,18 +14,12 @@ ogr_def_field(
   fld_precision = NULL,
   is_nullable = NULL,
   is_unique = NULL,
-  is_ignored = NULL,
   default_value = NULL
 )
 
-ogr_def_geom_field(
-  geom_type,
-  srs = NULL,
-  is_nullable = NULL,
-  is_ignored = NULL
-)
+ogr_def_geom_field(geom_type, srs = NULL, is_nullable = NULL)
 
-ogr_def_layer(geom_type, geom_fld_name = "geom", srs = NULL)
+ogr_def_layer(geom_type, geom_fld_name = "geometry", srs = NULL)
 }
 \arguments{
 \item{fld_type}{Character string containing the name of a field data type
@@ -45,9 +39,6 @@ Defaults to \code{TRUE}.}
 
 \item{is_unique}{Optional UNIQUE constraint on the field (logical scalar).
 Defaults to \code{FALSE}.}
-
-\item{is_ignored}{Whether field is ignored when retrieving features (logical
-scalar). Defaults to \code{FALSE}.}
 
 \item{default_value}{Optional default value for the field as a character
 string.}
@@ -91,7 +82,6 @@ $precision  : optional number of digits after the decimal point
 $is_nullable: optional NOT NULL constraint (logical scalar)
 $is_unique  : optional UNIQUE constraint (logical scalar)
 $default    : optional default value as character string
-$is_ignored : optionally ignored when retrieving features (logical scalar)
 $is_geom    : FALSE (the default) for attribute fields
 }\if{html}{\out{</div>}}
 
@@ -125,7 +115,6 @@ A geometry field definition is a list with named elements:
 \if{html}{\out{<div class="sourceCode">}}\preformatted{$type       : geom type ("Point", "Polygon", etc.)
 $srs        : optional spatial reference as WKT string
 $is_nullable: optional NOT NULL constraint (logical scalar)
-$is_ignored : optionally ignored when retrieving features (logical scalar)
 $is_geom    : TRUE (required) for geometry fields
 }\if{html}{\out{</div>}}
 
@@ -136,7 +125,7 @@ Geometry types are specified as a character string containing OGC WKT.
 Common types include: \code{Point}, \code{LineString}, \code{Polygon}, \code{MultiPoint},
 \code{MultiLineString}, \code{MultiPolygon}. See the GDAL documentation for a list
 of all supported geometry types:\cr
-\url{https://gdal.org/api/vector_c_api.html#_CPPv418OGRwkbGeometryType}
+\url{https://gdal.org/en/stable/api/vector_c_api.html#_CPPv418OGRwkbGeometryType}
 
 Format drivers may or may not support not-null constraints on attribute and
 geometry fields. If they support creating fields with not-null constraints,
@@ -149,8 +138,8 @@ example, GeoPackage format has a layer creation option
 The feature id (FID) is a special property of a feature and not treated as
 an attribute of the feature. Additional information is given in the GDAL
 documentation for the
-\href{https://gdal.org/user/ogr_sql_dialect.html#feature-id-fid}{OGR SQL} and
-\href{https://gdal.org/user/sql_sqlite_dialect.html#feature-id-fid}{SQLite}
+\href{https://gdal.org/en/stable/user/ogr_sql_dialect.html#feature-id-fid}{OGR SQL} and
+\href{https://gdal.org/en/stable/user/sql_sqlite_dialect.html#feature-id-fid}{SQLite}
 SQL dialects. Implications for SQL statements and result sets may depend
 on the dialect used.
 

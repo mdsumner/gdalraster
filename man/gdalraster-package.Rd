@@ -8,7 +8,7 @@
   \code{gdalraster} is an interface to the Geospatial Data Abstraction
   Library (GDAL) for low level raster I/O. Calling signatures resemble those
   of the native C, C++ and Python APIs provided by the GDAL project.
-  See \url{https://gdal.org/api/} for details of the GDAL Raster API.
+  See \url{https://gdal.org/en/stable/api/} for details of the GDAL Raster API.
 }
 \details{
   Core functionality is contained in class \code{GDALRaster} and several
@@ -25,7 +25,9 @@
   \code{\link[=translate]{translate()}},
   \code{\link[=getCreationOptions]{getCreationOptions()}}
 
-  \item virtual raster: \code{\link[=buildVRT]{buildVRT()}},
+  \item virtual raster:
+  \code{\link[=autoCreateWarpedVRT]{autoCreateWarpedVRT()}},
+  \code{\link[=buildVRT]{buildVRT()}},
   \code{\link[=rasterToVRT]{rasterToVRT()}}
 
   \item reproject/resample/crop/mosaic: \code{\link[=warp]{warp()}}
@@ -54,7 +56,9 @@
 
   \item spatial reference convenience functions:
   \code{\link[=epsg_to_wkt]{epsg_to_wkt()}},
-  \code{\link[=srs_to_wkt]{srs_to_wkt()}},\cr
+  \code{\link[=srs_to_wkt]{srs_to_wkt()}},
+  \code{\link[=srs_find_epsg]{srs_find_epsg()}},
+  \code{\link[=srs_get_name]{srs_get_name()}},
   \code{\link[=srs_is_geographic]{srs_is_geographic()}},
   \code{\link[=srs_is_projected]{srs_is_projected()}},
   \code{\link[=srs_is_same]{srs_is_same()}}
@@ -79,20 +83,25 @@
   \code{\link[=g_is_empty]{g_is_empty()}},
   \code{\link[=g_is_valid]{g_is_valid()}},
   \code{\link[=g_length]{g_length()}},
+  \code{\link[=g_make_valid]{g_make_valid()}},
   \code{\link[=g_name]{g_name()}},
   \code{\link[=g_overlaps]{g_overlaps()}},
+  \code{\link[=g_summary]{g_summary()}},
   \code{\link[=g_sym_difference]{g_sym_difference()}},
   \code{\link[=g_touches]{g_touches()}},
   \code{\link[=g_transform]{g_transform()}},
   \code{\link[=g_union]{g_union()}},
   \code{\link[=g_within]{g_within()}},
+  \code{\link[=g_wk2wk]{g_wk2wk()}},
   \code{\link[=geos_version]{geos_version()}}
 
   \item data management: \code{\link[=addFilesInZip]{addFilesInZip()}},
   \code{\link[=copyDatasetFiles]{copyDatasetFiles()}},
-  \code{\link[=deleteDataset]{deleteDataset()}},\cr
+  \code{\link[=deleteDataset]{deleteDataset()}},
   \code{\link[=renameDataset]{renameDataset()}},
-  \code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}}
+  \code{\link[=bandCopyWholeRaster]{bandCopyWholeRaster()}},
+  \code{\link[=identifyDriver]{identifyDriver()}},
+  \code{\link[=inspectDataset]{inspectDataset()}}
 
   \item OGR vector utilities:
   \code{\link[=ogr2ogr]{ogr2ogr()}},
@@ -109,6 +118,7 @@
   \code{\link[=vsi_get_file_metadata]{vsi_get_file_metadata()}},
   \code{\link[=vsi_get_fs_options]{vsi_get_fs_options()}},
   \code{\link[=vsi_get_fs_prefixes]{vsi_get_fs_prefixes()}},
+  \code{\link[=vsi_is_local]{vsi_is_local()}},
   \code{\link[=vsi_mkdir]{vsi_mkdir()}},
   \code{\link[=vsi_read_dir]{vsi_read_dir()}},
   \code{\link[=vsi_rename]{vsi_rename()}},
@@ -174,21 +184,22 @@ Maintainer: Chris Toney <chris.toney at usda.gov>
 }
 \seealso{
   GDAL Raster Data Model:\cr
-  \url{https://gdal.org/user/raster_data_model.html}
+  \url{https://gdal.org/en/stable/user/raster_data_model.html}
 
   Raster format descriptions:\cr
-  \url{https://gdal.org/drivers/raster/index.html}
+  \url{https://gdal.org/en/stable/drivers/raster/index.html}
 
   Geotransform tutorial:\cr
-  \url{https://gdal.org/tutorials/geotransforms_tut.html}
+  \url{https://gdal.org/en/stable/tutorials/geotransforms_tut.html}
 
   GDAL Virtual File Systems:\cr
-  \url{https://gdal.org/user/virtual_file_systems.html}
+  \url{https://gdal.org/en/stable/user/virtual_file_systems.html}
 }
 \note{
   Documentation for \code{GDALRaster-class} and several wrapper functions
-  borrows from the GDAL API documentation, (c) 1998-2024, Frank Warmerdam,
-  Even Rouault, and others, \href{https://gdal.org/license.html}{MIT license}.
+  borrows from the GDAL API documentation, (c) 1998-2025, Frank Warmerdam,
+  Even Rouault, and others,
+  \href{https://gdal.org/en/stable/license.html}{MIT license}.
 
   Sample datasets included with the package are used in examples throughout
   the documentation. The sample data include
@@ -204,5 +215,9 @@ Maintainer: Chris Toney <chris.toney at usda.gov>
   This enables the code to run regardless of where R is installed. Users will
   normally give file names as a regular full path or relative to the current
   working directory.
-}
 
+  Temporary files are created in some examples which have cleanup code wrapped
+  in \code{dontshow{}}. While the cleanup code is not shown in the
+  documentation, note that this code runs by default if examples are run with
+  \code{example()}.
+}

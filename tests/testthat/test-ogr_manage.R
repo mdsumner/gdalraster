@@ -2,7 +2,7 @@ test_that("OGR management utilities work", {
     # these tests assume GDAL was built with libsqlite3 which is optional
     # this should be a safe assumption since PROJ requires libsqlite3
 
-    # GPKG
+    ## GPKG
     dsn <- tempfile(fileext = ".gpkg")
     expect_false(ogr_ds_exists(dsn))
     expect_true(ogr_ds_create("GPKG", dsn, "test_layer", geom_type = "POLYGON"))
@@ -82,9 +82,18 @@ test_that("OGR management utilities work", {
                  c("field1", "field2", "field3", "field4", "field5", "field6",
                    "geom"))
 
+    # rename layer
+    if (as.integer(gdal_version()[2]) >= 3050000) {
+        expect_true(ogr_layer_test_cap(dsn, "test_layer3")$Rename)
+        expect_true(ogr_layer_rename(dsn, "test_layer3", "test_new_name"))
+        expect_equal(ogr_layer_field_names(dsn, "test_new_name"),
+                     c("field1", "field2", "field3", "field4", "field5",
+                       "field6", "geom"))
+    }
+
     deleteDataset(dsn)
 
-    # SQLite
+    ## SQLite
     dsn <- tempfile(fileext = "sqlite")
     defn <- ogr_def_layer("Point", srs = epsg_to_wkt(4326))
     defn$field1 <- ogr_def_field("OFTInteger64",
@@ -113,17 +122,41 @@ test_that("OGR management utilities work", {
 
     deleteDataset(dsn)
 
-    # create with two geom fields initially
-    # with geom2 nullable and ignored
+    # create with two geom fields initially with geom2 nullable
     dsn <- tempfile(fileext = "sqlite")
     defn$geom2 <- ogr_def_geom_field("Polygon", srs = epsg_to_wkt(4326),
-                                     is_nullable = TRUE, is_ignored = TRUE)
+                                     is_nullable = TRUE)
     expect_true(ogr_ds_create("SQLite", dsn, "layer1",
                               layer_defn = defn))
     expect_equal(ogr_layer_field_names(dsn, "layer1"),
                  c("field1", "field2", "field3", "GEOMETRY", "geom2"))
 
     deleteDataset(dsn)
+
+    # single-layer format, layer argument may be NULL or ""
+    dsn <- system.file("extdata/poly_multipoly.shp", package="gdalraster")
+    expect_equal(ogr_layer_field_names(dsn),
+                 c("Event_ID", "Map_ID", "Ig_Date",  ""))
+
+})
+
+test_that("create Memory format works", {
+    defn <- ogr_def_layer("Point", srs = epsg_to_wkt(4269))
+    defn$int_field <- ogr_def_field("OFTInteger")
+    defn$str_field <- ogr_def_field("OFTString")
+    defn$real_field <- ogr_def_field("OFTReal")
+    defn$dt_field <- ogr_def_field("OFTDateTime")
+
+    expect_no_error(lyr <- ogr_ds_create("Memory", "", "mem_layer",
+                                         layer_defn = defn,
+                                         lco = "WRITE_BBOX=YES",
+                                         overwrite = TRUE,
+                                         return_obj = TRUE))
+
+    expect_equal(lyr$getDriverShortName(), "Memory")
+    expect_equal(lyr$getFieldNames() |> length(), 5)
+
+    lyr$close()
 })
 
 test_that("edit data using SQL works on shapefile", {
@@ -157,6 +190,23 @@ test_that("edit data using SQL works on shapefile", {
                                          spatial_filter = bb_invalid)))
 
     deleteDataset(perims_shp)
+})
+
+test_that("ogr_execute_sql returns results set for SELECT", {
+    dsn <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+    sql <- "SELECT FID, * FROM mtbs_perims WHERE ig_year >= 2000 ORDER BY mtbs_perims.ig_year"
+    lyr <- ogr_execute_sql(dsn, sql)
+    expect_equal(lyr$getFeatureCount(), 40)
+    lyr$close()
+
+    sql <- "SELECT * FROM mtbs_perims"
+    lyr2 <- ogr_execute_sql(dsn, sql, spatial_filter = c(469685.97, 11442.45, 544069.63, 85508.15))
+    expect_equal(lyr2$getFeatureCount(), 40)
+    lyr2$close()
+
+    lyr3 <- ogr_execute_sql(dsn, sql)
+    expect_equal(lyr3$getFeatureCount(), 61)
+    lyr3$close()
 })
 
 test_that("GeoJSON layer and field names are correct", {

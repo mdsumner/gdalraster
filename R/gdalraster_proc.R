@@ -17,8 +17,7 @@ DEFAULT_NODATA <- list(
     "Byte" = 255, "Int8" = -128,
     "UInt16" = 65535, "Int16" = -32767,
     "UInt32" = 4294967293, "Int32" = -2147483647,
-    "Float32" = -99999.0, "Float64" = -99999.0
-)
+    "Float32" = -99999.0, "Float64" = -99999.0)
 
 
 #' List of default DEM processing options
@@ -26,34 +25,32 @@ DEFAULT_NODATA <- list(
 #' These values are used in `dem_proc()` as the default processing options:
 #' \preformatted{
 #'     list(
-#'          hillshade =    c("-z", "1", "-s", "1", "-az", "315",
-#'                           "-alt", "45", "-alg", "Horn",
-#'                           "-combined", "-compute_edges"),
-#'          slope =        c("-s", "1", "-alg", "Horn", "-compute_edges"),
-#'          aspect =       c("-alg", "Horn", "-compute_edges"),
-#'          color_relief = character(),
-#'          TRI =          c("-alg", "Riley", "-compute_edges"),
-#'          TPI =          c("-compute_edges"),
-#'          roughness =    c("-compute_edges")
-#'          )
+#'          "hillshade" =    c("-z", "1", "-s", "1", "-az", "315",
+#'                             "-alt", "45", "-alg", "Horn",
+#'                             "-combined", "-compute_edges"),
+#'          "slope" =        c("-s", "1", "-alg", "Horn", "-compute_edges"),
+#'          "aspect" =       c("-alg", "Horn", "-compute_edges"),
+#'          "color-relief" = character(),
+#'          "TRI" =          c("-alg", "Riley", "-compute_edges"),
+#'          "TPI" =          c("-compute_edges"),
+#'          "roughness" =    c("-compute_edges"))
 #' }
 #' @seealso
 #' [dem_proc()]
 #'
-#' \url{https://gdal.org/programs/gdaldem.html} for a description of all
+#' \url{https://gdal.org/en/stable/programs/gdaldem.html} for a description of all
 #' available command-line options for each processing mode
 #' @export
 DEFAULT_DEM_PROC <- list(
-    hillshade = c("-z", "1", "-s", "1", "-az", "315",
-                  "-alt", "45", "-alg", "Horn",
-                  "-combined", "-compute_edges"),
-    slope = c("-s", "1", "-alg", "Horn", "-compute_edges"),
-    aspect = c("-alg", "Horn", "-compute_edges"),
-    color_relief = character(),
-    TRI = c("-alg", "Riley", "-compute_edges"),
-    TPI = c("-compute_edges"),
-    roughness = c("-compute_edges")
-)
+    "hillshade" = c("-z", "1", "-s", "1", "-az", "315",
+                    "-alt", "45", "-alg", "Horn",
+                    "-combined", "-compute_edges"),
+    "slope" = c("-s", "1", "-alg", "Horn", "-compute_edges"),
+    "aspect" = c("-alg", "Horn", "-compute_edges"),
+    "color-relief" = character(),
+    "TRI" = c("-alg", "Riley", "-compute_edges"),
+    "TPI" = c("-compute_edges"),
+    "roughness" = c("-compute_edges"))
 
 
 .VRT_KERNEL_TEMPLATE <-
@@ -140,6 +137,7 @@ DEFAULT_DEM_PROC <- list(
 #'   $bbox = c(xmin, ymin, xmax, ymax)
 #'   $dim = c(xsize, ysize, nbands)
 #'   $srs = <projection as WKT2 string>
+#'   $datatype = <character vector of data type name by band>
 #' }
 #' The WKT version used for the projection string can be overridden by setting
 #' the `OSR_WKT_FORMAT` configuration option. See [srs_to_wkt()] for a list of
@@ -231,13 +229,15 @@ read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
     i <- 1
     readByteAsRaw <- ds$readByteAsRaw
     if (as_raw) {
-      ds$readByteAsRaw <- TRUE
-      dtype <- ds$getDataTypeName(bands[1L])
-      if (!dtype == "Byte") {
-        warning(sprintf("'as_raw' set to 'TRUE' only affects read for band type 'Byte',  current data type: '%s'", dtype))
-      }
+        ds$readByteAsRaw <- TRUE
+        dtype <- ds$getDataTypeName(bands[1L])
+        if (!dtype == "Byte") {
+            warning(sprintf("'as_raw' set to 'TRUE' only affects read for band type 'Byte', current data type: '%s'", dtype))
+        }
     }
+    dtype <- character()
     for (b in bands) {
+        dtype <- c(dtype, ds$getDataTypeName(b))
         if (as_list) {
             r[[i]] <- ds$read(b, xoff, yoff, xsize, ysize,
                               out_xsize, out_ysize)
@@ -250,19 +250,20 @@ read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
 
     ## restore the field, note that it may have had no impact
     ds$readByteAsRaw <- readByteAsRaw
+
     gt <- ds$getGeoTransform()
     ul_xy <- .apply_geotransform(gt, xoff, yoff)
     lr_xy <- .apply_geotransform(gt, (xoff + xsize), (yoff + ysize))
     bb <- c(ul_xy[1], lr_xy[2], lr_xy[1], ul_xy[2])
-
-    # gis: a list with the raster bbox, dimensions, projection
+    # gis: a list with the bbox, dimensions, projection, nbands, datatype
     wkt_fmt_config <- get_config_option("OSR_WKT_FORMAT")
     if (wkt_fmt_config == "")
         set_config_option("OSR_WKT_FORMAT", "WKT2")
     attr(r, "gis") <- list(type = "raster",
                            bbox = bb,
                            dim = c(out_xsize, out_ysize, length(bands)),
-                           srs = ds$getProjectionRef())
+                           srs = ds$getProjectionRef(),
+                           datatype = dtype)
     set_config_option("OSR_WKT_FORMAT", wkt_fmt_config)
 
     return(r)
@@ -342,7 +343,7 @@ read_ds <- function(ds, bands=NULL, xoff=0, yoff=0,
 #'
 #' ds_slp$close()
 #' ds_lcp$close()
-#' deleteDataset(slpp_file)
+#' \dontshow{deleteDataset(slpp_file)}
 #' @export
 rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
                              dtName=NULL, options=NULL, init=NULL,
@@ -413,7 +414,7 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' elements of the XML schema describe how the source data will be read, along
 #' with algorithms potentially applied and so forth. Documentation of the XML
 #' format for .vrt is at:
-#' \url{https://gdal.org/drivers/raster/vrt.html}.
+#' \url{https://gdal.org/en/stable/drivers/raster/vrt.html}.
 #'
 #' Since .vrt is a small plain-text file it is fast to write and requires
 #' little storage space. Read performance is not degraded for certain simple
@@ -529,8 +530,7 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' ds$res()
 #' ds$bbox()
 #' ds$close()
-#' vsi_unlink(vrt_file)
-#'
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #' ## clip
 #'
@@ -553,9 +553,8 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' bbox_from_wkt(bnd)
 #' ds_vrt$bbox()
 #' ds_vrt$res()
-#'
 #' ds_vrt$close()
-#' vsi_unlink(vrt_file)
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #' # src_align = FALSE
 #' vrt_file <- rasterToVRT(evt_file,
@@ -568,8 +567,8 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' ds_vrt_noalign$res()
 #'
 #' ds_vrt_noalign$close()
-#' vsi_unlink(vrt_file)
 #' ds_evt$close()
+#' \dontshow{vsi_unlink(vrt_file)}
 #'
 #'
 #' ## subset and pixel align two rasters
@@ -628,9 +627,9 @@ rasterFromRaster <- function(srcfile, dstfile, fmt=NULL, nbands=NULL,
 #' rs$get_sd()
 #'
 #' ds_b5vrt$close()
-#' vsi_unlink(vrt_file)
 #' ds_lcp$close()
 #' ds_b5$close()
+#' \dontshow{vsi_unlink(vrt_file)}
 #' @export
 rasterToVRT <- function(srcfile,
                         relativeToVRT = FALSE,
@@ -910,7 +909,7 @@ rasterToVRT <- function(srcfile,
 #' # min, max, mean, sd
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-#' deleteDataset(hi_file)
+#' \dontshow{deleteDataset(hi_file)}
 #'
 #'
 #' ## Calculate normalized difference vegetation index (NDVI)
@@ -931,7 +930,7 @@ rasterToVRT <- function(srcfile,
 #' ds <- new(GDALRaster, ndvi_file)
 #' ds$getStatistics(band=1, approx_ok=FALSE, force=TRUE)
 #' ds$close()
-#' deleteDataset(ndvi_file)
+#' \dontshow{deleteDataset(ndvi_file)}
 #'
 #'
 #' ## Reclassify a variable by rule set
@@ -986,8 +985,7 @@ rasterToVRT <- function(srcfile,
 #'
 #' # if LCP file format is needed:
 #' # createCopy("LCP", "storml_edited.lcp", tif_file)
-#'
-#' deleteDataset(tif_file)
+#' \dontshow{deleteDataset(tif_file)}
 #' @export
 calc <- function(expr,
                  rasterfiles,
@@ -1299,7 +1297,7 @@ calc <- function(expr,
 #' ds <- new(GDALRaster, cmb_file)
 #' ds$info()
 #' ds$close()
-#' deleteDataset(cmb_file)
+#' \dontshow{deleteDataset(cmb_file)}
 #' @export
 combine <- function(rasterfiles, var.names=NULL, bands=NULL,
                     dstfile=NULL, fmt=NULL, dtName="UInt32",
@@ -1367,7 +1365,7 @@ combine <- function(rasterfiles, var.names=NULL, bands=NULL,
 #' @description
 #' `dem_proc()` generates DEM derivatives from an input elevation raster. This
 #' function is a wrapper for the \command{gdaldem} command-line utility.
-#' See \url{https://gdal.org/programs/gdaldem.html} for details.
+#' See \url{https://gdal.org/en/stable/programs/gdaldem.html} for details.
 #'
 #' @param mode Character. Name of the DEM processing mode. One of hillshade,
 #' slope, aspect, color-relief, TRI, TPI or roughness.
@@ -1385,7 +1383,7 @@ combine <- function(rasterfiles, var.names=NULL, bands=NULL,
 #' @note
 #' Band 1 of the source elevation raster is read by default, but this can be
 #' changed by including a `-b` command-line argument in `mode_options`.
-#' See the \href{https://gdal.org/programs/gdaldem.html}{documentation for
+#' See the \href{https://gdal.org/en/stable/programs/gdaldem.html}{documentation for
 #' `gdaldem`} for a description of all available options for each processing
 #' mode.
 #'
@@ -1393,8 +1391,7 @@ combine <- function(rasterfiles, var.names=NULL, bands=NULL,
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #' slp_file <- file.path(tempdir(), "storml_slp.tif")
 #' dem_proc("slope", elev_file, slp_file)
-#'
-#' deleteDataset(slp_file)
+#' \dontshow{deleteDataset(slp_file)}
 #' @export
 dem_proc <- function(mode,
                      srcfile,
@@ -1426,7 +1423,7 @@ dem_proc <- function(mode,
 #' exist, otherwise it will try to append to an existing one.
 #' This function is a wrapper of `GDALPolygonize` in the GDAL Algorithms API.
 #' It provides essentially the same functionality as the `gdal_polygonize.py`
-#' command-line program (\url{https://gdal.org/programs/gdal_polygonize.html}).
+#' command-line program (\url{https://gdal.org/en/stable/programs/gdal_polygonize.html}).
 #'
 #' @details
 #' Polygon features will be created on the output layer, with polygon
@@ -1528,7 +1525,7 @@ dem_proc <- function(mode,
 #' polygonize(evt_file, dsn, layer, fld)
 #' set_config_option("SQLITE_USE_OGR_VFS", "")
 #' set_config_option("OGR_SQLITE_JOURNAL", "")
-#' deleteDataset(dsn)
+#' \dontshow{deleteDataset(dsn)}
 #' @export
 polygonize <- function(raster_file,
                        out_dsn,
@@ -1558,8 +1555,8 @@ polygonize <- function(raster_file,
         mask_file <- ""
     }
 
-    if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
-        if (.ogr_ds_exists(out_dsn) && !overwrite) {
+    if (!ogr_ds_exists(out_dsn, with_update = TRUE)) {
+        if (ogr_ds_exists(out_dsn) && !overwrite) {
             msg <- "'out_dsn' exists but cannot be updated.\n"
             msg <- paste0(msg, "You may need to remove it first, ")
             msg <- paste0(msg, "or use 'overwrite = TRUE'.")
@@ -1567,14 +1564,14 @@ polygonize <- function(raster_file,
         }
     }
 
-    if (.ogr_ds_exists(out_dsn, with_update=TRUE) && overwrite) {
+    if (ogr_ds_exists(out_dsn, with_update = TRUE) && overwrite) {
         deleted <- FALSE
-        if (.ogr_layer_exists(out_dsn, out_layer)) {
-            deleted <- .ogr_layer_delete(out_dsn, out_layer)
+        if (ogr_layer_exists(out_dsn, out_layer)) {
+            deleted <- ogr_layer_delete(out_dsn, out_layer)
         }
         if (!deleted) {
-            if (.ogr_ds_layer_count(out_dsn) == 1) {
-                if (utils::file_test("-f", out_dsn))
+            if (ogr_ds_layer_count(out_dsn) == 1) {
+                if (vsi_stat(out_dsn, "type") == "file")
                     deleted <- deleteDataset(out_dsn)
             }
         }
@@ -1583,33 +1580,35 @@ polygonize <- function(raster_file,
         }
     }
 
-    if (.ogr_layer_exists(out_dsn, out_layer)) {
+    if (ogr_layer_exists(out_dsn, out_layer)) {
         if (!is.null(lco)) {
             warning("'lco' ignored since the layer already exists",
                     call. = FALSE)
         }
     }
 
-    if (!.ogr_ds_exists(out_dsn, with_update=TRUE)) {
+    if (!ogr_ds_exists(out_dsn, with_update = TRUE)) {
         if (is.null(out_fmt))
             out_fmt <- .getOGRformat(out_dsn)
         if (is.null(out_fmt)) {
             message("format driver cannot be determined for: ", out_dsn)
             stop("specify 'out_fmt' to create a new dataset", call. = FALSE)
         }
-        if (!.create_ogr(out_fmt, out_dsn, 0, 0, 0, "Unknown",
-                         out_layer, "POLYGON", srs, fld_name, "OFTInteger",
-                         dsco, lco)) {
+        if (!ogr_ds_create(out_fmt, out_dsn, out_layer, geom_type = "POLYGON",
+                           srs = srs, fld_name = fld_name,
+                           fld_type = "OFTInteger", dsco= dsco, lco = lco)) {
+
             stop("failed to create 'out_dsn'", call. = FALSE)
         }
     }
 
-    if (!.ogr_layer_exists(out_dsn, out_layer)) {
-        res <- .ogr_layer_create(out_dsn, out_layer, NULL, "POLYGON", srs, lco)
+    if (!ogr_layer_exists(out_dsn, out_layer)) {
+        res <- ogr_layer_create(out_dsn, out_layer, NULL, "POLYGON", srs, lco)
         if (!res)
             stop("failed to create 'out_layer'", call. = FALSE)
         if (fld_name != "") {
-            res <- .ogr_field_create(out_dsn, out_layer, fld_name, "OFTInteger")
+            res <- ogr_field_create(out_dsn, out_layer, fld_name = fld_name,
+                                    fld_type = "OFTInteger")
             if (!res)
                 stop("failed to create the output field", call. = FALSE)
         }
@@ -1628,7 +1627,7 @@ polygonize <- function(raster_file,
 #' the band(s) of a raster dataset. Vectors are read from any GDAL
 #' OGR-supported vector format.
 #' This function is a wrapper for the \command{gdal_rasterize} command-line
-#' utility (\url{https://gdal.org/programs/gdal_rasterize.html}).
+#' utility (\url{https://gdal.org/en/stable/programs/gdal_rasterize.html}).
 #'
 #' @param src_dsn Data source name for the input vector layer (filename or
 #' connection string).
@@ -1720,7 +1719,7 @@ polygonize <- function(raster_file,
 #'             main="YNP Fires 1984-2022 - Most Recent Burn Year")
 #'
 #' ds$close()
-#' deleteDataset(out_file)
+#' \dontshow{deleteDataset(out_file)}
 #' @export
 rasterize <- function(src_dsn,
                       dstfile,

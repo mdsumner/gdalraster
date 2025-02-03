@@ -2,19 +2,23 @@
 % Please edit documentation in R/geom.R
 \name{g_name}
 \alias{g_name}
-\title{Extract the geometry type name from a WKT geometry}
+\title{Extract geometry type names from WKB/WKT geometries}
 \usage{
-g_name(wkt)
+g_name(geom, quiet = FALSE)
 }
 \arguments{
-\item{wkt}{Character. OGC WKT string for a simple feature geometry.}
+\item{geom}{Either a raw vector of WKB or list of raw vectors, or a
+character vector containing one or more WKT strings.}
+
+\item{quiet}{Logical, \code{TRUE} to suppress warnings. Defaults to \code{FALSE}.}
 }
 \value{
-WKT name for this geometry type.
+character vector of the same length as the number of input
+geometries in \code{geom}, containing the WKT names for the corresponding
+geometries.
 }
 \description{
-\code{g_name()} returns the name for this geometry type in well known text
-format.
+\code{g_name()} returns geometry type names in well known text format.
 }
 \examples{
 elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")

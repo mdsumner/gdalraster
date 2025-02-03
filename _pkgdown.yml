@@ -2,16 +2,19 @@ url: https://usdaforestservice.github.io/gdalraster/
 
 template:
   bootstrap: 5
+  light-switch: true
   bslib:
     preset: bootstrap
 
 home:
-  title: R Bindings to the GDAL Raster API
+  title: R Bindings to GDAL
   sidebar:
     structure: [dev, links, community, authors, license, citation]
   links:
   - text: Discussions
     href: https://github.com/USDAForestService/gdalraster/discussions
+  - text: Development practices
+    href: https://usdaforestservice.github.io/gdalraster/CONTRIBUTING.html#development-practices
 
 reference:
 - title: Package overview
@@ -20,8 +23,9 @@ reference:
 
 - title: Exposed C++ classes
 - contents:
-  - CmbTable-class
   - GDALRaster-class
+  - GDALVector-class
+  - CmbTable-class
   - RunningStats-class
   - VSIFile-class
 
@@ -35,6 +39,7 @@ reference:
   - translate
 - subtitle: Virtual raster
 - contents:
+  - autoCreateWarpedVRT
   - buildVRT
   - rasterToVRT
 - subtitle: Algorithms
@@ -69,6 +74,8 @@ reference:
 - subtitle: Spatial reference systems
 - contents:
   - epsg_to_wkt
+  - srs_find_epsg
+  - srs_get_name
   - srs_is_geographic
   - srs_is_projected
   - srs_is_same
@@ -89,8 +96,11 @@ reference:
   - g_is_empty
   - g_is_valid
   - g_length
+  - g_make_valid
   - g_name
+  - g_summary
   - g_transform
+  - g_wk2wk
   - geos_version
   - has_geos
 - subtitle: Data management
@@ -99,6 +109,8 @@ reference:
   - bandCopyWholeRaster
   - copyDatasetFiles
   - deleteDataset
+  - identifyDriver
+  - inspectDataset
   - renameDataset
 - subtitle: OGR vector utilities
 - contents:
@@ -124,15 +136,23 @@ reference:
   - ogr_def_field
   - ogr_def_geom_field
   - ogr_def_layer
+  - ogr_proc
+  - plot.OGRFeature
+  - plot.OGRFeatureSet
+  - print.OGRFeature
+  - print.OGRFeatureSet
 - subtitle: Virtual file systems
 - contents:
   - vsi_clear_path_options
   - vsi_copy_file
   - vsi_curl_clear_cache
+  - vsi_get_actual_url
   - vsi_get_disk_free_space
   - vsi_get_file_metadata
   - vsi_get_fs_options
   - vsi_get_fs_prefixes
+  - vsi_get_signed_url
+  - vsi_is_local
   - vsi_mkdir
   - vsi_read_dir
   - vsi_rename
@@ -171,6 +191,10 @@ reference:
   - SEEK_SET
   - SEEK_CUR
   - SEEK_END
+
+figures:
+  dev: png
+  bg: white
 
 authors:
   before: "<strong>GDAL is by</strong>: Frank Warmerdam, Even Rouault and others (<a href=\"https://github.com/OSGeo/gdal/graphs/contributors\" class=\"external-link\">GDAL contributors</a>)"

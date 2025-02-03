@@ -33,7 +33,6 @@
 #' $is_nullable: optional NOT NULL constraint (logical scalar)
 #' $is_unique  : optional UNIQUE constraint (logical scalar)
 #' $default    : optional default value as character string
-#' $is_ignored : optionally ignored when retrieving features (logical scalar)
 #' $is_geom    : FALSE (the default) for attribute fields
 #' ```
 #'
@@ -67,7 +66,6 @@
 #' $type       : geom type ("Point", "Polygon", etc.)
 #' $srs        : optional spatial reference as WKT string
 #' $is_nullable: optional NOT NULL constraint (logical scalar)
-#' $is_ignored : optionally ignored when retrieving features (logical scalar)
 #' $is_geom    : TRUE (required) for geometry fields
 #' ```
 #'
@@ -78,7 +76,7 @@
 #' Common types include: `Point`, `LineString`, `Polygon`, `MultiPoint`,
 #' `MultiLineString`, `MultiPolygon`. See the GDAL documentation for a list
 #' of all supported geometry types:\cr
-#' \url{https://gdal.org/api/vector_c_api.html#_CPPv418OGRwkbGeometryType}
+#' \url{https://gdal.org/en/stable/api/vector_c_api.html#_CPPv418OGRwkbGeometryType}
 #'
 #' Format drivers may or may not support not-null constraints on attribute and
 #' geometry fields. If they support creating fields with not-null constraints,
@@ -97,8 +95,6 @@
 #' after the decimal point.
 #' @param is_nullable Optional NOT NULL field constraint (logical scalar).
 #' Defaults to `TRUE`.
-#' @param is_ignored Whether field is ignored when retrieving features (logical
-#' scalar). Defaults to `FALSE`.
 #' @param is_unique Optional UNIQUE constraint on the field (logical scalar).
 #' Defaults to `FALSE`.
 #' @param default_value Optional default value for the field as a character
@@ -114,8 +110,8 @@
 #' The feature id (FID) is a special property of a feature and not treated as
 #' an attribute of the feature. Additional information is given in the GDAL
 #' documentation for the
-#' [OGR SQL](https://gdal.org/user/ogr_sql_dialect.html#feature-id-fid) and
-#' [SQLite](https://gdal.org/user/sql_sqlite_dialect.html#feature-id-fid)
+#' [OGR SQL](https://gdal.org/en/stable/user/ogr_sql_dialect.html#feature-id-fid) and
+#' [SQLite](https://gdal.org/en/stable/user/sql_sqlite_dialect.html#feature-id-fid)
 #' SQL dialects. Implications for SQL statements and result sets may depend
 #' on the dialect used.
 #'
@@ -154,8 +150,7 @@
 #' @export
 ogr_def_field <- function(fld_type, fld_subtype = NULL, fld_width = NULL,
                           fld_precision = NULL, is_nullable = NULL,
-                          is_unique = NULL, is_ignored = NULL,
-                          default_value = NULL) {
+                          is_unique = NULL, default_value = NULL) {
 
     defn <- list()
 
@@ -200,13 +195,6 @@ ogr_def_field <- function(fld_type, fld_subtype = NULL, fld_width = NULL,
             defn$is_unique <- is_unique
     }
 
-    if (!is.null(is_ignored)) {
-        if (!(is.logical(is_ignored) && length(is_ignored) == 1))
-            stop("'is_ignored' must be a logical scalar", call. = FALSE)
-        else
-            defn$is_ignored <- is_ignored
-    }
-
     if (!is.null(default_value)) {
         if (!(is.character(default_value) && length(default_value) == 1))
             stop("'default_value' must be a length-1 character vector",
@@ -222,8 +210,7 @@ ogr_def_field <- function(fld_type, fld_subtype = NULL, fld_width = NULL,
 
 #' @name ogr_define
 #' @export
-ogr_def_geom_field <- function(geom_type, srs = NULL, is_nullable = NULL,
-                               is_ignored = NULL) {
+ogr_def_geom_field <- function(geom_type, srs = NULL, is_nullable = NULL) {
 
     defn <- list()
 
@@ -232,25 +219,20 @@ ogr_def_geom_field <- function(geom_type, srs = NULL, is_nullable = NULL,
     else
         defn$type <- geom_type
 
-    if (!is.null(srs)) {
-        if (!(is.character(srs) && length(srs) == 1))
-            stop("'srs' must be a length-1 character vector", call. = FALSE)
-        else
-            defn$srs <- srs
-    }
+    if (is.null(srs))
+        srs <- ""
+
+    if (!(is.character(srs) && length(srs) == 1))
+        stop("'srs' must be a length-1 character vector", call. = FALSE)
+    else
+        defn$srs <- srs
+
 
     if (!is.null(is_nullable)) {
         if (!(is.logical(is_nullable) && length(is_nullable) == 1))
             stop("'is_nullable' must be a logical scalar", call. = FALSE)
         else
             defn$is_nullable <- is_nullable
-    }
-
-    if (!is.null(is_ignored)) {
-        if (!(is.logical(is_ignored) && length(is_ignored) == 1))
-            stop("'is_ignored' must be a logical scalar", call. = FALSE)
-        else
-            defn$is_ignored <- is_ignored
     }
 
     defn$is_geom <- TRUE
@@ -260,9 +242,12 @@ ogr_def_geom_field <- function(geom_type, srs = NULL, is_nullable = NULL,
 
 #' @name ogr_define
 #' @export
-ogr_def_layer <- function(geom_type, geom_fld_name = "geom", srs = NULL) {
+ogr_def_layer <- function(geom_type, geom_fld_name = "geometry", srs = NULL) {
 
     defn <- list()
+
+    if (is.null(srs))
+        srs <- ""
 
     if (!(is.character(geom_fld_name) && length(geom_fld_name) == 1))
         stop("'geom_fld_name' must be a length-1 character vector",

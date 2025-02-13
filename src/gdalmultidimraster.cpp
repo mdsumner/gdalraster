@@ -137,11 +137,17 @@ void GDALMultiDimRaster::open(bool read_only) {
 
 std::vector<std::string> GDALMultiDimRaster::getDimensionNames(std::string variable) const {
   GDALMDArrayH hVar = GDALGroupOpenMDArray(hRootGroup, variable.c_str(), NULL);
-
+  if (!hVar) {
+    Rcpp::stop("could not obtain variable"); 
+  }
   GDALDimensionH* dims; 
   size_t nDimCount;
   size_t i;
   dims = GDALMDArrayGetDimensions(hVar, &nDimCount);
+  if (!dims) {
+    GDALMDArrayRelease(hVar);
+    Rcpp::stop("could not obtain dimensions"); 
+  }
   std::vector<std::string> dimnames; 
   for( i = 0; i < nDimCount; i++ )
   {
@@ -168,9 +174,13 @@ std::vector<size_t> GDALMultiDimRaster::getDimensionSizes(std::string variable) 
 }
 
 std::vector<double> GDALMultiDimRaster::getCoordinateValues(std::string variable) const {
+
+  GDALMDArrayH hVar = GDALGroupOpenMDArray(hRootGroup, variable.c_str(), NULL);
+  if (!hVar) {
+    Rcpp::stop("could not obtain variable"); 
+  }
   double* padfValues;
   GDALExtendedDataTypeH hDT;
-  GDALMDArrayH hVar = GDALGroupOpenMDArray(hRootGroup, variable.c_str(), NULL);
   GDALDimensionH* dims;
   size_t nDimCount;
   size_t size;

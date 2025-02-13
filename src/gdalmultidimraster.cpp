@@ -361,30 +361,79 @@ void GDALMultiDimRaster::checkAccess_(GDALAccess access_needed) const {
     Rcpp::stop("dataset is read-only");
 }
 
-// GDALGroup* GDALMultiDimRaster::getRootGroup() const {
-//   if (!m_hDataset) {
-//     throw std::runtime_error("Dataset not open");
-//   }
-//   return m_hDataset->GetRootGroup();
-// }
 
 
+std::vector<double> GDALMultiDimRaster::getViewValues(std::string variable, std::string view) const {
+  
+  std::vector<double> one = {NA_REAL}; 
+  if (!m_hDataset) {
+    return one;
+  }
+  
+  if (!hRootGroup) {
+    return one;
+  }
 
-// GDALMDArray* GDALMultiDimRaster::getArray(const std::string& arrayName) const {
-//   if (!dataset) {
-//     throw std::runtime_error("Dataset not open");
-//   }
-//   
-//   auto rootGroup = getRootGroup();
-//   if (!rootGroup) {
-//     throw std::runtime_error("Could not get root group");
-//   }
-//   
-//   return rootGroup->OpenMDArray(arrayName.c_str());
-// }
-
-
-
+  
+  GDALMDArrayH hWholeVar = GDALGroupOpenMDArray(hRootGroup, variable.c_str(), nullptr); 
+  if (!hWholeVar) {
+    return one;
+  }
+  GDALMDArrayH hVar= GDALMDArrayGetView(hWholeVar, view.c_str()); 
+  if (!hVar) {
+    GDALMDArrayRelease(hVar);
+    return one;
+  }
+  size_t nDimCount;
+  GDALDimensionH* dims;
+  size_t nValues;
+  size_t i; 
+  size_t* panCount;
+  GUInt64* panOffset;
+  double* padfValues;
+  GDALExtendedDataTypeH hDT;
+  
+  dims = GDALMDArrayGetDimensions(hVar, &nDimCount);
+  panCount = (size_t*)CPLMalloc(nDimCount * sizeof(size_t));
+  nValues = 1;
+  for( i = 0; i < nDimCount; i++ )
+  {
+    panCount[i] = GDALDimensionGetSize(dims[i]);
+    nValues *= panCount[i];
+  }
+  GDALReleaseDimensions(dims, nDimCount);
+  panOffset = (GUInt64*)CPLCalloc(nDimCount, sizeof(GUInt64));
+  
+  padfValues = (double*)VSIMalloc2(nValues, sizeof(double));
+  if( !padfValues )
+  {
+    GDALMDArrayRelease(hVar);
+    CPLFree(panOffset);
+    CPLFree(panCount);
+    return one; 
+  }
+  std::vector<double> values(nValues);
+  hDT = GDALExtendedDataTypeCreate(GDT_Float64);
+  GDALMDArrayRead(hVar,
+                  panOffset,
+                  panCount,
+                  NULL, /* step: defaults to 1,1,1 */
+                  NULL, /* stride: default to row-major convention */
+                  hDT,
+                  padfValues,
+                  NULL, /* array start. Omitted */
+                  0 /* array size in bytes. Omitted */);
+    
+  for (int ii = 0; ii < nValues; ii++) {
+    values[ii] = padfValues[ii]; 
+  }
+  GDALExtendedDataTypeRelease(hDT);
+  GDALMDArrayRelease(hVar);
+  CPLFree(panOffset);
+  CPLFree(panCount);
+  VSIFree(padfValues);
+  return values; 
+}
 
 // ****************************************************************************
 
@@ -421,6 +470,9 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   "Fetch files forming dataset")
   .const_method("getArrayNames", &GDALMultiDimRaster::getArrayNames,
   "Fetch names of arrays in the root group")
+  
+  .const_method("getViewValues", &GDALMultiDimRaster::getViewValues,
+  "Read values (as doubles) from multidim dataset by name and view spec 'getViewValues(<varname>, <viewspec>)'")
   
   .const_method("getDimensionNames", &GDALMultiDimRaster::getDimensionNames,
   "Fetch names of dimensions of the given variable 'getDimensionNames(<varname>)'")

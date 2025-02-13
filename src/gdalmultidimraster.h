@@ -44,11 +44,15 @@ public:
   std::vector<std::string> getDimensionNames(std::string variable) const;
   std::vector<size_t> getDimensionSizes(std::string variable) const;
   
+  std::vector<double> getViewValues(std::string variable, std::string view) const;
+  
   // methods for internal use not exported to R
   void checkAccess_(GDALAccess access_needed) const;
-  GDALGroup* getRootGroup() const;
-  GDALMDArray* getArray(const std::string& arrayName) const;
+//GDALGroupH getRootGroup() const;
+// GDALMDArrayH getArray(const std::string& arrayName) const;
+//  GDALMDArrayH getView(const std::string& arrayName, const std::string& arrayView) const;
   GDALGroupH hRootGroup;
+
 
   std::vector<double> getCoordinateValues(std::string variable) const; 
   

@@ -60,7 +60,9 @@ GDALMultiDimRaster::GDALMultiDimRaster(Rcpp::CharacterVector filename, bool read
 std::string GDALMultiDimRaster::getDescription() const {
   checkAccess_(GA_ReadOnly);
   std::string desc;
-  
+  if (m_hDataset == nullptr) {
+    Rcpp::stop("dataset is not open\n"); 
+  }
   desc = GDALGetDescription(m_hDataset);
 
   

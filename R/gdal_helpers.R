@@ -1,6 +1,33 @@
 # Miscellaneous helper functions for working with the GDAL API
 # Chris Toney <chris.toney at usda.gov>
 
+#' @noRd
+.get_crs_name <- function(object) {
+    # name of form "<srs name> [(EPSG:####[, confidence ##])]"
+    # include EPSG code if confidence > 50
+    # include the confidence value if < 100
+
+    crs <- ""
+    if (is(object, "Rcpp_GDALRaster")) {
+        crs <- object$getProjection()
+    } else if (is(object, "Rcpp_GDALVector")) {
+        crs <- object$getSpatialRef()
+    }
+    crs_name <- srs_get_name(crs)
+    epsg <- srs_find_epsg(crs, all_matches = TRUE)
+    if (!is.null(epsg)) {
+        if (nrow(epsg) >= 1 && epsg$confidence[1] > 50) {
+            crs_name <- paste0(crs_name, " (", epsg$authority_name[1], ":",
+                               epsg$authority_code[1])
+            if (epsg$confidence[1] < 100) {
+                crs_name <- paste0(crs_name, ", confidence ",
+                                   epsg$confidence[1])
+            }
+            crs_name <- paste0(crs_name, ")")
+        }
+    }
+}
+
 #' Create/append to a potentially Seek-Optimized ZIP file (SOZip)
 #'
 #' `addFilesInZip()` will create new or open existing ZIP file, and
@@ -356,7 +383,8 @@ apply_geotransform <- function(col_row, gt) {
     else if (is.vector(col_row) && length(col_row) != 2)
         stop("'col_row' as vector must have length 2", call. = FALSE)
 
-    if ((is.vector(col_row) || is.matrix(col_row)) && !is.numeric(col_row))
+    # allow for c(NA, NA) which is logical type, NA input should return NA out
+    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy) && !is.logical(xy))
         stop("'col_row' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {
@@ -427,7 +455,8 @@ get_pixel_line <- function(xy, gt) {
     else if (is.vector(xy) && length(xy) != 2)
         stop("'xy' as vector must have length 2", call. = FALSE)
 
-    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy))
+    # allow for c(NA, NA) which is logical type, NA input should return NA out
+    if ((is.vector(xy) || is.matrix(xy)) && !is.numeric(xy) && !is.logical(xy))
         stop("'xy' must be numeric", call. = FALSE)
 
     if (is(gt, "Rcpp_GDALRaster")) {

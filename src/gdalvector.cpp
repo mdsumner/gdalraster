@@ -23,7 +23,14 @@
 #include "ogr_util.h"
 
 
-GDALVector::GDALVector() {}
+GDALVector::GDALVector() :
+            m_layer_name(""),
+            m_dialect(""),
+            m_open_options(Rcpp::CharacterVector::create()),
+            m_spatial_filter(""),
+            m_hDataset(nullptr),
+            m_eAccess(GA_ReadOnly),
+            m_hLayer(nullptr) {}
 
 GDALVector::GDALVector(Rcpp::CharacterVector dsn) :
 
@@ -138,6 +145,11 @@ void GDALVector::open(bool read_only) {
         OGR_L_ResetReading(m_hLayer);
     }
 
+    if (m_layer_name == "") {
+        // default layer first by index was opened
+        m_layer_name = OGR_L_GetName(m_hLayer);
+    }
+
     if (hGeom_filter != nullptr)
         OGR_G_DestroyGeometry(hGeom_filter);
 }
@@ -170,6 +182,26 @@ Rcpp::CharacterVector GDALVector::getFileList() const {
     else {
         CSLDestroy(papszFiles);
         return "";
+    }
+}
+
+void GDALVector::info() const {
+    checkAccess_(GA_ReadOnly);
+
+    if (m_is_sql) {
+        Rcpp::Rcout << "DSN: " << m_dsn << std::endl;
+        Rcpp::Rcout << "layer: \"" << m_layer_name << "\"" << std::endl;
+    }
+    else {
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)
+        Rcpp::Rcout << ogrinfo(m_dsn, Rcpp::wrap(m_layer_name),
+                               Rcpp::CharacterVector::create("-so", "-nomd"),
+                               m_open_options, true, false);
+#else
+        Rcpp::Rcout << "ogrinfo() requires GDAL >= 3.7" << std::endl;
+        Rcpp::Rcout << "DSN: " << m_dsn << std::endl;
+        Rcpp::Rcout << "layer: " << m_layer_name << std::endl;
+#endif
     }
 }
 
@@ -1340,12 +1372,10 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
 #endif
                     if (nWKBSize) {
                         Rcpp::RawVector wkb(nWKBSize);
-
-                        if (EQUAL(this->returnGeomAs.c_str(), "WKB"))
-                            OGR_G_ExportToWkb(hGeom, eOrder, &wkb[0]);
-                        else if (EQUAL(this->returnGeomAs.c_str(), "WKB_ISO"))
+                        if (EQUAL(this->returnGeomAs.c_str(), "WKB_ISO"))
                             OGR_G_ExportToIsoWkb(hGeom, eOrder, &wkb[0]);
-
+                        else
+                            OGR_G_ExportToWkb(hGeom, eOrder, &wkb[0]);
                         col[row_num] = wkb;
                     }
                     else {
@@ -1359,12 +1389,11 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
                         col[row_num] = NA_STRING;
                     }
                     else {
-                        char *pszWKT;
-                        if (EQUAL(this->returnGeomAs.c_str(), "WKT"))
-                            OGR_G_ExportToWkt(hGeom, &pszWKT);
-                        else if (EQUAL(this->returnGeomAs.c_str(), "WKT_ISO"))
+                        char *pszWKT = nullptr;
+                        if (EQUAL(this->returnGeomAs.c_str(), "WKT_ISO"))
                             OGR_G_ExportToIsoWkt(hGeom, &pszWKT);
-
+                        else
+                            OGR_G_ExportToWkt(hGeom, &pszWKT);
                         col[row_num] = pszWKT;
                         CPLFree(pszWKT);
                     }
@@ -1385,7 +1414,7 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
                                 {"DISPLAY_GEOMETRY=SUMMARY", nullptr};
 
                         CPLString s = poGeom->dumpReadable(nullptr,
-                                options.data());
+                                                           options.data());
 
                         s.replaceAll('\n', ' ');
                         col[row_num] = s.Trim();
@@ -1411,14 +1440,21 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
                   if (hGeom != nullptr) {
                     OGREnvelope  envelope;
                     OGR_G_GetEnvelope(hGeom, &envelope);
-                    col[row_num] = Rcpp::NumericVector::create(envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+                    col[row_num] = Rcpp::NumericVector::create(envelope.MinX,
+                                                               envelope.MinY,
+                                                               envelope.MaxX,
+                                                               envelope.MaxY);
                     if (destroy_geom) {
                       OGR_G_DestroyGeometry(hGeom);
                       destroy_geom = false;
                     }
                   } else {
-                    // do.call(rbind, x$geom) to get a table of bbox, so we use NA not NULL
-                    col[row_num] = Rcpp::NumericVector::create(NA_REAL, NA_REAL, NA_REAL, NA_REAL);
+                    // do.call(rbind, x$geom) to get a table of bbox,
+                    // so we use NA not NULL
+                    col[row_num] = Rcpp::NumericVector::create(NA_REAL,
+                                                               NA_REAL,
+                                                               NA_REAL,
+                                                               NA_REAL);
                   }
 
                 }
@@ -3136,6 +3172,8 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
 RCPP_MODULE(mod_GDALVector) {
     Rcpp::class_<GDALVector>("GDALVector")
 
+    .constructor
+        ("Default constructor, no dataset opened")
     .constructor<Rcpp::CharacterVector>
         ("Usage: new(GDALVector, dsn)")
     .constructor<Rcpp::CharacterVector, std::string>
@@ -3174,6 +3212,8 @@ RCPP_MODULE(mod_GDALVector) {
         "(Re-)open the dataset on the existing DSN and layer")
     .const_method("getFileList", &GDALVector::getFileList,
         "Fetch files forming dataset")
+    .const_method("info", &GDALVector::info,
+        "Print information about the vector layer")
     .const_method("getDriverShortName", &GDALVector::getDriverShortName,
          "Return the short name of the format driver")
     .const_method("getDriverLongName", &GDALVector::getDriverLongName,

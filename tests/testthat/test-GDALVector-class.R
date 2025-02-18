@@ -60,7 +60,7 @@ test_that("class basic interface works", {
     lyr <- new(GDALVector, dsn, "mtbs_perims")
 
     expect_true(is(lyr, "Rcpp_GDALVector"))
-    expect_output(str(lyr))
+    expect_output(show(lyr))
 
     expect_equal(lyr$getDriverShortName(), "GPKG")
     expect_equal(lyr$getDriverLongName(), "GeoPackage")
@@ -1067,4 +1067,26 @@ test_that("field domain specifications are returned correctly", {
 
     lyr$close()
     deleteDataset(dsn)
+})
+
+test_that("info() prints output to the console", {
+    f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn)
+
+    lyr <- new(GDALVector, dsn, "mtbs_perims")
+    expect_output(lyr$info())
+    lyr$close()
+
+    lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
+    expect_output(lyr$info())
+    lyr$close()
+
+    # default layer first by index
+    lyr <- new(GDALVector, dsn)
+    expect_no_warning(lyr$info())
+    expect_output(lyr$info())
+    lyr$close()
+
+    unlink(dsn)
 })

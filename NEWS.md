@@ -1,4 +1,30 @@
-# gdalraster 1.12.0.9100 (dev)
+# gdalraster 1.12.0.9181 (dev)
+
+* (internal) implement `create()`, `createCopy()`, `autoCreateWarpedVRT()` as object factories (2025-02-14)
+
+* add S4 `show()` methods for the Rcpp exposed classes (2025-02-12)
+
+* add `pixel_extract()`: extract pixel values at geospatial point locations (#570) (2025-02-12)
+
+* `g_create()`: support input points with Z/M; support output of multiple POINT geoms from multiple xy input (optionally, instead of a single MULTIPOINT) (2025-02-09)
+
+* `transform_xy()` / `inv_project()`: support input points with z vertices (three column xyz) or time values (four column xyzt); optionally accept input of point geometries as character vector of WKT strings, WKB raw vector, or list of raw vectors (2025-02-09)
+
+* add `g_coords()`: extract coordinate values from geometries (2025-02-09)
+
+* improve and expand bindings to a subset of the GDAL Spatial Reference System API (#584) (2025-02-08)
+
+* add helper functions for GDAL raster data types (#593) (2025-02-08)
+
+* handle `NA` in the input coordinates to `transform_xy()`, `inv_project()`, `transform_bounds()`, `apply_geotransform()` and `get_pixel_line()` (#592) (2025-02-07)
+
+* add `GDALVector::info()`: print information about the vector layer to the console (2025-02-05)
+
+* improve `GDALRaster::bbox()` and `GDALRaster::res()` to handle south-up / rotated raster, with related fixes in `read_ds()` and `plot_raster()` (#569) (2025-02-03)
+
+* update the geometry interface to support the vector API in gdalraster 2.0, with changes to existing functions and add `g_wk2wk()`, `g_create()`, `g_add_geom()`, `transform_bounds()` (#572) (2025-02-03)
+
+* (internal) fix uninitialized variable in class `GDALVector`, compiler warning on macos (2025-02-03)
 
 * C++17 is now a system requirement (2025-02-02)
 
@@ -118,7 +144,7 @@
 
 * add `vsi_get_signed_url()`: return a signed URL for a supplied VSI filename, wrapper of `VSIGetSignedURL()` in the GDAL API (2024-06-20)
 
-* Documentation: additions to the section on Azure (/vsiaz/) in [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html); update [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html) to use argument `return_obj` with `create()` and `createCopy()`; add the `-srcband` and `-dstband` command-line options in the documentation for `warp()`; add [Development practices](https://usdaforestservice.github.io/gdalraster/CONTRIBUTING.html#development-practices) in CONTRIBUTING.md; add the OpenSSF best practices badge in README; add `fig.alt` text to articles for web accessibility; add the OpenSSF Scorecard badge in README; add example in `ogr2ogr()` for dissolve features based on an attribute value; code that cleans up temp files in the examples is wrapped in `\dontshow{}`
+* Documentation: additions to the section on Azure (/vsiaz/) in [GDAL Config Quick Reference](https://usdaforestservice.github.io/gdalraster/articles/gdal-config-quick-ref.html); update [Raster API Tutorial](https://usdaforestservice.github.io/gdalraster/articles/raster-api-tutorial.html) to use argument `return_obj` with `create()` and `createCopy()`; add the `-srcband` and `-dstband` command-line options in the documentation for `warp()`; add [Development practices](https://usdaforestservice.github.io/gdalraster/CONTRIBUTING.html#development-practices) in CONTRIBUTING.md; add the OpenSSF best practices badge in README; add `fig.alt` text to articles for web accessibility; add the OpenSSF Scorecard badge in README; add example in `ogr2ogr()` for dissolve features based on an attribute value; code that cleans up temp files in the examples is wrapped in `\dontshow{}`; minor updates for `g_transform()`
 
 # gdalraster 1.12.0
 

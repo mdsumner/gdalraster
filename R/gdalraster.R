@@ -288,15 +288,17 @@
 #'
 #' \code{$bbox()}\cr
 #' Returns a numeric vector of length four containing the bounding box
-#' (xmin, ymin, xmax, ymax) assuming this is a north-up raster.
+#' (xmin, ymin, xmax, ymax).
 #'
 #' \code{$res()}\cr
 #' Returns a numeric vector of length two containing the resolution
-#' (pixel width, pixel height as positive values) assuming this is a north-up
-#' raster.
+#' (pixel width, pixel height as positive values) for a non-rotated raster.
+#' A warning is emitted and `NA` values returned if the raster has a rotated
+#' geotransform (see `$getGeoTransform()` above).
 #'
 #' \code{$dim()}\cr
-#' Returns an integer vector of length three containing the raster dimensions.
+#' Returns an integer vector of length three containing the raster dimensions
+#' (xsize, ysize, number of bands).
 #' Equivalent to:
 #' ```
 #' c(ds$getRasterXSize(), ds$getRasterYSize(), ds$getRasterCount())
@@ -816,6 +818,7 @@
 #' @examples
 #' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
 #' ds <- new(GDALRaster, lcp_file)
+#' ds
 #'
 #' ## print information about the dataset to the console
 #' ds$info()
@@ -924,3 +927,17 @@
 NULL
 
 Rcpp::loadModule("mod_GDALRaster", TRUE)
+
+setMethod("show", "Rcpp_GDALRaster", function(object) {
+    crs_name <- .get_crs_name(object)
+
+    cat("C++ object of class GDALRaster\n",
+        " Driver : ", object$getDriverLongName()," (", object$getDriverShortName(), ")\n",
+        " DSN    : ", object$getDescription(band = 0), "\n",
+        " Dim    : ", object$dim() |> paste(collapse = ", "), "\n",
+        " CRS    : ", crs_name, "\n",
+        " Res    : ", object$res() |> paste(collapse = ", "), "\n",
+        " Bbox   : ", object$bbox() |> paste(collapse = ", "), "\n",
+        sep = ""
+    )
+})

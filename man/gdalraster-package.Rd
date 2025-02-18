@@ -48,20 +48,28 @@
   \item geotransform conversion:
   \code{\link[=apply_geotransform]{apply_geotransform()}},
   \code{\link[=get_pixel_line]{get_pixel_line()}},
-  \code{\link[=inv_geotransform]{inv_geotransform()}}
+  \code{\link[=inv_geotransform]{inv_geotransform()}},
+  \code{\link[=pixel_extract]{pixel_extract()}}
+
+  \item data type convenience functions:
+  \code{\link[=dt_size]{dt_size()}},
+  \code{\link[=dt_is_complex]{dt_is_complex()}},
+  \code{\link[=dt_is_integer]{dt_is_integer()}},
+  \code{\link[=dt_is_floating]{dt_is_floating()}},
+  \code{\link[=dt_is_signed]{dt_is_signed()}},
+  \code{\link[=dt_union]{dt_union()}},
+  \code{\link[=dt_union_with_value]{dt_union_with_value()}},
+  \code{\link[=dt_find]{dt_find()}},
+  \code{\link[=dt_find_for_value]{dt_find_for_value()}}
 
   \item coordinate transformation:
   \code{\link[=transform_xy]{transform_xy()}},
-  \code{\link[=inv_project]{inv_project()}}
+  \code{\link[=inv_project]{inv_project()}},
+  \code{\link[=transform_bounds]{transform_bounds()}}
 
-  \item spatial reference convenience functions:
-  \code{\link[=epsg_to_wkt]{epsg_to_wkt()}},
-  \code{\link[=srs_to_wkt]{srs_to_wkt()}},
-  \code{\link[=srs_find_epsg]{srs_find_epsg()}},
-  \code{\link[=srs_get_name]{srs_get_name()}},
-  \code{\link[=srs_is_geographic]{srs_is_geographic()}},
-  \code{\link[=srs_is_projected]{srs_is_projected()}},
-  \code{\link[=srs_is_same]{srs_is_same()}}
+  \item spatial reference functions:
+  \code{\link[=srs_convert]{srs_convert}},
+  \code{\link[=srs_query]{srs_query}}
 
   \item geometry convenience functions:
   \code{\link[=bbox_from_wkt]{bbox_from_wkt()}},
@@ -73,10 +81,12 @@
   \code{\link[=g_buffer]{g_buffer()}},
   \code{\link[=g_centroid]{g_centroid()}},
   \code{\link[=g_contains]{g_contains()}},
+  \code{\link[=g_coords]{g_coords()}},
   \code{\link[=g_crosses]{g_crosses()}},
   \code{\link[=g_difference]{g_difference()}},
   \code{\link[=g_disjoint]{g_disjoint()}},
   \code{\link[=g_distance]{g_distance()}},
+  \code{\link[=g_envelope]{g_envelope()}},
   \code{\link[=g_equals]{g_equals()}},
   \code{\link[=g_intersection]{g_intersection()}},
   \code{\link[=g_intersects]{g_intersects()}},

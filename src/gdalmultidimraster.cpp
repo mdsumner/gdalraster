@@ -134,7 +134,7 @@ void GDALMultiDimRaster::open(bool read_only) {
     Rcpp::stop("open multidim raster failed");
   
   hRootGroup = GDALDatasetGetRootGroup(m_hDataset);
-  GDALReleaseDataset(m_hDataset); 
+ // GDALReleaseDataset(m_hDataset); 
 }
 
 std::vector<std::string> GDALMultiDimRaster::getDimensionNames(std::string variable) const {
@@ -264,36 +264,48 @@ bool GDALMultiDimRaster::isOpen() const {
 }
 
 
-std::string GDALMultiDimRaster::infoAsJSON() const {
+std::string GDALMultiDimRaster::infoMultiDimAsJSON() const {
+
   checkAccess_(GA_ReadOnly);
+  const Rcpp::CharacterVector argv = infoMultiDimOptions;
   
-  const Rcpp::CharacterVector argv = infoOptions;
   std::vector<char *> opt = {nullptr};
-  // passing in options is not working ...
-  for (R_xlen_t i = 0; i < argv.size(); ++i) {
+  if (argv.size() == 1 && argv[0] == "") {
+    opt.resize(2);
+    opt[0] = (char *) "-nopretty";
+    opt[1] = nullptr;
+  }
+  else {
+    opt[0] = (char *) "-nopretty";
+    for (R_xlen_t i = 0; i < argv.size(); ++i) {
+      if (EQUAL(argv[i], "-nopretty"))
+        continue;
       opt.push_back((char *) argv[i]);
-      //Rprintf("%lu\n", i); 
     }
-  opt.push_back(nullptr);
- 
-  
+    opt.push_back(nullptr);
+  }
+
   GDALMultiDimInfoOptions* psOptions = GDALMultiDimInfoOptionsNew(opt.data(), nullptr);
   if (psOptions == nullptr)
-    Rcpp::stop("creation of GDALInfoOptions failed (check $infoOptions)");
+   Rcpp::stop("creation of GDALMultiDimInfoOptions failed (check $infoOptions)");
+
+  if (m_hDataset == nullptr) {return ""; } 
   
-  char *pszGDALInfoOutput = GDALMultiDimInfo(m_hDataset, psOptions);
+  char *pszGDALMultiDimInfoOutput = GDALMultiDimInfo(m_hDataset, psOptions);
+  
+  
   std::string out = "";
-  if (pszGDALInfoOutput != nullptr)
-    out = pszGDALInfoOutput;
+  if (pszGDALMultiDimInfoOutput != nullptr)
+    out = pszGDALMultiDimInfoOutput;
   
   GDALMultiDimInfoOptionsFree(psOptions);
-  CPLFree(pszGDALInfoOutput);
+  CPLFree(pszGDALMultiDimInfoOutput);
   
   out.erase(std::remove(out.begin(),
                         out.end(),
                         '\n'),
                         out.cend());
-  
+
   return out;
 }
 
@@ -464,7 +476,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   ("Usage: new(GDALRaster, filename, read_only, open_options, shared)")
   
   // exposed read/write fields
-  .field("infoOptions", &GDALMultiDimRaster::infoOptions)
+  .field("infoMultiDimOptions", &GDALMultiDimRaster::infoMultiDimOptions)
   
   // exposed member functions
   .method("open", &GDALMultiDimRaster::open,
@@ -475,7 +487,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   "Set the multidim raster filename")
   .const_method("getFilename", &GDALMultiDimRaster::getFilename,
   "Return the multidim raster filename")
-  .const_method("infoAsJSON", &GDALMultiDimRaster::infoAsJSON,
+  .const_method("infoMultiDimAsJSON", &GDALMultiDimRaster::infoMultiDimAsJSON,
   "Returns full output of gdalmdiminfo as a JSON-formatted string")
   
   .const_method("getFileList", &GDALMultiDimRaster::getFileList,

@@ -264,26 +264,26 @@ bool GDALMultiDimRaster::isOpen() const {
 }
 
 
-std::string GDALMultiDimRaster::infoMultiDimAsJSON() const {
+std::string GDALMultiDimRaster::infoAsJSON() const {
 
   checkAccess_(GA_ReadOnly);
-  const Rcpp::CharacterVector argv = infoMultiDimOptions;
+  const Rcpp::CharacterVector argv = infoOptions;
   
   std::vector<char *> opt = {nullptr};
-  if (argv.size() == 1 && argv[0] == "") {
-    opt.resize(2);
-    opt[0] = (char *) "-nopretty";
-    opt[1] = nullptr;
-  }
-  else {
-    opt[0] = (char *) "-nopretty";
+  // if (argv.size() == 1 && argv[0] == "") {
+  //   opt.resize(2);
+  //   opt[0] = (char *) "-nopretty";
+  //   opt[1] = nullptr;
+  // }
+  // else {
+  // //  opt[0] = (char *) "-nopretty";
     for (R_xlen_t i = 0; i < argv.size(); ++i) {
       if (EQUAL(argv[i], "-nopretty"))
         continue;
       opt.push_back((char *) argv[i]);
     }
     opt.push_back(nullptr);
-  }
+  //}
 
   GDALMultiDimInfoOptions* psOptions = GDALMultiDimInfoOptionsNew(opt.data(), nullptr);
   if (psOptions == nullptr)
@@ -476,7 +476,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   ("Usage: new(GDALRaster, filename, read_only, open_options, shared)")
   
   // exposed read/write fields
-  .field("infoMultiDimOptions", &GDALMultiDimRaster::infoMultiDimOptions)
+  .field("infoMultiDimOptions", &GDALMultiDimRaster::infoOptions)
   
   // exposed member functions
   .method("open", &GDALMultiDimRaster::open,
@@ -487,7 +487,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   "Set the multidim raster filename")
   .const_method("getFilename", &GDALMultiDimRaster::getFilename,
   "Return the multidim raster filename")
-  .const_method("infoMultiDimAsJSON", &GDALMultiDimRaster::infoMultiDimAsJSON,
+  .const_method("infoMultiDimAsJSON", &GDALMultiDimRaster::infoAsJSON,
   "Returns full output of gdalmdiminfo as a JSON-formatted string")
   
   .const_method("getFileList", &GDALMultiDimRaster::getFileList,

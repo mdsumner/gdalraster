@@ -18,7 +18,7 @@ public:
              bool shared);
   
   // read/write fields exposed to R
-  Rcpp::CharacterVector infoMultiDimOptions = Rcpp::CharacterVector::create();
+  Rcpp::CharacterVector infoOptions = Rcpp::CharacterVector::create();
   
   // Open/close dataset
   void open(bool read_only);
@@ -31,7 +31,7 @@ public:
   std::string getFilename() const;  //const { return filename; }
   void setFilename(std::string filename); 
   
-  std::string infoMultiDimAsJSON() const;
+  std::string infoAsJSON() const;
   
   std::string getDriverShortName() const;
   std::string getDriverLongName() const;

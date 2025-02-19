@@ -476,7 +476,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   ("Usage: new(GDALRaster, filename, read_only, open_options, shared)")
   
   // exposed read/write fields
-  .field("infoMultiDimOptions", &GDALMultiDimRaster::infoOptions)
+  .field("infoOptions", &GDALMultiDimRaster::infoOptions)
   
   // exposed member functions
   .method("open", &GDALMultiDimRaster::open,
@@ -487,7 +487,7 @@ RCPP_MODULE(mod_GDALMultiDimRaster) {
   "Set the multidim raster filename")
   .const_method("getFilename", &GDALMultiDimRaster::getFilename,
   "Return the multidim raster filename")
-  .const_method("infoMultiDimAsJSON", &GDALMultiDimRaster::infoAsJSON,
+  .const_method("infoAsJSON", &GDALMultiDimRaster::infoAsJSON,
   "Returns full output of gdalmdiminfo as a JSON-formatted string")
   
   .const_method("getFileList", &GDALMultiDimRaster::getFileList,

@@ -22,46 +22,57 @@
 #include "gdalvector.h"
 #include "ogr_util.h"
 
+#include "nanoarrow/r.h"
+
 
 GDALVector::GDALVector() :
-            m_layer_name(""),
-            m_dialect(""),
-            m_open_options(Rcpp::CharacterVector::create()),
-            m_spatial_filter(""),
-            m_hDataset(nullptr),
-            m_eAccess(GA_ReadOnly),
-            m_hLayer(nullptr) {}
+            m_open_options(Rcpp::CharacterVector::create()) {
 
-GDALVector::GDALVector(Rcpp::CharacterVector dsn) :
+    // undocumented default constructor with no arguments currently not
+    // intended for for user code
+#if __has_include("ogr_recordbatch.h")
+    // initialize the release callback since it will be checked at closing
+    m_stream.release = nullptr;
+#endif
+}
+
+GDALVector::GDALVector(const Rcpp::CharacterVector &dsn) :
 
             GDALVector(dsn, "", true, Rcpp::CharacterVector::create(),
                        "", "") {}
 
-GDALVector::GDALVector(Rcpp::CharacterVector dsn, std::string layer) :
+GDALVector::GDALVector(const Rcpp::CharacterVector &dsn,
+                       const std::string &layer) :
 
             GDALVector(dsn, layer, true, Rcpp::CharacterVector::create(),
                        "", "") {}
 
-GDALVector::GDALVector(Rcpp::CharacterVector dsn, std::string layer,
+GDALVector::GDALVector(const Rcpp::CharacterVector &dsn,
+                       const std::string &layer,
                        bool read_only) :
 
             GDALVector(dsn, layer, read_only, Rcpp::CharacterVector::create(),
                        "", "") {}
 
-GDALVector::GDALVector(Rcpp::CharacterVector dsn, std::string layer,
-                       bool read_only, Rcpp::CharacterVector open_options) :
+GDALVector::GDALVector(const Rcpp::CharacterVector &dsn,
+                       const std::string &layer,
+                       bool read_only,
+                       const Rcpp::CharacterVector &open_options) :
 
             GDALVector(dsn, layer, read_only, open_options, "", "") {}
 
-GDALVector::GDALVector(Rcpp::CharacterVector dsn, std::string layer,
+GDALVector::GDALVector(const Rcpp::CharacterVector &dsn,
+                       const std::string &layer,
                        bool read_only,
-                       Rcpp::Nullable<Rcpp::CharacterVector> open_options,
-                       std::string spatial_filter, std::string dialect = "") :
+                       const Rcpp::Nullable<Rcpp::CharacterVector>
+                           &open_options,
+                       const std::string &spatial_filter,
+                       const std::string &dialect = "") :
 
             m_layer_name(layer),
             m_dialect(dialect),
-            m_open_options(open_options.isNotNull() ? open_options :
-                           Rcpp::CharacterVector::create()),
+            m_open_options(open_options.isNotNull() ?
+                           open_options : Rcpp::CharacterVector::create()),
             m_spatial_filter(spatial_filter),
             m_hDataset(nullptr),
             m_eAccess(GA_ReadOnly),
@@ -70,6 +81,11 @@ GDALVector::GDALVector(Rcpp::CharacterVector dsn, std::string layer,
     m_dsn = Rcpp::as<std::string>(check_gdal_filename(dsn));
     open(read_only);
     setFieldNames_();
+}
+
+GDALVector::~GDALVector() {
+    releaseArrowStream();
+    close();
 }
 
 void GDALVector::open(bool read_only) {
@@ -150,6 +166,16 @@ void GDALVector::open(bool read_only) {
         m_layer_name = OGR_L_GetName(m_hLayer);
     }
 
+#if __has_include("ogr_recordbatch.h")
+    // initialize the release callback since it will be checked at closing
+    m_stream.release = nullptr;
+#endif
+
+    if (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 8, 0)) {
+        // override the default to ensure CRS from GDAL is propagated to Arrow
+        this->arrowStreamOptions = {"GEOMETRY_METADATA_ENCODING=GEOARROW"};
+    }
+
     if (hGeom_filter != nullptr)
         OGR_G_DestroyGeometry(hGeom_filter);
 }
@@ -188,20 +214,25 @@ Rcpp::CharacterVector GDALVector::getFileList() const {
 void GDALVector::info() const {
     checkAccess_(GA_ReadOnly);
 
-    if (m_is_sql) {
-        Rcpp::Rcout << "DSN: " << m_dsn << std::endl;
-        Rcpp::Rcout << "layer: \"" << m_layer_name << "\"" << std::endl;
+    if (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)) {
+        if (m_is_sql) {
+            Rcpp::Rcout << ogrinfo(m_dsn, R_NilValue,
+                                   Rcpp::CharacterVector::create(
+                                        "-so", "-nomd", "-sql", m_layer_name),
+                                   m_open_options, true, false);
+        }
+        else {
+            Rcpp::Rcout << ogrinfo(m_dsn, Rcpp::wrap(m_layer_name),
+                                   Rcpp::CharacterVector::create(
+                                        "-so", "-nomd"),
+                                   m_open_options, true, false);
+        }
     }
     else {
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)
-        Rcpp::Rcout << ogrinfo(m_dsn, Rcpp::wrap(m_layer_name),
-                               Rcpp::CharacterVector::create("-so", "-nomd"),
-                               m_open_options, true, false);
-#else
+        // fallback for GDAL < 3.7
         Rcpp::Rcout << "ogrinfo() requires GDAL >= 3.7" << std::endl;
-        Rcpp::Rcout << "DSN: " << m_dsn << std::endl;
-        Rcpp::Rcout << "layer: " << m_layer_name << std::endl;
-#endif
+        Rcpp::Rcout << " DSN:   " << m_dsn << std::endl;
+        Rcpp::Rcout << " Layer: " << m_layer_name << std::endl;
     }
 }
 
@@ -432,7 +463,7 @@ Rcpp::List GDALVector::getLayerDefn() const {
     return list_out;
 }
 
-SEXP GDALVector::getFieldDomain(std::string domain_name) const {
+SEXP GDALVector::getFieldDomain(const std::string &domain_name) const {
 /*
  * The code for this method was adapted from ReportFieldDomain() in
  * gdal/apps/ogrinfo_lib.cpp:
@@ -1035,7 +1066,7 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
         geom_format = "NONE";
     }
 
-    attachGISattributes_(df, geom_column, geom_col_type, geom_col_srs,
+    attachGISattributes_(&df, geom_column, geom_col_type, geom_col_srs,
                          geom_format);
 
     if (fetch_num == 0) {
@@ -1498,7 +1529,7 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
         // calls to fetch(n), so the data generally should not be large enough
         // for this to be a problem.
         Rcpp::DataFrame df_trunc = createDF_(row_num);
-        attachGISattributes_(df_trunc, geom_column, geom_col_type, geom_col_srs,
+        attachGISattributes_(&df_trunc, geom_column, geom_col_type, geom_col_srs,
                              geom_format);
 
         if (row_num == 0)
@@ -1596,6 +1627,73 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
 
         return df_trunc;
     }
+}
+
+SEXP GDALVector::getArrowStream() {
+    /*
+    Exposes an Arrow C stream to be consumed by {nanoarrow}
+    Implementation adapted from GDALStreamWrapper by Dewey Dunnington in:
+    https://github.com/r-spatial/sf/blob/main/src/gdal_read_stream.cpp
+    */
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 6, 0)
+    Rcpp::stop("getArrowStream() requires GDAL >= 3.6");
+
+#else
+    checkAccess_(GA_ReadOnly);
+
+    std::vector<char *> opt{};
+    if (this->arrowStreamOptions.size() > 0) {
+        for (R_xlen_t i = 0; i < this->arrowStreamOptions.size(); ++i) {
+            if (!EQUAL(this->arrowStreamOptions[i], ""))
+                opt.push_back((char *) (this->arrowStreamOptions[i]));
+        }
+    }
+    opt.push_back(nullptr);
+
+    if (!OGR_L_GetArrowStream(m_hLayer, &m_stream, opt.data())) {
+        Rcpp::stop("OGR_L_GetArrowStream() failed: " +
+            std::string(CPLGetLastErrorMsg()));
+    }
+
+    m_stream_xptrs.push_back(nanoarrow_array_stream_owning_xptr());
+    size_t i = m_stream_xptrs.size() - 1;
+
+    auto stream_out = reinterpret_cast<struct ArrowArrayStream*>(
+        R_ExternalPtrAddr(m_stream_xptrs[i]));
+
+    stream_out->get_schema = &arrow_get_schema_wrap;
+    stream_out->get_next = &arrow_get_next_wrap;
+    stream_out->get_last_error = &arrow_get_last_error_wrap;
+    stream_out->release = &arrow_release_wrap;
+    stream_out->private_data = this;
+
+    return m_stream_xptrs[i];
+#endif
+}
+
+void GDALVector::releaseArrowStream() {
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 6, 0)
+
+    if (m_stream.release) {
+        m_stream.release(&m_stream);
+        m_stream.release = nullptr;
+
+        if (m_stream_xptrs.empty()) {
+            // should not be possible here
+            return;
+        }
+
+        size_t i = m_stream_xptrs.size() - 1;
+        if (R_ExternalPtrAddr(m_stream_xptrs[i])) {
+            auto stream_out = reinterpret_cast<struct ArrowArrayStream*>(
+                R_ExternalPtrAddr(m_stream_xptrs[i]));
+
+            stream_out->release = nullptr;
+        }
+    }
+
+#endif
 }
 
 bool GDALVector::setFeature(const Rcpp::RObject &feature) {
@@ -1806,7 +1904,7 @@ Rcpp::CharacterVector GDALVector::getMetadata() const {
     }
 }
 
-bool GDALVector::setMetadata(const Rcpp::CharacterVector metadata) {
+bool GDALVector::setMetadata(const Rcpp::CharacterVector &metadata) {
 
     checkAccess_(GA_ReadOnly);
 
@@ -1830,7 +1928,7 @@ bool GDALVector::setMetadata(const Rcpp::CharacterVector metadata) {
     }
 }
 
-std::string GDALVector::getMetadataItem(std::string mdi_name) const {
+std::string GDALVector::getMetadataItem(const std::string &mdi_name) const {
 
     checkAccess_(GA_ReadOnly);
 
@@ -1845,8 +1943,8 @@ std::string GDALVector::getMetadataItem(std::string mdi_name) const {
 }
 
 bool GDALVector::layerIntersection(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -1863,8 +1961,8 @@ bool GDALVector::layerIntersection(
     bool ret = false;
     OGRErr err = OGR_L_Intersection(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -1882,8 +1980,8 @@ bool GDALVector::layerIntersection(
 }
 
 bool GDALVector::layerUnion(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -1900,8 +1998,8 @@ bool GDALVector::layerUnion(
     bool ret = false;
     OGRErr err = OGR_L_Union(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -1919,8 +2017,8 @@ bool GDALVector::layerUnion(
 }
 
 bool GDALVector::layerSymDifference(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -1937,8 +2035,8 @@ bool GDALVector::layerSymDifference(
     bool ret = false;
     OGRErr err = OGR_L_SymDifference(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -1956,8 +2054,8 @@ bool GDALVector::layerSymDifference(
 }
 
 bool GDALVector::layerIdentity(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -1974,8 +2072,8 @@ bool GDALVector::layerIdentity(
     bool ret = false;
     OGRErr err = OGR_L_Identity(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -1993,8 +2091,8 @@ bool GDALVector::layerIdentity(
 }
 
 bool GDALVector::layerUpdate(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -2011,8 +2109,8 @@ bool GDALVector::layerUpdate(
     bool ret = false;
     OGRErr err = OGR_L_Update(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -2030,8 +2128,8 @@ bool GDALVector::layerUpdate(
 }
 
 bool GDALVector::layerClip(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -2048,8 +2146,8 @@ bool GDALVector::layerClip(
     bool ret = false;
     OGRErr err = OGR_L_Clip(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -2067,8 +2165,8 @@ bool GDALVector::layerClip(
 }
 
 bool GDALVector::layerErase(
-        GDALVector method_layer,
-        GDALVector result_layer,
+        GDALVector* const &method_layer,
+        GDALVector* const &result_layer,
         bool quiet,
         const Rcpp::Nullable<const Rcpp::CharacterVector> &options) {
 
@@ -2085,8 +2183,8 @@ bool GDALVector::layerErase(
     bool ret = false;
     OGRErr err = OGR_L_Erase(
                     m_hLayer,
-                    method_layer.getOGRLayerH_(),
-                    result_layer.getOGRLayerH_(),
+                    method_layer->getOGRLayerH_(),
+                    result_layer->getOGRLayerH_(),
                     opt_list.data(),
                     quiet ? nullptr : GDALTermProgressR,
                     nullptr);
@@ -2104,6 +2202,7 @@ bool GDALVector::layerErase(
 }
 
 void GDALVector::close() {
+    releaseArrowStream();
     if (m_hDataset != nullptr) {
         if (m_is_sql)
             GDALDatasetReleaseResultSet(m_hDataset, m_hLayer);
@@ -2137,6 +2236,30 @@ void GDALVector::OGRFeatureFromList_dumpReadble(
 #endif
 }
 
+void GDALVector::show() const {
+    std::string lyr_name = "";
+    if (m_is_sql) {
+        // the API call to OGR_L_GetName() returns only "SELECT" for SQL layer
+        // instead get SQL statement used to open the layer
+        lyr_name = m_layer_name;
+    }
+    else {
+        lyr_name = getName();
+    }
+
+    Rcpp::Environment pkg = Rcpp::Environment::namespace_env("gdalraster");
+    Rcpp::Function fn = pkg[".get_crs_name"];
+    std::string crs_name = Rcpp::as<std::string>(fn(getSpatialRef()));
+
+    Rcpp::Rcout << "C++ object of class GDALVector" << std::endl;
+    Rcpp::Rcout << " Driver : " << getDriverLongName() << " (" <<
+                                   getDriverShortName() << ")" << std::endl;
+    Rcpp::Rcout << " DSN    : " << getDsn() << std::endl;
+    Rcpp::Rcout << " Layer  : " << lyr_name << std::endl;
+    Rcpp::Rcout << " CRS    : " << crs_name << std::endl;
+    Rcpp::Rcout << " Geom   : " << getGeomType() << std::endl;
+}
+
 // ****************************************************************************
 // class methods for internal use not exposed in R
 // ****************************************************************************
@@ -2149,7 +2272,9 @@ void GDALVector::checkAccess_(GDALAccess access_needed) const {
         Rcpp::stop("dataset is read-only");
 }
 
-void GDALVector::setDsn_(std::string dsn) {
+void GDALVector::setDsn_(const std::string &dsn) {
+    // consider not raising any errors here since this is for internal use and
+    // these conditions should not apply
     if (m_hDataset != nullptr) {
         std::string desc(GDALGetDescription(m_hDataset));
         if (m_dsn == "" && desc == "") {
@@ -2166,6 +2291,10 @@ void GDALVector::setDsn_(std::string dsn) {
         else
             Rcpp::stop("the DSN cannot be set on this object");
     }
+#if __has_include("ogr_recordbatch.h")
+    // ensure release callback initialized since it will be checked at closing
+    m_stream.release = nullptr;
+#endif
 }
 
 GDALDatasetH GDALVector::getGDALDatasetH_() const {
@@ -2174,7 +2303,7 @@ GDALDatasetH GDALVector::getGDALDatasetH_() const {
     return m_hDataset;
 }
 
-void GDALVector::setGDALDatasetH_(const GDALDatasetH hDs, bool with_update) {
+void GDALVector::setGDALDatasetH_(GDALDatasetH hDs, bool with_update) {
     m_hDataset = hDs;
     if (with_update)
         m_eAccess = GA_Update;
@@ -2188,10 +2317,13 @@ OGRLayerH GDALVector::getOGRLayerH_() const {
     return m_hLayer;
 }
 
-void GDALVector::setOGRLayerH_(const OGRLayerH hLyr,
-                               const std::string &lyr_name) {
+void GDALVector::setOGRLayerH_(OGRLayerH hLyr, const std::string &lyr_name) {
     m_hLayer = hLyr;
     m_layer_name = lyr_name;
+#if __has_include("ogr_recordbatch.h")
+    // ensure release callback initialized since it will be checked at closing
+    m_stream.release = nullptr;
+#endif
 }
 
 void GDALVector::setFieldNames_() {
@@ -2424,7 +2556,7 @@ SEXP GDALVector::createDF_(R_xlen_t nrow) const {
     return df;
 }
 
-void GDALVector::attachGISattributes_(Rcpp::List ogr_feat_obj,
+void GDALVector::attachGISattributes_(Rcpp::List *ogr_feat_obj,
         const Rcpp::CharacterVector &geom_col,
         const Rcpp::CharacterVector &geom_col_type,
         const Rcpp::CharacterVector &geom_col_srs,
@@ -2446,7 +2578,7 @@ void GDALVector::attachGISattributes_(Rcpp::List ogr_feat_obj,
         Rcpp::Named("geom_col_srs") = geom_col_srs,
         Rcpp::Named("geom_format") = geom_format);
 
-    ogr_feat_obj.attr("gis") = gis;
+    ogr_feat_obj->attr("gis") = gis;
 }
 
 OGRFeatureH GDALVector::OGRFeatureFromList_(
@@ -3166,6 +3298,45 @@ OGRFeatureH GDALVector::OGRFeatureFromList_(
     return hFeat;
 }
 
+// Arrow callbacks
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 6, 0)
+int GDALVector::arrow_get_schema(struct ArrowSchema* out) {
+    return m_stream.get_schema(&m_stream, out);
+}
+
+int GDALVector::arrow_get_next(struct ArrowArray* out) {
+    return m_stream.get_next(&m_stream, out);
+}
+
+const char* GDALVector::arrow_get_last_error() {
+    return m_stream.get_last_error(&m_stream);
+}
+
+int GDALVector::arrow_get_schema_wrap(struct ArrowArrayStream* stream,
+                                      struct ArrowSchema* out) {
+
+    return reinterpret_cast<GDALVector*>(
+            stream->private_data)->arrow_get_schema(out);
+}
+
+int GDALVector::arrow_get_next_wrap(struct ArrowArrayStream* stream,
+                                    struct ArrowArray* out) {
+
+    return reinterpret_cast<GDALVector*>(
+            stream->private_data)->arrow_get_next(out);
+}
+
+const char* GDALVector::arrow_get_last_error_wrap(
+        struct ArrowArrayStream* stream) {
+
+    return reinterpret_cast<GDALVector*>(
+            stream->private_data)->arrow_get_last_error();
+}
+
+void GDALVector::arrow_release_wrap(struct ArrowArrayStream* stream) {
+    reinterpret_cast<GDALVector*>(stream->private_data)->releaseArrowStream();
+}
+#endif
 
 // ****************************************************************************
 
@@ -3191,12 +3362,27 @@ RCPP_MODULE(mod_GDALVector) {
                  std::string>
         ("Usage: new(GDALVector, dsn, layer, read_only, open_options, spatial_filter, dialect)")
 
+    // create_ogr() object factory with 10 parameters
+    .factory<const std::string&, const std::string&, const std::string&,
+             const std::string&, const std::string&, const std::string&,
+             const std::string&, const Rcpp::Nullable<Rcpp::CharacterVector>&,
+             const Rcpp::Nullable<Rcpp::CharacterVector>&,
+             const Rcpp::Nullable<Rcpp::List>&>
+             (create_ogr)
+    // ogr_layer_create() object factory with 7 parameters
+    .factory<const std::string&, const std::string&,
+             const Rcpp::Nullable<Rcpp::List>&,
+             const std::string&, const std::string&,
+             const Rcpp::Nullable<Rcpp::CharacterVector>&, bool>
+             (ogr_layer_create)
+
     // undocumented read-only fields for internal use
     .field_readonly("m_layer_name", &GDALVector::m_layer_name)
     .field_readonly("m_is_sql", &GDALVector::m_is_sql)
     .field_readonly("m_dialect", &GDALVector::m_dialect)
 
     // read/write fields
+    .field("arrowStreamOptions", &GDALVector::arrowStreamOptions)
     .field("defaultGeomColName", &GDALVector::defaultGeomColName)
     .field("promoteToMulti", &GDALVector::promoteToMulti)
     .field("quiet", &GDALVector::quiet)
@@ -3266,6 +3452,10 @@ RCPP_MODULE(mod_GDALVector) {
         "Reset feature reading to start on the first feature")
     .method("fetch", &GDALVector::fetch,
         "Fetch a set features as a data frame")
+    .method("getArrowStream", &GDALVector::getArrowStream,
+        "Expose an Arrow C stream on the layer")
+    .method("releaseArrowStream", &GDALVector::releaseArrowStream,
+        "Release the Arrow C stream on the layer")
     .method("setFeature", &GDALVector::setFeature,
         "Rewrite/replace an existing feature within the layer")
     .method("createFeature", &GDALVector::createFeature,
@@ -3309,6 +3499,8 @@ RCPP_MODULE(mod_GDALVector) {
     .const_method("OGRFeatureFromList_dumpReadble",
         &GDALVector::OGRFeatureFromList_dumpReadble,
         "Create an OGRFeature from list and dump to console in readable form")
+    .const_method("show", &GDALVector::show,
+        "S4 show()")
 
     ;
 }

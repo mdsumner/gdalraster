@@ -1,4 +1,16 @@
-# gdalraster 1.12.0.9183 (dev)
+# gdalraster 1.12.0.9221 (dev)
+
+* (internal) various C++ code linting throughout (#624) (2025-02-23)
+
+* (internal) implement `ogr_ds_create()` and `ogr_layer_create()` as `GDALVector` object factories (#609) (2025-02-22)
+
+* add `GDALVector::getArrowStream()`: expose an Arrow C stream on a layer via nanoarrow_array_stream object (#591) (2025-02-22)
+
+* fix potential integer overflow when multiplying raster dimensions in R without explicit `as.numeric()` (#620 thanks to @mdsumner) (2025-02-21)
+
+* `GDALVector::info()`: enable full info output on a vector layer opened via SQL statement (#615 thanks to @mdsumner) (2025-02-21)
+
+* `pixel_extract()`: fix the check for GDAL >= 3.10 when cubic or cubicspline interpolation is requested (thanks to @mdsumner) (2025-02-21)
 
 * `read_ds()`: pre-allocate the output vector based on the size of the unioned data type across all bands (2025-02-18)
 

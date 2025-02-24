@@ -50,6 +50,9 @@ test_that("class constructors work", {
 
     lyr$close()
     unlink(dsn)
+
+    # default construstrctor with no arguments should not error
+    expect_no_error(lyr <- new(GDALVector))
 })
 
 test_that("class basic interface works", {
@@ -60,7 +63,7 @@ test_that("class basic interface works", {
     lyr <- new(GDALVector, dsn, "mtbs_perims")
 
     expect_true(is(lyr, "Rcpp_GDALVector"))
-    expect_output(show(lyr))
+    expect_output(show(lyr), "MULTIPOLYGON")
 
     expect_equal(lyr$getDriverShortName(), "GPKG")
     expect_equal(lyr$getDriverLongName(), "GeoPackage")
@@ -140,6 +143,14 @@ test_that("class basic interface works", {
     expect_equal(lyr$getFeatureCount(), 61)
 
     lyr$close()
+
+    # SQL layer
+    sql_lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
+    expect_true(is(sql_lyr, "Rcpp_GDALVector"))
+    expect_output(show(sql_lyr), "LIMIT 10")
+    expect_equal(sql_lyr$getFeatureCount(), 10)
+    sql_lyr$close()
+
     unlink(dsn)
 })
 
@@ -1079,7 +1090,12 @@ test_that("info() prints output to the console", {
     lyr$close()
 
     lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
-    expect_output(lyr$info())
+    if (.gdal_version_num() >= 3070000) {
+        expect_output(lyr$info(), "Feature Count: 10")
+    } else {
+        # we only get the fallback minimal info
+        expect_output(lyr$info(), "Layer")
+    }
     lyr$close()
 
     # default layer first by index
@@ -1089,4 +1105,73 @@ test_that("info() prints output to the console", {
     lyr$close()
 
     unlink(dsn)
+})
+
+test_that("ArrowArrayStream is readable", {
+    skip_if(.gdal_version_num() < 3060000)
+    skip_if_not_installed("nanoarrow")
+
+    f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+
+    lyr <- new(GDALVector, dsn, "mtbs_perims")
+
+    expect_no_error(stream <- lyr$getArrowStream())
+    expect_s3_class(stream, "nanoarrow_array_stream")
+
+    schema <- stream$get_schema()
+    expect_s3_class(schema, "nanoarrow_schema")
+    expect_equal(length(schema$children), 11)
+
+    batch <- stream$get_next()
+    expect_s3_class(batch, "nanoarrow_array")
+    expect_equal(batch$children$fid$length, 61)
+
+    expect_no_error(stream$release())
+
+    # with options
+    lyr$arrowStreamOptions <- "INCLUDE_FID=NO"
+    expect_no_error(stream2 <- lyr$getArrowStream())
+
+    schema2 <- stream2$get_schema()
+    expect_equal(length(schema2$children), 10)
+    expect_true(is.null(schema2$children$fid))
+    expect_no_error(stream2$release())
+
+    lyr$close()
+
+    deleteDataset(dsn)
+})
+
+test_that("nanoarrow_array_stream implicit release works", {
+    skip_if(.gdal_version_num() < 3060000)
+    skip_if_not_installed("nanoarrow")
+
+    f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+
+    lyr <- new(GDALVector, dsn, "mtbs_perims")
+
+    # dataset/layer closed without explicit release
+    lyr$open(read_only = TRUE)
+    expect_no_error(stream3 <- lyr$getArrowStream())
+    expect_s3_class(stream3, "nanoarrow_array_stream")
+    lyr$close()
+    expect_error(stream3$get_next())
+
+    # stream garbage collected without explicit release
+    lyr$open(read_only = TRUE)
+    expect_no_error(stream3 <- lyr$getArrowStream())
+    expect_s3_class(stream3, "nanoarrow_array_stream")
+    rm(stream3)
+    gc()
+    # released implicitly so a new stream should be available
+    expect_no_error(stream4 <- lyr$getArrowStream())
+    expect_s3_class(stream4, "nanoarrow_array_stream")
+
+    lyr$close()
+
+    deleteDataset(dsn)
 })

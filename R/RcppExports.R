@@ -134,37 +134,6 @@ dt_find_for_value <- function(value, is_complex = FALSE) {
     .Call(`_gdalraster_dt_find_for_value`, value, is_complex)
 }
 
-#' Create a new uninitialized raster
-#'
-#' `create()` makes an empty raster in the specified format.
-#'
-#' Called from and documented in R/gdal_create.R
-#' @noRd
-NULL
-
-#' Create a copy of a raster
-#'
-#' `createCopy()` copies a raster dataset, optionally changing the format.
-#' The extent, cell size, number of bands, data type, projection, and
-#' geotransform are all copied from the source raster.
-#'
-#' Called from and documented in R/gdal_create.R
-#' @noRd
-NULL
-
-#' Create a virtual warped dataset automatically
-#'
-#' `autoCreateWarpedVRT()` creates a warped virtual dataset representing the
-#' input raster warped into a target coordinate system. The output virtual
-#' dataset will be "north-up" in the target coordinate system. GDAL
-#' automatically determines the bounds and resolution of the output virtual
-#' raster which should be large enough to include all the input raster.
-#' Wrapper of `GDALAutoCreateWarpedVRT()` in the GDAL Warper API.
-#'
-#' Called from and documented in R/gdal_util.R
-#' @noRd
-NULL
-
 #' Get GDAL version
 #'
 #' `gdal_version()` returns runtime version information.
@@ -2378,14 +2347,6 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
     .Call(`_gdalraster_ogr_ds_test_cap`, dsn, with_update)
 }
 
-#' Create a vector dataset. Optionally create a layer in the dataset.
-#' A field is also created optionally (name and type only).
-#'
-#' @noRd
-.create_ogr <- function(format, dst_filename, xsize, ysize, nbands, dataType, layer, geom_type, srs = "", fld_name = "", fld_type = "OFTInteger", dsco = NULL, lco = NULL, layer_defn = NULL) {
-    .Call(`_gdalraster_create_ogr`, format, dst_filename, xsize, ysize, nbands, dataType, layer, geom_type, srs, fld_name, fld_type, dsco, lco, layer_defn)
-}
-
 #' Get number of layers in a dataset
 #'
 #' @noRd
@@ -2412,13 +2373,6 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' @noRd
 .ogr_layer_test_cap <- function(dsn, layer, with_update = TRUE) {
     .Call(`_gdalraster_ogr_layer_test_cap`, dsn, layer, with_update)
-}
-
-#' Create a layer in a vector dataset
-#'
-#' @noRd
-.ogr_layer_create <- function(dsn, layer, layer_defn = NULL, geom_type = "UNKNOWN", srs = "", options = NULL) {
-    .Call(`_gdalraster_ogr_layer_create`, dsn, layer, layer_defn, geom_type, srs, options)
 }
 
 #' Rename a layer in a vector dataset

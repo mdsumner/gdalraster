@@ -20,16 +20,16 @@
 
 #include "gdalraster.h"
 #include "gdalvector.h"
+#include "geom_api.h"
 #include "ogr_util.h"
 
 #include "nanoarrow/r.h"
 
 
-GDALVector::GDALVector() :
-            m_open_options(Rcpp::CharacterVector::create()) {
+GDALVector::GDALVector() : m_open_options(Rcpp::CharacterVector::create()) {
+    // undocumented default constructor with no arguments
+    // currently not intended for user code
 
-    // undocumented default constructor with no arguments currently not
-    // intended for for user code
 #if __has_include("ogr_recordbatch.h")
     // initialize the release callback since it will be checked at closing
     m_stream.release = nullptr;
@@ -171,10 +171,11 @@ void GDALVector::open(bool read_only) {
     m_stream.release = nullptr;
 #endif
 
-    if (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 8, 0)) {
-        // override the default to ensure CRS from GDAL is propagated to Arrow
-        this->arrowStreamOptions = {"GEOMETRY_METADATA_ENCODING=GEOARROW"};
-    }
+    // potentially enable this in the future for geoarrow
+    // if (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 8, 0)) {
+    //     // override the default to ensure CRS from GDAL is propagated to Arrow
+    //     this->arrowStreamOptions = {"GEOMETRY_METADATA_ENCODING=GEOARROW"};
+    // }
 
     if (hGeom_filter != nullptr)
         OGR_G_DestroyGeometry(hGeom_filter);
@@ -215,16 +216,31 @@ void GDALVector::info() const {
     checkAccess_(GA_ReadOnly);
 
     if (GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)) {
+        Rcpp::CharacterVector cl_arg = {"-so", "-nomd"};
+        if (getSpatialFilter() != "") {
+            cl_arg.push_back("-spat");
+            Rcpp::NumericVector bb = bbox_from_wkt(getSpatialFilter(), 0, 0);
+            cl_arg.push_back(std::to_string(bb[0]));
+            cl_arg.push_back(std::to_string(bb[1]));
+            cl_arg.push_back(std::to_string(bb[2]));
+            cl_arg.push_back(std::to_string(bb[3]));
+        }
+        if (m_attr_filter != "") {
+            cl_arg.push_back("-where");
+            cl_arg.push_back(m_attr_filter);
+        }
+        if (m_dialect != "") {
+            cl_arg.push_back("-dialect");
+            cl_arg.push_back(m_dialect);
+        }
         if (m_is_sql) {
-            Rcpp::Rcout << ogrinfo(m_dsn, R_NilValue,
-                                   Rcpp::CharacterVector::create(
-                                        "-so", "-nomd", "-sql", m_layer_name),
-                                   m_open_options, true, false);
+            cl_arg.push_back("-sql");
+            cl_arg.push_back(m_layer_name);
+            Rcpp::Rcout << ogrinfo(m_dsn, R_NilValue, cl_arg, m_open_options,
+                                   true, false);
         }
         else {
-            Rcpp::Rcout << ogrinfo(m_dsn, Rcpp::wrap(m_layer_name),
-                                   Rcpp::CharacterVector::create(
-                                        "-so", "-nomd"),
+            Rcpp::Rcout << ogrinfo(m_dsn, Rcpp::wrap(m_layer_name), cl_arg,
                                    m_open_options, true, false);
         }
     }

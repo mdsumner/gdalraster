@@ -61,12 +61,14 @@
 #' lyr <- new(GDALVector, dsn, layer, read_only, open_options, spatial_filter, dialect)
 #'
 #' ## Read/write fields (per-object settings)
-#' lyr$arrowStreamOptions
 #' lyr$defaultGeomColName
-#' lyr$promoteToMulti
-#' lyr$quiet
 #' lyr$returnGeomAs
+#' lyr$promoteToMulti
+#' lyr$convertToLinear
 #' lyr$wkbByteOrder
+#' lyr$arrowStreamOptions
+#' lyr$quiet
+#' lyr$transactionsForce
 #'
 #' ## Methods
 #' lyr$open(read_only)
@@ -110,12 +112,13 @@
 #'
 #' lyr$setFeature(feature)
 #' lyr$createFeature(feature)
+#' lyr$batchCreateFeature(feature_set)
 #' lyr$upsertFeature(feature)
 #' lyr$getLastWriteFID()
 #' lyr$deleteFeature(fid)
 #' lyr$syncToDisk()
 #'
-#' lyr$startTransaction(force)
+#' lyr$startTransaction()
 #' lyr$commitTransaction()
 #' lyr$rollbackTransaction()
 #'
@@ -155,6 +158,49 @@
 #'
 #' ## Read/write fields
 #'
+#' \code{$defaultGeomColName}\cr
+#' Character string specifying a name to use for returned columns when the
+#' geometry column name in the source layer is empty, like with shapefiles etc.
+#' Defaults to `"geometry"`.
+#'
+#' \code{$returnGeomAs}\cr
+#' Character string specifying the return format of feature geometries.
+#' Must be one of `WKB` (the default), `WKB_ISO`, `WKT`, `WKT_ISO`, `BBOX`, or
+#' `NONE`.
+#' Using `WKB`/`WKT` exports as 99-402 extended dimension (Z) types for Point,
+#' LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon and
+#' GeometryCollection. For other geometry types, it is equivalent to using
+#' `WKB_ISO`/`WKT_ISO` (see \url{https://libgeos.org/specifications/wkb/}).
+#' Using `BBOX` exports as a list of numeric vectors, each of length 4 with
+#' values `xmin, ymin, xmax, ymax`. If an empty geometry is encountered these
+#' values will be `NA_real_` in the corresponding location.
+#' Using `NONE` will result in no geometry value being present in the feature
+#' returned.
+#'
+#' \code{$promoteToMulti}\cr
+#' A logical value specifying whether to automatically promote geometries from
+#' Polygon to MultiPolygon, Point to MultiPoint, or LineString to
+#' MultiLineString during read operations (i.e., with methods `$getFeature()`,
+#' `$getNextFeature()`, `$fetch()`). Defaults to `FALSE`. Setting to `TRUE` may
+#' be useful when reading from layers such as shapefiles that mix, e.g.,
+#' Polygons and MultiPolygons.
+#'
+#' \code{$convertToLinear}\cr
+#' A logical value specifying whether to convert non-linear geometry types into
+#' linear geometry types by approximating them (i.e., during read operations
+#' with methods `$getFeature()`, `$getNextFeature()`, `$fetch()`). Defaults to
+#' `FALSE`. If set to `TRUE`, handled conversions are:
+#' * wkbCurvePolygon -> wkbPolygon
+#' * wkbCircularString -> wkbLineString
+#' * wkbCompoundCurve -> wkbLineString
+#' * wkbMultiSurface -> wkbMultiPolygon
+#' * wkbMultiCurve -> wkbMultiLineString
+#'
+#' \code{$wkbByteOrder}\cr
+#' Character string specifying the byte order for WKB geometries.
+#' Must be either `LSB` (Least Significant Byte first, the default) or
+#' `MSB` (Most Significant Byte first).
+#'
 #' \code{$arrowStreamOptions}\cr
 #' Character vector of `"NAME=VALUE"` pairs giving options used by the
 #' `$getArrowStream()` method (see below). The available options may be
@@ -172,41 +218,17 @@
 #' Otherwise the geometry will be returned with its native Arrow encoding
 #' (possibly using GeoArrow encoding).
 #'
-#' \code{$defaultGeomColName}\cr
-#' Character string specifying a name to use for returned columns when the
-#' geometry column name in the source layer is empty, like with shapefiles etc.
-#' Defaults to `"geometry"`.
-#'
-#' \code{$promoteToMulti}\cr
-#' A logical value specifying whether to automatically promote geometries from
-#' Polygon to MultiPolygon, Point to MultiPoint, or LineString to
-#' MultiLineString during read operations (i.e., with methods `$getFeature()`,
-#' `$getNextFeature()`, `$fetch()`). Defaults to `FALSE`. Setting to `TRUE` may
-#' be useful when reading from layers such as shapefiles that mix, e.g.,
-#' Polygons and MultiPolygons.
-#'
 #' \code{$quiet}\cr
 #' A logical value, `FALSE` by default. Set to `TRUE` to suppress various
 #' messages and warnings.
 #'
-#' \code{$returnGeomAs}\cr
-#' Character string specifying the return format of feature geometries.
-#' Must be one of `WKB` (the default), `WKB_ISO`, `WKT`, `WKT_ISO`, `BBOX`, or
-#' `NONE`.
-#' Using `WKB`/`WKT` exports as 99-402 extended dimension (Z) types for Point,
-#' LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon and
-#' GeometryCollection. For other geometry types, it is equivalent to using
-#' `WKB_ISO`/`WKT_ISO` (see \url{https://libgeos.org/specifications/wkb/}).
-#' Using `BBOX` exports as a list of numeric vectors, each of length 4 with values
-#' `xmin, ymin, xmax, ymax`. If an empty geometry is encountered these values will
-#' be `NA_real_` in the corresponding location.
-#' Using `NONE` will result in no geometry value being present in the feature
-#' returned.
-#'
-#' \code{$wkbByteOrder}\cr
-#' Character string specifying the byte order for WKB geometries.
-#' Must be either `LSB` (Least Significant Byte first, the default) or
-#' `MSB` (Most Significant Byte first).
+#' \code{$transactionsForce}\cr
+#' A logical value, `FALSE` by default. Affects the behavior of attempted
+#' transactions on the layer (see the `$startTransaction()` method below).
+#' By default, only "efficient" transactions will be attempted. Some drivers
+#' may offer an emulation of transactions, but sometimes with significant
+#' overhead, in which case the user must explicitly allow for such an
+#' emulation by first setting `$transactionsForce <- TRUE`.
 #'
 #' ## Methods
 #'
@@ -219,7 +241,7 @@
 #' No return value, called for side effects.
 #'
 #' \code{$isOpen()}\cr
-#' Returns a `logical` scalar indicating whether the vector dataset is open.
+#' Returns a `logical` value indicating whether the vector dataset is open.
 #'
 #' \code{$getDsn()}\cr
 #' Returns a character string containing the `dsn` associated with this
@@ -258,9 +280,12 @@
 #' `FALSE`. The returned list contains the following named elements:
 #' `RandomRead`, `SequentialWrite`, `RandomWrite`, `UpsertFeature`,
 #' `FastSpatialFilter`, `FastFeatureCount`, `FastGetExtent`,
-#' `FastSetNextByIndex`, `CreateField`, `CreateGeomField`, `DeleteField`,
-#' `ReorderFields`, `AlterFieldDefn`, `AlterGeomFieldDefn`, `DeleteFeature`,
-#' `StringsAsUTF8`, `Transactions`, `CurveGeometries`.
+#' `FastSetNextByIndex`, `FastGetArrowStream`, `FastWriteArrowBatch`,
+#' `CreateField`, `CreateGeomField`, `DeleteField`, `ReorderFields`,
+#' `AlterFieldDefn`, `AlterGeomFieldDefn`, `DeleteFeature`, `StringsAsUTF8`,
+#' `Transactions`, `CurveGeometries`.
+#' Note that some layer capabilities are GDAL version dependent and may not
+#' be listed if not supported by the GDAL version currently in use.
 #' (See the GDAL documentation for
 #' [`OGR_L_TestCapability()`](https://gdal.org/en/stable/api/vector_c_api.html#_CPPv420OGR_L_TestCapability9OGRLayerHPKc).)
 #'
@@ -427,7 +452,7 @@
 #'
 #' \code{$getFeature(fid)}\cr
 #' Returns a feature by its identifier. The value of `fid` must be a numeric
-#' scalar, optionally carrying the `bit64::integer64` class attribute.
+#' value, optionally carrying the `bit64::integer64` class attribute.
 #' Success or failure of this operation is unaffected by any spatial or
 #' attribute filters that may be in effect.
 #' The `RandomRead` element in the list returned by `$testCapability()` can
@@ -500,7 +525,7 @@
 #' calling this method (see above). An error is raised if an array stream
 #' on the layer cannot be obtained.
 #' Generally, only one ArrowArrayStream can be active at a time on a given
-#' layer (that is the last active one must be explicitly released before a next
+#' layer (i.e., the last active one must be explicitly released before a next
 #' one is asked). Changing attribute or spatial filters, ignored columns,
 #' modifying the schema or using `$resetReading()`/`$getNextFeature()` while
 #' using an ArrowArrayStream is strongly discouraged and may lead to unexpected
@@ -508,9 +533,18 @@
 #' layer should be called on the layer while an ArrowArrayStream on it is
 #' active. Methods available on the stream object are: `$get_schema()`,
 #' `$get_next()` and `$release()` (see Examples).
+#'
 #' The stream should be released once reading is complete. Calling the release
-#' method as soon as you can after consuming a stream is recommended in the
-#' nanoarrow documentation.
+#' method as soon as you can after consuming a stream is recommended by the
+#' \pkg{nanoarrow} documentation.
+#'
+#' See also the `$testCapability()` method above to check whether the format
+#' driver provides a specialized implementation (`FastGetArrowStream`), as
+#' opposed to the (slower) default implementation. Note however that
+#' specialized implementations may fallback to the default when attribute or
+#' spatlal filters are in use.
+#' (See the GDAL documentation for
+#' [`OGR_L_GetArrowStream()`](https://gdal.org/en/stable/api/vector_c_api.html#_CPPv420OGR_L_GetArrowStream9OGRLayerHP16ArrowArrayStreamPPc).)
 #'
 #' \code{$releaseArrowStream()}\cr
 #' Releases the Arrow C stream returned by `$getArrowStream()` and clears the
@@ -541,30 +575,53 @@
 #'
 #' \code{$createFeature(feature)}\cr
 #' Creates and writes a new feature within the layer. The `feature` argument is
-#' a named list of fields and their values.
+#' a named list of fields and their values (might be one row of a data frame).
 #' The passed feature is written to the layer as a new feature, rather than
-#' overwriting an existing one. If the feature has a `$FID` element other than
-#' `NA`, then the vector format driver may use that as the feature id of the
-#' new feature, but not necessarily. The FID of the last feature written
-#' to the layer may be obtained with the method `$getLastWriteFID()` (see
-#' below).
+#' overwriting an existing one. If the feature has a `$FID` element with other
+#' than `NA` (i.e., a numeric value, optionally carrying the `bit64::integer64`
+#' class attribute and assumed to be a whole number), then the format
+#' driver may use that as the feature id of the new feature, but not
+#' necessarily. The FID of the last feature written to the layer may be
+#' obtained with the method `$getLastWriteFID()` (see below).
 #' Returns logical `TRUE` upon successful completion, or `FALSE` if creating
 #' the feature did not succeed. To create a feature, but set it if it already
 #' exists see the `$upsertFeature()` method.
+#'
+#' \code{$batchCreateFeature(feature_set)}\cr
+#' Batch version of `$createFeature()`. Creates and writes a batch of new
+#' features within the layer from input passed as a data frame in the
+#' `feature_set` argument. Column names in the data frame must match field
+#' names of the layer and have compatible data types. The specifications
+#' listed above under the `$fetch()` method generally apply to input data
+#' types for writing, but integers may be passed as 'numeric', and
+#' the 'integer64' class attribute is not strictly required on 'numeric'
+#' input if it is not needed for the data being passed to an OFTInteger64
+#' field.
+#' Returns a logical vector of length equal to the number of input features
+#' (rows of the data frame), with `TRUE` indicating success for the feature at
+#' that row index, or `FALSE` if writing the feature failed.
+#' It is recommended to use transactions when batch writing features to a
+#' layer (see `$startTransaction()` below). This will generally give large
+#' performance benefit with data sources that provide efficient transaction
+#' support (e.g., RDBMS-based sources such as GeoPackage and PostGIS). In
+#' addition, the return value of `$batchCreateFeature()` can be checked, and
+#' the transaction optionally committed or rolled back based on results of the
+#' operation across the full set of input features.
 #'
 #' \code{$upsertFeature(feature)}\cr
 #' Rewrites/replaces an existing feature or creates a new feature within the
 #' layer. This method will write a feature to the layer, based on the feature
 #' id within the input feature. The `feature` argument is a named list of
-#' fields and their values, potentially including a `$FID` element referencing
-#' an existing feature to rewrite. If the feature id doesn't exist a new
-#' feature will be written. Otherwise, the existing feature will be rewritten.
+#' fields and their values (might be one row of a data frame), potentially
+#' including a `$FID` element referencing an existing feature to rewrite. If
+#' the feature id doesn't exist a new feature will be written. Otherwise, the
+#' existing feature will be rewritten.
 #' The `UpsertFeature` element in the list returned by `$testCapability()` can
 #' be checked to determine if this layer supports upsert writing. See
 #' `$setFeature()` above for a description of how omitted fields in the passed
 #' `feature` are processed.
-#' Returns logical `TRUE` upon successful completion, or `FALSE` if upserting
-#' the feature did not succeed. Requires GDAL >= 3.6.
+#' Returns logical `TRUE` upon successful completion, or `FALSE` if upsert did
+#' not succeed. Requires GDAL >= 3.6.
 #'
 #' \code{$getLastWriteFID()}\cr
 #' Returns the FID of the last feature written (either newly created or updated
@@ -573,12 +630,12 @@
 #' formats. This is the case if a FID has not been assigned yet, and generally
 #' does not indicate an error (e.g., formats that do not store a persistent FID
 #' and assign FIDs upon a sequential read operation). The returned FID is a
-#' numeric scalar carrying the `bit64::integer64` class attribute.
+#' numeric value carrying the `bit64::integer64` class attribute.
 #'
 #' \code{$deleteFeature(fid)}\cr
 #' Deletes a feature from the layer. The feature with the indicated feature ID
 #' is deleted from the layer if supported by the format driver. The value of
-#' `fid` must be a numeric scalar, optionally carrying the `bit64::integer64`
+#' `fid` must be a numeric value, optionally carrying the `bit64::integer64`
 #' class attribute (should be a whole number, will be truncated).
 #' The `DeleteFeature` element in the list returned by `$testCapability()` can
 #' be checked to establish if this layer has delete feature capability. Returns
@@ -594,14 +651,14 @@
 #' which will ensure all data is correctly flushed. Returns logical `TRUE` if
 #' no error occurs (even if nothing is done) or `FALSE` on error.
 #'
-#' \code{$startTransaction(force)}\cr
-#' Creates a transaction if supported by the vector data source. The `force`
-#' argument is a logical value. If `force = FALSE`, only "efficient"
-#' transactions will be attempted. Some drivers may offer an emulation of
-#' transactions, but sometimes with significant overhead, in which case the
-#' user must explicitly allow for such an emulation by setting `force =TRUE`.
-#' The function `ogr_ds_test_cap()` can be used to determine whether a vector
-#' data source supports efficient or emulated transactions.
+#' \code{$startTransaction()}\cr
+#' Creates a transaction if supported by the vector data source. By default,
+#' only "efficient" transactions will be attempted. See the writable field
+#' `$transactionsForce` above, which must be set to `TRUE` to allow for
+#' emulated transactions. These are supported by some drivers but with
+#' potentially significant overhead. The function `ogr_ds_test_cap()` can be
+#' used to determine whether a vector data source supports efficient or
+#' emulated transactions.
 #'
 #' All changes done after the start of the transaction are definitely applied
 #' in the data source if `$commitTransaction()` is called. They can be canceled

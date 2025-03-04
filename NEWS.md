@@ -1,4 +1,15 @@
-# gdalraster 1.12.0.9224 (dev)
+# gdalraster 1.12.0.9233 (dev)
+
+* `GDALVector`: add per-object setting `convertToLinear`, whether to convert non-linear geometry types into
+linear geometry types by potentially approximating them (#629) (2025-03-04)
+
+* fix geometry binary op functions (`g_intersection()`, etc.): fix indexing of the output list when both inputs are list (#641) (2025-03-03)
+
+* add the writable field `GDALVector::transactionsForce` defaulted to `FALSE` (#640) (2025-03-03)
+
+* add `GDALVector::batchCreateFeature()`: write a batch of features to a layer from data frame input (#639) (2025-03-03)
+
+* `GDALVector::testCapability()`: add `FastGetArrowStream` and `FastWriteArrowBatch` in the returned list of layer capabilities (#638) (2025-03-03)
 
 * (internal) fix test in configure.ac for GDAL >= 3.1.0 (2025-02-26)
 

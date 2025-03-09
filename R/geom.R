@@ -306,19 +306,24 @@ g_wk2wk <- function(geom, as_iso = FALSE, byte_order = "LSB") {
 #' These functions use the GEOS library via GDAL headers.
 #'
 #' `g_create()` creates a geometry object from the given point(s) and returns
-#' a raw vector of WKB (the default) or a character string of WKT. Currently,
-#' supports Point, MultiPoint, LineString, and Polygon. If multiple input
-#' points are given for creating Point type, then multiple geometries will be
-#' returned as a list of WKB raw vectors, or character vector of WKT strings
-#' (if `as_wkb = FALSE`). Otherwise, a single geometry is created from the
-#' input points.
+#' a raw vector of WKB (the default) or a character string of WKT. Currently
+#' supports creating Point, MultiPoint, LineString, Polygon, and
+#' GeomteryCollection.
+#' If multiple input points are given for creating Point type, then multiple
+#' geometries will be returned as a list of WKB raw vectors, or character
+#' vector of WKT strings (if `as_wkb = FALSE`). Otherwise, a single geometry
+#' is created from the input points. Only an empty GeometryCollection can be
+#' created with this function, for subsequent use with `g_add_geom()`.
 #'
 #' `g_add_geom()` adds a geometry to a geometry container, e.g.,
-#' POLYGON to POLYGON (to add an interior ring), POINT to MULTIPOINT,
-#' LINESTRING to MULTILINESTRING, POLYGON to MULTIPOLYGON.
+#' Polygon to Polygon (to add an interior ring), Point to MultiPoint,
+#' LineString to MultiLineString, Polygon to MultiPolygon, or mixed
+#' geometry types to a GeometryCollection. Returns a new geometry, i.e,
+#' the container geometry is not modified.
 #'
-#' @param geom_type Character string. One of `"POINT"`, `"MULTIPOINT"`,
-#' `"LINESTRING"`, `"POLYGON"` (see Note).
+#' @param geom_type Character string (case-insensitive), one of `"POINT"`,
+#' `"MULTIPOINT"`, `"LINESTRING"`, `"POLYGON"` (see Note) or
+#' `"GEOMETRYCOLLECTION"`.
 #' @param pts Numeric matrix of points (x, y, z, m), or `NULL` to create an
 #' empty geometry. The points can be given as (x, y), (x, y, z) or
 #' (x, y, z, m), so the input must have two, three or four columns.
@@ -331,20 +336,26 @@ g_wk2wk <- function(geom, as_iso = FALSE, byte_order = "LSB") {
 #' @param byte_order Character string specifying the byte order when output is
 #' WKB. One of `"LSB"` (the default) or `"MSB"` (uncommon).
 #' @param sub_geom Either a raw vector of WKB or a character string of WKT.
-#' @param container Either a raw vector of WKB or a character string of WKT.
+#' @param container Either a raw vector of WKB or a character string of WKT for
+#' a container geometry type.
 #' @return
 #' A geometry as WKB raw vector by default, or a WKT string if
 #' `as_wkb = FALSE`. In the case of multiple input points for creating Point
-#' geometry type, a list of WKB raw vectors or character vector of WKT strings.
+#' geometry type, a list of WKB raw vectors or character vector of WKT strings
+#' will be returned.
 #'
 #' @note
 #' A POLYGON can be created for a single ring which will be the
 #' exterior ring. Additional POLYGONs can be created and added to an
-#' existing POLYGON with [g_add_geom()]. These will become interior rings.
-#' Alternatively, an empty polygon can be created with
-#' `g_create("POLYGON", NULL)`, followed by creation and addition of
-#' POLYGONs. In that case, the first added POLYGON will be the exterior
-#' ring. The next ones will be the interior rings.
+#' existing POLYGON with `g_add_geom()`. These will become interior rings.
+#' Alternatively, an empty polygon can be created with `g_create("POLYGON")`,
+#' followed by creation and addition of POLYGONs as subgeometries. In that
+#' case, the first added POLYGON will be the exterior ring. The next ones will
+#' be the interior rings.
+#'
+#' Only an empty GeometryCollection can be created with `g_create()`, which
+#' can then be used as a container with `g_add_geom()`. If given, input points
+#' will be ignored by `g_create()` if `geom_type = "GEOMETRYCOLLECTION"`.
 #'
 #' @examples
 #' # raw vector of WKB by default
@@ -484,12 +495,16 @@ g_add_geom <- function(sub_geom, container, as_wkb = TRUE, as_iso = FALSE,
 #' non-empty geometries.
 #'
 #' `g_is_valid()` tests whether a geometry is valid. Returns a logical vector
-#' of the same length as the number of input geometries containing `TRUE` for
-#' the corresponding geometries that are valid or `FALSE` for invalid
-#' geometries.
+#' analogous to the above for `g_is_empty()`.
 #'
-#' `g_name()` returns geometry type names in a character vector of the same
-#' length as the number of input geometries.
+#' `g_is_3D()` checks whether a geometry has Z coordinates. Returns a logical
+#' vector analogous to the above for `g_is_empty()`.
+#'
+#' `g_is_measured()` checks whether a geometry is measured (has M values).
+#' Returns a logical vector analogous to the above for `g_is_empty()`.
+#'
+#' `g_name()` returns the WKT type names of the input geometries in a character
+#' vector of the same length as the number of input geometries.
 #'
 #' `g_summary()` returns text summaries of WKB/WKT geometries in a
 #' character vector of the same length as the number of input
@@ -509,6 +524,17 @@ g_add_geom <- function(sub_geom, container, as_wkb = TRUE, as_iso = FALSE,
 #' g3 <- "POLYGON ((0 0, 10 10, 10 0, 0 1))"
 #' g_is_valid(c(g1, g2, g3))
 #'
+#' g_is_3D(g1)
+#' g_is_measured(g1)
+#'
+#' pt_xyz <- g_create("POINT", c(1, 9, 100))
+#' g_is_3D(pt_xyz)
+#' g_is_measured(pt_xyz)
+#'
+#' pt_xyzm <- g_create("POINT", c(1, 9, 100, 2000))
+#' g_is_3D(pt_xyzm)
+#' g_is_measured(pt_xyzm)
+#'
 #' f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
 #' lyr <- new(GDALVector, f, "mtbs_perims")
 #'
@@ -525,62 +551,6 @@ g_add_geom <- function(sub_geom, container, as_wkb = TRUE, as_iso = FALSE,
 #' }
 #'
 #' lyr$close()
-#' @export
-g_name <- function(geom, quiet = FALSE) {
-    # quiet
-    if (is.null(quiet))
-        quiet <- FALSE
-    if (!is.logical(quiet) || length(quiet) > 1)
-        stop("'quiet' must be a logical scalar", call. = FALSE)
-
-    ret <- NULL
-    if (is.raw(geom)) {
-        ret <- .g_name(geom, quiet)
-    } else if (is.list(geom) && is.raw(geom[[1]])) {
-        ret <- sapply(geom, .g_name, quiet)
-    } else if (is.character(geom)) {
-        if (length(geom) == 1) {
-            ret <- .g_name(g_wk2wk(geom), quiet)
-        } else {
-            ret <- sapply(g_wk2wk(geom), .g_name, quiet)
-        }
-    } else {
-        stop("'geom' must be a character vector, raw vector, or list",
-             call. = FALSE)
-    }
-
-    return(ret)
-}
-
-#' @name g_query
-#' @export
-g_summary <- function(geom, quiet = FALSE) {
-    # quiet
-    if (is.null(quiet))
-        quiet <- FALSE
-    if (!is.logical(quiet) || length(quiet) > 1)
-        stop("'quiet' must be a logical scalar", call. = FALSE)
-
-    ret <- NULL
-    if (is.raw(geom)) {
-        ret <- .g_summary(geom, quiet)
-    } else if (is.list(geom) && is.raw(geom[[1]])) {
-        ret <- sapply(geom, .g_summary, quiet)
-    } else if (is.character(geom)) {
-        if (length(geom) == 1) {
-            ret <- .g_summary(g_wk2wk(geom), quiet)
-        } else {
-            ret <- sapply(g_wk2wk(geom), .g_summary, quiet)
-        }
-    } else {
-        stop("'geom' must be a character vector, raw vector, or list",
-             call. = FALSE)
-    }
-
-    return(ret)
-}
-
-#' @name g_query
 #' @export
 g_is_empty <- function(geom, quiet = FALSE) {
     # quiet
@@ -627,6 +597,118 @@ g_is_valid <- function(geom, quiet = FALSE) {
             ret <- .g_is_valid(g_wk2wk(geom), quiet)
         } else {
             ret <- sapply(g_wk2wk(geom), .g_is_valid, quiet)
+        }
+    } else {
+        stop("'geom' must be a character vector, raw vector, or list",
+             call. = FALSE)
+    }
+
+    return(ret)
+}
+
+#' @name g_query
+#' @export
+g_is_3D <- function(geom, quiet = FALSE) {
+    # quiet
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a logical scalar", call. = FALSE)
+
+    ret <- NULL
+    if (is.raw(geom)) {
+        ret <- .g_is_3D(geom, quiet)
+    } else if (is.list(geom) && is.raw(geom[[1]])) {
+        ret <- sapply(geom, .g_is_3D, quiet)
+    } else if (is.character(geom)) {
+        if (length(geom) == 1) {
+            ret <- .g_is_3D(g_wk2wk(geom), quiet)
+        } else {
+            ret <- sapply(g_wk2wk(geom), .g_is_3D, quiet)
+        }
+    } else {
+        stop("'geom' must be a character vector, raw vector, or list",
+             call. = FALSE)
+    }
+
+    return(ret)
+}
+
+#' @name g_query
+#' @export
+g_is_measured <- function(geom, quiet = FALSE) {
+    # quiet
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a logical scalar", call. = FALSE)
+
+    ret <- NULL
+    if (is.raw(geom)) {
+        ret <- .g_is_measured(geom, quiet)
+    } else if (is.list(geom) && is.raw(geom[[1]])) {
+        ret <- sapply(geom, .g_is_measured, quiet)
+    } else if (is.character(geom)) {
+        if (length(geom) == 1) {
+            ret <- .g_is_measured(g_wk2wk(geom), quiet)
+        } else {
+            ret <- sapply(g_wk2wk(geom), .g_is_measured, quiet)
+        }
+    } else {
+        stop("'geom' must be a character vector, raw vector, or list",
+             call. = FALSE)
+    }
+
+    return(ret)
+}
+
+#' @name g_query
+#' @export
+g_name <- function(geom, quiet = FALSE) {
+    # quiet
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a logical scalar", call. = FALSE)
+
+    ret <- NULL
+    if (is.raw(geom)) {
+        ret <- .g_name(geom, quiet)
+    } else if (is.list(geom) && is.raw(geom[[1]])) {
+        ret <- sapply(geom, .g_name, quiet)
+    } else if (is.character(geom)) {
+        if (length(geom) == 1) {
+            ret <- .g_name(g_wk2wk(geom), quiet)
+        } else {
+            ret <- sapply(g_wk2wk(geom), .g_name, quiet)
+        }
+    } else {
+        stop("'geom' must be a character vector, raw vector, or list",
+             call. = FALSE)
+    }
+
+    return(ret)
+}
+
+#' @name g_query
+#' @export
+g_summary <- function(geom, quiet = FALSE) {
+    # quiet
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a logical scalar", call. = FALSE)
+
+    ret <- NULL
+    if (is.raw(geom)) {
+        ret <- .g_summary(geom, quiet)
+    } else if (is.list(geom) && is.raw(geom[[1]])) {
+        ret <- sapply(geom, .g_summary, quiet)
+    } else if (is.character(geom)) {
+        if (length(geom) == 1) {
+            ret <- .g_summary(g_wk2wk(geom), quiet)
+        } else {
+            ret <- sapply(g_wk2wk(geom), .g_summary, quiet)
         }
     } else {
         stop("'geom' must be a character vector, raw vector, or list",

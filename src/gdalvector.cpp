@@ -302,6 +302,8 @@ Rcpp::List GDALVector::testCapability() const {
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 6, 0)
         Rcpp::Named("FastGetArrowStream") = static_cast<bool>(
             OGR_L_TestCapability(m_hLayer, OLCFastGetArrowStream)),
+#endif
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 8, 0)
         Rcpp::Named("FastWriteArrowBatch") = static_cast<bool>(
             OGR_L_TestCapability(m_hLayer, OLCFastWriteArrowBatch)),
 #endif
@@ -1008,7 +1010,7 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
     Rcpp::CharacterVector geom_column{};  // column name(s) for gis attributes
     Rcpp::CharacterVector geom_col_type{};  // geom type(s) for gis attributes
     Rcpp::CharacterVector geom_col_srs{};  // SRS for gis attributes
-    std::string geom_format{};   // WKB/WKT/NONE
+    std::string geom_format{};   // taken from this->returnGeomAs;
 
     if (EQUAL(this->returnGeomAs.c_str(), "NONE")) {
         include_geom = false;
@@ -1062,6 +1064,10 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
                 geom_column.push_back(OGR_GFld_GetNameRef(hGeomFldDefn));
 
             OGRwkbGeometryType eType = OGR_GFld_GetType(hGeomFldDefn);
+            if (this->promoteToMulti || this->convertToLinear) {
+                eType = getTargetGeomType(eType, this->convertToLinear,
+                                          this->promoteToMulti);
+            }
             geom_col_type.push_back(getWkbGeomString_(eType));
 
             OGRSpatialReferenceH hSRS =
@@ -1361,6 +1367,7 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
             for (int i = 0; i < nGeomFields; ++i) {
                 OGRGeomFieldDefnH hGeomFldDefn =
                         OGR_FD_GetGeomFieldDefn(hFDefn, i);
+
                 if (hGeomFldDefn == nullptr)
                     Rcpp::stop("could not obtain geometry field definition");
 
@@ -1368,53 +1375,21 @@ Rcpp::DataFrame GDALVector::fetch(double n) {
                     continue;
 
                 OGRGeometryH hGeom = nullptr;
-                OGRwkbGeometryType geom_type = wkbUnknown;
                 bool destroy_geom = false;
-                OGRGeometryH hGeomRef = OGR_F_GetGeomFieldRef(hFeat, i);
 
-                if (hGeomRef && (this->promoteToMulti ||
-                                 this->convertToLinear)) {
+                if (this->promoteToMulti || this->convertToLinear) {
 
-                    geom_type = OGR_GT_GetLinear(OGR_G_GetGeometryType(hGeomRef));
+                    OGRGeometryH hGeomRef = OGR_F_GetGeomFieldRef(hFeat, i);
+                    OGRwkbGeometryType out_geom_type = getTargetGeomType(
+                            OGR_G_GetGeometryType(hGeomRef),
+                            this->convertToLinear,
+                            this->promoteToMulti);
 
-                    if (this->convertToLinear && !this->promoteToMulti) {
-                            hGeom = OGR_G_ForceTo(OGR_G_Clone(hGeomRef),
-                                                  geom_type, nullptr);
-                            destroy_geom = true;
+                    hGeom = OGR_G_ForceTo(OGR_G_Clone(hGeomRef),
+                                          out_geom_type, nullptr);
+
+                    destroy_geom = true;
                     }
-                    else {
-                        geom_type = OGR_GT_Flatten(geom_type);
-
-                        switch (geom_type) {
-                            case wkbPolygon:
-                            {
-                                hGeom = OGR_G_ForceToMultiPolygon(
-                                        OGR_G_Clone(hGeomRef));
-                                destroy_geom = true;
-                            }
-                            break;
-
-                            case wkbPoint:
-                            {
-                                hGeom = OGR_G_ForceToMultiPoint(
-                                        OGR_G_Clone(hGeomRef));
-                                destroy_geom = true;
-                            }
-                            break;
-
-                            case wkbLineString:
-                            {
-                                hGeom = OGR_G_ForceToMultiLineString(
-                                        OGR_G_Clone(hGeomRef));
-                                destroy_geom = true;
-                            }
-                            break;
-
-                            default:
-                                hGeom = OGR_F_GetGeomFieldRef(hFeat, i);
-                        }
-                    }
-                }
                 else {
                     hGeom = OGR_F_GetGeomFieldRef(hFeat, i);
                 }
@@ -2782,8 +2757,10 @@ std::vector<std::map<R_xlen_t, int>> GDALVector::validateFeatInput_(
 
         OGRFieldDefnH hFieldDefn = nullptr;
         hFieldDefn = OGR_F_GetFieldDefnRef(hFeat, fld_idx);
-        if (hFieldDefn == nullptr)
+        if (hFieldDefn == nullptr) {
+            OGR_F_Destroy(hFeat);
             Rcpp::stop("could not obtain field definition");
+        }
 
         OGRFieldType fld_type = OGR_Fld_GetType(hFieldDefn);
         std::string msg_not_nullable =
@@ -3016,6 +2993,7 @@ std::vector<std::map<R_xlen_t, int>> GDALVector::validateFeatInput_(
         }
     }
 
+    OGR_F_Destroy(hFeat);
     std::vector<std::map<R_xlen_t, int>> ret = {map_flds, map_geom_flds};
     return ret;
 }

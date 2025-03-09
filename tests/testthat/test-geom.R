@@ -340,6 +340,10 @@ test_that("g_factory functions work", {
     expect_equal(coords$z, z)
     expect_equal(coords$m, m)
 
+    # geometry collection
+    g_coll <- g_create("GEOMETRYCOLLECTION")
+    expect_equal(g_wk2wk(g_coll), "GEOMETRYCOLLECTION EMPTY")
+
     ## add subgeometry to container
     # create empty multipoint and add geoms
     mult_pt2 <- g_create("MULTIPOINT")
@@ -347,7 +351,12 @@ test_that("g_factory functions work", {
                                            mult_pt2))
     expect_no_error(mult_pt2 <- g_add_geom(g_create("POINT", c(1, 9)),
                                            mult_pt2))
-    expect_true(g_equals(mult_pt1, mult_pt2))
+    expect_true(g_equals(mult_pt1, mult_pt2))  # mult_pt1 from above
+
+    pt <- g_create("POINT", c(1, 2))
+    expect_no_error(g_coll <- g_add_geom(pt, g_coll))  # g_coll from above
+    expect_no_error(g_coll <- g_add_geom(mult_pt2, g_coll))
+    expect_true(g_is_valid(g_coll))
 
     # polygon to polygon (add inner ring)
     container <- "POLYGON((0 0,0 10,10 10,0 0),(0.25 0.5,1 1.1,0.5 1,0.25 0.5))"
@@ -544,6 +553,20 @@ test_that("geometry properties are correct", {
     expected_value <- c(FALSE, FALSE, TRUE)
     expect_equal(g_is_empty(wkt_vec), expected_value)
     expect_equal(g_is_empty(wkb_list), expected_value)
+
+    # 3D/measured
+    # 2D
+    pt1 <- g_create("POINT", c(1, 9))
+    expect_false(g_is_3D(pt1))
+    expect_false(g_is_measured(pt1))
+    # xyz
+    pt2 <- g_create("POINT", c(1, 9, 0))
+    expect_true(g_is_3D(pt2))
+    expect_false(g_is_measured(pt2))
+    # xyzm
+    pt3 <- g_create("POINT", c(1, 9, 0, 2000))
+    expect_true(g_is_3D(pt3))
+    expect_true(g_is_measured(pt3))
 
     # g_envelope
     bb1_2 <- c(0, 0, 10, 10)

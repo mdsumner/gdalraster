@@ -1,4 +1,14 @@
-# gdalraster 1.12.0.9233 (dev)
+# gdalraster 1.12.0.9240 (dev)
+
+* `transform_xy()` / `inv_project()`: account for behavior change at GDAL 3.11 (#631) (2025-03-08)
+
+* geom api: support GeometryCollection in `g_create()` (#653) (2025-03-08)
+
+* (internal) [Valgrind] Fix memory leak in `validateFeatInput_()` (#652) (2025-03-07)
+
+* geom api: add `g_is_3D()` and `g_is_measured()` (#650) (2025-03-07)
+
+* Account for possible `convertToLinear` and/or `promoteToMulti` in the GIS attributes attached to vector read outputs (#645) (2025-03-05)
 
 * `GDALVector`: add per-object setting `convertToLinear`, whether to convert non-linear geometry types into
 linear geometry types by potentially approximating them (#629) (2025-03-04)

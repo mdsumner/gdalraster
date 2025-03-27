@@ -141,6 +141,7 @@ class GDALRaster {
                                       int krnl_dim,
                                       const std::string &xy_srs) const;
 
+    Rcpp::NumericMatrix get_block_indexing(int band) const;
     std::vector<int> getBlockSize(int band) const;
     std::vector<int> getActualBlockSize(int band, int xblockoff,
                                         int yblockoff) const;
@@ -266,6 +267,8 @@ GDALRaster *createCopy(const std::string &format,
                        bool quiet);
 
 std::string getCreationOptions(const std::string &format);
+bool validateCreationOptions(const std::string &format,
+                             const Rcpp::CharacterVector &options);
 
 bool copyDatasetFiles(const Rcpp::CharacterVector &new_filename,
                       const Rcpp::CharacterVector &old_filename,
@@ -313,6 +316,10 @@ Rcpp::IntegerMatrix get_pixel_line_gt(const Rcpp::RObject &xy,
 
 Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject &xy,
                                       const GDALRaster* const &ds);
+
+std::vector<double> bbox_grid_to_geo_(const std::vector<double> &gt,
+                                      double grid_xmin, double grid_xmax,
+                                      double grid_ymin, double grid_ymax);
 
 Rcpp::NumericVector flip_vertical(const Rcpp::NumericVector &v,
                                   int xsize, int ysize, int nbands);
@@ -377,7 +384,8 @@ bool polygonize(const Rcpp::CharacterVector &src_filename, int src_band,
                 int connectedness, bool quiet);
 
 bool rasterize(const std::string &src_dsn, const std::string &dst_filename,
-               const Rcpp::CharacterVector &cl_arg, bool quiet);
+               Rcpp::List dst_dataset, const Rcpp::CharacterVector &cl_arg,
+               bool quiet);
 
 bool sieveFilter(const Rcpp::CharacterVector &src_filename, int src_band,
                  const Rcpp::CharacterVector &dst_filename, int dst_band,

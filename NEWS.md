@@ -1,4 +1,18 @@
-# gdalraster 1.12.0.9250 (dev)
+# gdalraster 1.12.0.9260 (dev)
+
+* add `GDALRaster::get_block_indexing()`: helper method to get indexing values for the block layout (#667) (2025-03-25)
+
+* `getCreationOptions()`: include `$min` and `$max` in the returned list if GDAL >= 3.11 (2025-03-22)
+
+* add `validateCreationOptions()`, validate the list of creation options that are handled by a driver (#663) (2025-03-17)
+
+* `getCreationOptions()`: change the return value to a named list of options with their information (#662) (2025-03-16)
+
+* `rasterize()`: support passing a `GDALRaster` object for in-place updating (#660) (2025-03-15)
+
+* fix bug in `GDALVector` write that could segfault with an input feature having zero attribute fields and one geometry field that uses the default geometry column name, e.g., a GeoJSON or shapefile layer with geometry only and no attribute fields (#659) (2025-03-14)
+
+* (internal) code linting for cppcheck style in geom_api.cpp and srs_api.cpp (#658) (2025-03-12)
 
 * `ogr_proc()`: rename argument `return_lyr_obj` to `return_obj`, to be consistent with other functions that optionally return a `GDALVector` or `GDALRaster` object (`ogr_proc()` is not in a release version yet so not designated as a breaking change) (2025-03-09)
 

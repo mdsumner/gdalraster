@@ -376,6 +376,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// bbox_grid_to_geo_
+std::vector<double> bbox_grid_to_geo_(const std::vector<double>& gt, double grid_xmin, double grid_xmax, double grid_ymin, double grid_ymax);
+RcppExport SEXP _gdalraster_bbox_grid_to_geo_(SEXP gtSEXP, SEXP grid_xminSEXP, SEXP grid_xmaxSEXP, SEXP grid_yminSEXP, SEXP grid_ymaxSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::vector<double>& >::type gt(gtSEXP);
+    Rcpp::traits::input_parameter< double >::type grid_xmin(grid_xminSEXP);
+    Rcpp::traits::input_parameter< double >::type grid_xmax(grid_xmaxSEXP);
+    Rcpp::traits::input_parameter< double >::type grid_ymin(grid_yminSEXP);
+    Rcpp::traits::input_parameter< double >::type grid_ymax(grid_ymaxSEXP);
+    rcpp_result_gen = Rcpp::wrap(bbox_grid_to_geo_(gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax));
+    return rcpp_result_gen;
+END_RCPP
+}
 // flip_vertical
 Rcpp::NumericVector flip_vertical(const Rcpp::NumericVector& v, int xsize, int ysize, int nbands);
 RcppExport SEXP _gdalraster_flip_vertical(SEXP vSEXP, SEXP xsizeSEXP, SEXP ysizeSEXP, SEXP nbandsSEXP) {
@@ -531,16 +546,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // rasterize
-bool rasterize(const std::string& src_dsn, const std::string& dst_filename, const Rcpp::CharacterVector& cl_arg, bool quiet);
-RcppExport SEXP _gdalraster_rasterize(SEXP src_dsnSEXP, SEXP dst_filenameSEXP, SEXP cl_argSEXP, SEXP quietSEXP) {
+bool rasterize(const std::string& src_dsn, const std::string& dst_filename, Rcpp::List dst_dataset, const Rcpp::CharacterVector& cl_arg, bool quiet);
+RcppExport SEXP _gdalraster_rasterize(SEXP src_dsnSEXP, SEXP dst_filenameSEXP, SEXP dst_datasetSEXP, SEXP cl_argSEXP, SEXP quietSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type src_dsn(src_dsnSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type dst_filename(dst_filenameSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type dst_dataset(dst_datasetSEXP);
     Rcpp::traits::input_parameter< const Rcpp::CharacterVector& >::type cl_arg(cl_argSEXP);
     Rcpp::traits::input_parameter< bool >::type quiet(quietSEXP);
-    rcpp_result_gen = Rcpp::wrap(rasterize(src_dsn, dst_filename, cl_arg, quiet));
+    rcpp_result_gen = Rcpp::wrap(rasterize(src_dsn, dst_filename, dst_dataset, cl_arg, quiet));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -686,6 +702,18 @@ BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const std::string& >::type format(formatSEXP);
     rcpp_result_gen = Rcpp::wrap(getCreationOptions(format));
+    return rcpp_result_gen;
+END_RCPP
+}
+// validateCreationOptions
+bool validateCreationOptions(const std::string& format, const Rcpp::CharacterVector& options);
+RcppExport SEXP _gdalraster_validateCreationOptions(SEXP formatSEXP, SEXP optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type format(formatSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::CharacterVector& >::type options(optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(validateCreationOptions(format, options));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -1024,12 +1052,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // g_create
-Rcpp::RawVector g_create(std::string geom_type, const Rcpp::RObject& pts, bool as_iso, const std::string& byte_order);
+Rcpp::RawVector g_create(const std::string& geom_type, const Rcpp::RObject& pts, bool as_iso, const std::string& byte_order);
 RcppExport SEXP _gdalraster_g_create(SEXP geom_typeSEXP, SEXP ptsSEXP, SEXP as_isoSEXP, SEXP byte_orderSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type geom_type(geom_typeSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type geom_type(geom_typeSEXP);
     Rcpp::traits::input_parameter< const Rcpp::RObject& >::type pts(ptsSEXP);
     Rcpp::traits::input_parameter< bool >::type as_iso(as_isoSEXP);
     Rcpp::traits::input_parameter< const std::string& >::type byte_order(byte_orderSEXP);
@@ -1971,6 +1999,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_inv_geotransform", (DL_FUNC) &_gdalraster_inv_geotransform, 1},
     {"_gdalraster_get_pixel_line_gt", (DL_FUNC) &_gdalraster_get_pixel_line_gt, 2},
     {"_gdalraster_get_pixel_line_ds", (DL_FUNC) &_gdalraster_get_pixel_line_ds, 2},
+    {"_gdalraster_bbox_grid_to_geo_", (DL_FUNC) &_gdalraster_bbox_grid_to_geo_, 5},
     {"_gdalraster_flip_vertical", (DL_FUNC) &_gdalraster_flip_vertical, 4},
     {"_gdalraster_buildVRT", (DL_FUNC) &_gdalraster_buildVRT, 4},
     {"_gdalraster_combine", (DL_FUNC) &_gdalraster_combine, 8},
@@ -1981,7 +2010,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_ogr2ogr", (DL_FUNC) &_gdalraster_ogr2ogr, 5},
     {"_gdalraster_ogrinfo", (DL_FUNC) &_gdalraster_ogrinfo, 6},
     {"_gdalraster_polygonize", (DL_FUNC) &_gdalraster_polygonize, 9},
-    {"_gdalraster_rasterize", (DL_FUNC) &_gdalraster_rasterize, 4},
+    {"_gdalraster_rasterize", (DL_FUNC) &_gdalraster_rasterize, 5},
     {"_gdalraster_sieveFilter", (DL_FUNC) &_gdalraster_sieveFilter, 10},
     {"_gdalraster_translate", (DL_FUNC) &_gdalraster_translate, 4},
     {"_gdalraster_warp", (DL_FUNC) &_gdalraster_warp, 6},
@@ -1992,6 +2021,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_copyDatasetFiles", (DL_FUNC) &_gdalraster_copyDatasetFiles, 3},
     {"_gdalraster_identifyDriver", (DL_FUNC) &_gdalraster_identifyDriver, 5},
     {"_gdalraster_getCreationOptions", (DL_FUNC) &_gdalraster_getCreationOptions, 1},
+    {"_gdalraster_validateCreationOptions", (DL_FUNC) &_gdalraster_validateCreationOptions, 2},
     {"_gdalraster_addFileInZip", (DL_FUNC) &_gdalraster_addFileInZip, 6},
     {"_gdalraster_vsi_copy_file", (DL_FUNC) &_gdalraster_vsi_copy_file, 3},
     {"_gdalraster_vsi_curl_clear_cache", (DL_FUNC) &_gdalraster_vsi_curl_clear_cache, 3},

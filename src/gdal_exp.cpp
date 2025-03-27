@@ -868,6 +868,44 @@ Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
 }
 
 
+//' Returns bbox geospatial x,y coordinates (xmin, ymin, xmax, ymax) from
+//' inpouts of geotransform vector and the grid pixel/line extent
+//' @noRd
+// [[Rcpp::export(name = ".bbox_grid_to_geo")]]
+std::vector<double> bbox_grid_to_geo_(const std::vector<double> &gt,
+                                      double grid_xmin, double grid_xmax,
+                                      double grid_ymin, double grid_ymax) {
+
+    // {ul, ll, ur, lr}
+    Rcpp::NumericVector corners_x = {NA_REAL, NA_REAL, NA_REAL, NA_REAL};
+    Rcpp::NumericVector corners_y = {NA_REAL, NA_REAL, NA_REAL, NA_REAL};
+
+    // ul
+    corners_x[0] = gt[0] + gt[1] * grid_xmin + gt[2] * grid_ymax;
+    corners_y[0] = gt[3] + gt[4] * grid_xmin + gt[5] * grid_ymax;
+
+    // ll
+    corners_x[1] = gt[0] + gt[1] * grid_xmin + gt[2] * grid_ymin;
+    corners_y[1] = gt[3] + gt[4] * grid_xmin + gt[5] * grid_ymin;
+
+    // ur
+    corners_x[2] = gt[0] + gt[1] * grid_xmax + gt[2] * grid_ymax;
+    corners_y[2] = gt[3] + gt[4] * grid_xmax + gt[5] * grid_ymax;
+
+    // lr
+    corners_x[3] = gt[0] + gt[1] * grid_xmax + gt[2] * grid_ymin;
+    corners_y[3] = gt[3] + gt[4] * grid_xmax + gt[5] * grid_ymin;
+
+    double xmin = Rcpp::min(corners_x);
+    double xmax = Rcpp::max(corners_x);
+    double ymin = Rcpp::min(corners_y);
+    double ymax = Rcpp::max(corners_y);
+
+    std::vector<double> ret = {xmin, ymin, xmax, ymax};
+    return ret;
+}
+
+
 //' Flip raster data vertically
 //' @noRd
 // [[Rcpp::export(name = ".flip_vertical")]]
@@ -1941,7 +1979,8 @@ bool polygonize(const Rcpp::CharacterVector &src_filename, int src_band,
 //' @noRd
 // [[Rcpp::export(name = ".rasterize")]]
 bool rasterize(const std::string &src_dsn, const std::string &dst_filename,
-               const Rcpp::CharacterVector &cl_arg, bool quiet = false) {
+               Rcpp::List dst_dataset, const Rcpp::CharacterVector &cl_arg,
+               bool quiet = false) {
 
     GDALDatasetH hSrcDS = nullptr;
     hSrcDS = GDALOpenEx(src_dsn.c_str(), GDAL_OF_VECTOR,
@@ -1949,6 +1988,15 @@ bool rasterize(const std::string &src_dsn, const std::string &dst_filename,
 
     if (hSrcDS == nullptr)
         Rcpp::stop("failed to open vector data source");
+
+    GDALRaster *dst_dataset_in = nullptr;
+    if (dst_filename == "" && dst_dataset.size() == 1)
+        dst_dataset_in = dst_dataset[0];
+    else if (dst_filename == "" && dst_dataset.size() != 1)
+        Rcpp::stop("invalid specification of destination raster");
+
+    if (dst_filename == "" && dst_dataset_in->getGDALDatasetH_() == nullptr)
+        Rcpp::stop("destination raster is 'nullptr'");
 
     std::vector<char *> argv(cl_arg.size() + 1);
     for (R_xlen_t i = 0; i < cl_arg.size(); ++i) {
@@ -1964,15 +2012,25 @@ bool rasterize(const std::string &src_dsn, const std::string &dst_filename,
         GDALRasterizeOptionsSetProgress(psOptions, GDALTermProgressR, nullptr);
 
     GDALDatasetH hDstDS = nullptr;
-    hDstDS = GDALRasterize(dst_filename.c_str(), nullptr, hSrcDS,
-                           psOptions, nullptr);
+    if (dst_dataset_in) {
+        hDstDS = GDALRasterize(nullptr, dst_dataset_in->getGDALDatasetH_(),
+                               hSrcDS, psOptions, nullptr);
+    }
+    else {
+        hDstDS = GDALRasterize(dst_filename.c_str(), nullptr, hSrcDS,
+                               psOptions, nullptr);
+    }
 
     GDALRasterizeOptionsFree(psOptions);
     GDALReleaseDataset(hSrcDS);
     if (hDstDS == nullptr)
         Rcpp::stop("rasterize failed");
 
-    GDALClose(hDstDS);
+    if (!dst_dataset_in)
+        GDALClose(hDstDS);
+    else
+        dst_dataset_in->flushCache();
+
     return true;
 }
 
@@ -2293,13 +2351,13 @@ bool warp(const Rcpp::List &src_datasets,
         GDALWarpAppOptionsSetProgress(psOptions, GDALTermProgressR, nullptr);
 
     GDALDatasetH hDstDS = nullptr;
-    if (dst_filename_in != "") {
-        hDstDS = GDALWarp(dst_filename_in.c_str(), nullptr,
+    if (dst_dataset_in) {
+        hDstDS = GDALWarp(nullptr, dst_dataset_in->getGDALDatasetH_(),
                           src_datasets.size(), src_hDS.data(),
                           psOptions, nullptr);
     }
     else {
-        hDstDS = GDALWarp(nullptr, dst_dataset_in->getGDALDatasetH_(),
+        hDstDS = GDALWarp(dst_filename_in.c_str(), nullptr,
                           src_datasets.size(), src_hDS.data(),
                           psOptions, nullptr);
     }
@@ -2901,6 +2959,55 @@ std::string getCreationOptions(const std::string &format) {
         Rcpp::stop("failed to get driver from format name");
 
     return GDALGetDriverCreationOptionList(hDriver);
+}
+
+
+//' Validate the list of creation options that are handled by a driver
+//'
+//' `validateCreationOptions()` is a helper function primarily used by GDAL's
+//' Create() and CreateCopy() to validate that the passed-in list of creation
+//' options is compatible with the GDAL_DMD_CREATIONOPTIONLIST metadata item
+//' defined by some drivers. If the GDAL_DMD_CREATIONOPTIONLIST metadata item
+//' is not defined, this function will return `TRUE`. Otherwise it will check
+//' that the keys and values in the list of creation options are compatible
+//' with the capabilities declared by the GDAL_DMD_CREATIONOPTIONLIST metadata
+//' item. In case of incompatibility a message will be emitted and `FALSE` will
+//' be returned. Wrapper of `GDALValidateCreationOptions()` in the GDAL API.
+//'
+//' @param format Character string giving a format driver short name
+//' (e.g., `"GTiff"`).
+//' @param options A character vector of format-specific creation options as
+//' `"NAME=VALUE"` pairs.
+//' @returns A logical value, `TRUE` if the given creation options are
+//' compatible with the capabilities declared by the GDAL_DMD_CREATIONOPTIONLIST
+//' metadata item for the specified format driver (or if the
+//' GDAL_DMD_CREATIONOPTIONLIST metadata item is not defined for this driver),
+//' otherwise `FALSE`.
+//'
+//' @seealso
+//' [getCreationOptions()], [create()], [createCopy()]
+//'
+//' @examples
+//' validateCreationOptions("GTiff", c("COMPRESS=LZW", "TILED=YES"))
+// [[Rcpp::export]]
+bool validateCreationOptions(const std::string &format,
+                             const Rcpp::CharacterVector &options) {
+
+    GDALDriverH hDriver = nullptr;
+    hDriver = GDALGetDriverByName(format.c_str());
+    if (hDriver == nullptr)
+        Rcpp::stop("failed to get driver for the specified format");
+
+    std::vector<const char *> opt_list(options.size() + 1);
+    for (R_xlen_t i = 0; i < options.size(); ++i) {
+        opt_list[i] = (const char *) options[i];
+    }
+    opt_list[options.size()] = nullptr;
+
+    if (GDALValidateCreationOptions(hDriver, opt_list.data()))
+        return true;
+    else
+        return false;
 }
 
 

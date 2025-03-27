@@ -518,6 +518,13 @@ inv_geotransform <- function(gt) {
     .Call(`_gdalraster_get_pixel_line_ds`, xy, ds)
 }
 
+#' Returns bbox geospatial x,y coordinates (xmin, ymin, xmax, ymax) from
+#' inpouts of geotransform vector and the grid pixel/line extent
+#' @noRd
+.bbox_grid_to_geo <- function(gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax) {
+    .Call(`_gdalraster_bbox_grid_to_geo_`, gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax)
+}
+
 #' Flip raster data vertically
 #' @noRd
 .flip_vertical <- function(v, xsize, ysize, nbands) {
@@ -869,8 +876,8 @@ ogrinfo <- function(dsn, layers = NULL, cl_arg = as.character( c("-so", "-nomd")
 #'
 #' Called from and documented in R/gdalraster_proc.R
 #' @noRd
-.rasterize <- function(src_dsn, dst_filename, cl_arg, quiet = FALSE) {
-    .Call(`_gdalraster_rasterize`, src_dsn, dst_filename, cl_arg, quiet)
+.rasterize <- function(src_dsn, dst_filename, dst_dataset, cl_arg, quiet = FALSE) {
+    .Call(`_gdalraster_rasterize`, src_dsn, dst_filename, dst_dataset, cl_arg, quiet)
 }
 
 #' Remove small raster polygons
@@ -1298,6 +1305,37 @@ identifyDriver <- function(filename, raster = TRUE, vector = TRUE, allowed_drive
 #' @noRd
 .getCreationOptions <- function(format) {
     .Call(`_gdalraster_getCreationOptions`, format)
+}
+
+#' Validate the list of creation options that are handled by a driver
+#'
+#' `validateCreationOptions()` is a helper function primarily used by GDAL's
+#' Create() and CreateCopy() to validate that the passed-in list of creation
+#' options is compatible with the GDAL_DMD_CREATIONOPTIONLIST metadata item
+#' defined by some drivers. If the GDAL_DMD_CREATIONOPTIONLIST metadata item
+#' is not defined, this function will return `TRUE`. Otherwise it will check
+#' that the keys and values in the list of creation options are compatible
+#' with the capabilities declared by the GDAL_DMD_CREATIONOPTIONLIST metadata
+#' item. In case of incompatibility a message will be emitted and `FALSE` will
+#' be returned. Wrapper of `GDALValidateCreationOptions()` in the GDAL API.
+#'
+#' @param format Character string giving a format driver short name
+#' (e.g., `"GTiff"`).
+#' @param options A character vector of format-specific creation options as
+#' `"NAME=VALUE"` pairs.
+#' @returns A logical value, `TRUE` if the given creation options are
+#' compatible with the capabilities declared by the GDAL_DMD_CREATIONOPTIONLIST
+#' metadata item for the specified format driver (or if the
+#' GDAL_DMD_CREATIONOPTIONLIST metadata item is not defined for this driver),
+#' otherwise `FALSE`.
+#'
+#' @seealso
+#' [getCreationOptions()], [create()], [createCopy()]
+#'
+#' @examples
+#' validateCreationOptions("GTiff", c("COMPRESS=LZW", "TILED=YES"))
+validateCreationOptions <- function(format, options) {
+    .Call(`_gdalraster_validateCreationOptions`, format, options)
 }
 
 #' Add a file inside a new or existing ZIP file

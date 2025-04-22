@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9100</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -138,7 +138,13 @@
           <code><a href="getCreationOptions.html">getCreationOptions()</a></code>
 
         </dt>
-        <dd>Return the list of creation options of a GDAL driver</dd>
+        <dd>Return the list of creation options for a GDAL driver</dd>
+      </dl><dl><dt>
+
+          <code><a href="validateCreationOptions.html">validateCreationOptions()</a></code>
+
+        </dt>
+        <dd>Validate the list of creation options that are handled by a driver</dd>
       </dl><dl><dt>
 
           <code><a href="rasterFromRaster.html">rasterFromRaster()</a></code>
@@ -299,6 +305,23 @@
         <dd>Display a GDAL Raster Attribute Table</dd>
       </dl></div><div class="section level2">
 
+      <h3 id="raster-data-types">Raster data types<a class="anchor" aria-label="anchor" href="#raster-data-types"></a></h3>
+
+
+
+    </div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="data_type_helpers.html">dt_size()</a></code> <code><a href="data_type_helpers.html">dt_is_complex()</a></code> <code><a href="data_type_helpers.html">dt_is_integer()</a></code> <code><a href="data_type_helpers.html">dt_is_floating()</a></code> <code><a href="data_type_helpers.html">dt_is_signed()</a></code> <code><a href="data_type_helpers.html">dt_union()</a></code> <code><a href="data_type_helpers.html">dt_union_with_value()</a></code> <code><a href="data_type_helpers.html">dt_find()</a></code> <code><a href="data_type_helpers.html">dt_find_for_value()</a></code>
+
+        </dt>
+        <dd>Helper functions for GDAL raster data types</dd>
+      </dl></div><div class="section level2">
+
       <h3 id="geotransform-conversion">Geotransform conversion<a class="anchor" aria-label="anchor" href="#geotransform-conversion"></a></h3>
 
 
@@ -326,6 +349,12 @@
 
         </dt>
         <dd>Invert geotransform</dd>
+      </dl><dl><dt>
+
+          <code><a href="pixel_extract.html">pixel_extract()</a></code>
+
+        </dt>
+        <dd>Extract pixel values at geospatial point locations</dd>
       </dl></div><div class="section level2">
 
       <h3 id="coordinate-transformation">Coordinate transformation<a class="anchor" aria-label="anchor" href="#coordinate-transformation"></a></h3>
@@ -349,6 +378,12 @@
 
         </dt>
         <dd>Transform geospatial x/y coordinates</dd>
+      </dl><dl><dt>
+
+          <code><a href="transform_bounds.html">transform_bounds()</a></code>
+
+        </dt>
+        <dd>Transform boundary</dd>
       </dl></div><div class="section level2">
 
       <h3 id="spatial-reference-systems">Spatial reference systems<a class="anchor" aria-label="anchor" href="#spatial-reference-systems"></a></h3>
@@ -362,46 +397,16 @@
 
       <dl><dt>
 
-          <code><a href="epsg_to_wkt.html">epsg_to_wkt()</a></code>
+          <code><a href="srs_convert.html">epsg_to_wkt()</a></code> <code><a href="srs_convert.html">srs_to_wkt()</a></code>
 
         </dt>
-        <dd>Convert spatial reference from EPSG code to OGC Well Known Text</dd>
+        <dd>Convert spatial reference definitions to OGC Well Known Text</dd>
       </dl><dl><dt>
 
-          <code><a href="srs_find_epsg.html">srs_find_epsg()</a></code>
+          <code><a href="srs_query.html">srs_get_name()</a></code> <code><a href="srs_query.html">srs_find_epsg()</a></code> <code><a href="srs_query.html">srs_is_geographic()</a></code> <code><a href="srs_query.html">srs_is_derived_gcs()</a></code> <code><a href="srs_query.html">srs_is_local()</a></code> <code><a href="srs_query.html">srs_is_projected()</a></code> <code><a href="srs_query.html">srs_is_compound()</a></code> <code><a href="srs_query.html">srs_is_geocentric()</a></code> <code><a href="srs_query.html">srs_is_vertical()</a></code> <code><a href="srs_query.html">srs_is_dynamic()</a></code> <code><a href="srs_query.html">srs_is_same()</a></code> <code><a href="srs_query.html">srs_get_angular_units()</a></code> <code><a href="srs_query.html">srs_get_linear_units()</a></code> <code><a href="srs_query.html">srs_get_coord_epoch()</a></code> <code><a href="srs_query.html">srs_get_utm_zone()</a></code> <code><a href="srs_query.html">srs_get_axis_mapping_strategy()</a></code>
 
         </dt>
-        <dd>Try to identify a matching EPSG code for a given SRS definition</dd>
-      </dl><dl><dt>
-
-          <code><a href="srs_get_name.html">srs_get_name()</a></code>
-
-        </dt>
-        <dd>Return the spatial reference system name</dd>
-      </dl><dl><dt>
-
-          <code><a href="srs_is_geographic.html">srs_is_geographic()</a></code>
-
-        </dt>
-        <dd>Check if WKT definition is a geographic coordinate system</dd>
-      </dl><dl><dt>
-
-          <code><a href="srs_is_projected.html">srs_is_projected()</a></code>
-
-        </dt>
-        <dd>Check if WKT definition is a projected coordinate system</dd>
-      </dl><dl><dt>
-
-          <code><a href="srs_is_same.html">srs_is_same()</a></code>
-
-        </dt>
-        <dd>Do these two spatial references describe the same system?</dd>
-      </dl><dl><dt>
-
-          <code><a href="srs_to_wkt.html">srs_to_wkt()</a></code>
-
-        </dt>
-        <dd>Convert various spatial reference formats to Well Known Text</dd>
+        <dd>Obtain information about a spatial reference system</dd>
       </dl></div><div class="section level2">
 
       <h3 id="geometry">Geometry<a class="anchor" aria-label="anchor" href="#geometry"></a></h3>
@@ -439,58 +444,52 @@
         <dd>Transform a bounding box to a different projection</dd>
       </dl><dl><dt>
 
-          <code><a href="g_area.html">g_area()</a></code>
+          <code><a href="g_measures.html">g_area()</a></code> <code><a href="g_measures.html">g_centroid()</a></code> <code><a href="g_measures.html">g_distance()</a></code> <code><a href="g_measures.html">g_length()</a></code> <code><a href="g_measures.html">g_geodesic_area()</a></code> <code><a href="g_measures.html">g_geodesic_length()</a></code>
 
         </dt>
-        <dd>Compute the area of a geometry</dd>
+        <dd>Compute measurements for WKB/WKT geometries</dd>
       </dl><dl><dt>
 
           <code><a href="g_binary_op.html">g_intersection()</a></code> <code><a href="g_binary_op.html">g_union()</a></code> <code><a href="g_binary_op.html">g_difference()</a></code> <code><a href="g_binary_op.html">g_sym_difference()</a></code>
 
         </dt>
-        <dd>Binary operations on WKT geometries</dd>
+        <dd>Binary operations on WKB or WKT geometries</dd>
       </dl><dl><dt>
 
           <code><a href="g_binary_pred.html">g_intersects()</a></code> <code><a href="g_binary_pred.html">g_disjoint()</a></code> <code><a href="g_binary_pred.html">g_touches()</a></code> <code><a href="g_binary_pred.html">g_contains()</a></code> <code><a href="g_binary_pred.html">g_within()</a></code> <code><a href="g_binary_pred.html">g_crosses()</a></code> <code><a href="g_binary_pred.html">g_overlaps()</a></code> <code><a href="g_binary_pred.html">g_equals()</a></code>
 
         </dt>
-        <dd>Geometry binary predicates operating on WKT</dd>
+        <dd>Geometry binary predicates operating on WKB or WKT</dd>
       </dl><dl><dt>
 
           <code><a href="g_buffer.html">g_buffer()</a></code>
 
         </dt>
-        <dd>Compute buffer of a WKT geometry</dd>
+        <dd>Compute buffer of a WKB/WKT geometry</dd>
       </dl><dl><dt>
 
-          <code><a href="g_centroid.html">g_centroid()</a></code>
+          <code><a href="g_coords.html">g_coords()</a></code>
 
         </dt>
-        <dd>Compute the centroid of a geometry</dd>
+        <dd>Extract coordinate values from geometries</dd>
       </dl><dl><dt>
 
-          <code><a href="g_distance.html">g_distance()</a></code>
+          <code><a href="g_envelope.html">g_envelope()</a></code>
 
         </dt>
-        <dd>Compute the distance between two geometries</dd>
+        <dd>Obtain the bounding envelope for input geometries</dd>
       </dl><dl><dt>
 
-          <code><a href="g_is_empty.html">g_is_empty()</a></code>
+          <code><a href="g_factory.html">g_create()</a></code> <code><a href="g_factory.html">g_add_geom()</a></code>
 
         </dt>
-        <dd>Test if a geometry is empty</dd>
+        <dd>Create WKB/WKT geometries from vertices, and add sub-geometries</dd>
       </dl><dl><dt>
 
-          <code><a href="g_is_valid.html">g_is_valid()</a></code>
+          <code><a href="g_query.html">g_is_empty()</a></code> <code><a href="g_query.html">g_is_valid()</a></code> <code><a href="g_query.html">g_is_3D()</a></code> <code><a href="g_query.html">g_is_measured()</a></code> <code><a href="g_query.html">g_name()</a></code> <code><a href="g_query.html">g_summary()</a></code>
 
         </dt>
-        <dd>Test if a geometry is valid</dd>
-      </dl><dl><dt>
-
-          <code><a href="g_length.html">g_length()</a></code>
-
-        </dt>
-        <dd>Compute the length of a geometry</dd>
+        <dd>Obtain information about WKB/WKT geometries</dd>
       </dl><dl><dt>
 
           <code><a href="g_make_valid.html">g_make_valid()</a></code>
@@ -499,22 +498,22 @@
         <dd>Attempt to make invalid geometries valid</dd>
       </dl><dl><dt>
 
-          <code><a href="g_name.html">g_name()</a></code>
+          <code><a href="g_simplify.html">g_simplify()</a></code>
 
         </dt>
-        <dd>Extract geometry type names from WKB/WKT geometries</dd>
+        <dd>Simplify WKB/WKT geometries optionally preserving topology</dd>
       </dl><dl><dt>
 
-          <code><a href="g_summary.html">g_summary()</a></code>
+          <code><a href="g_swap_xy.html">g_swap_xy()</a></code>
 
         </dt>
-        <dd>Obtain text summaries of WKB/WKT geometries</dd>
+        <dd>Swap geometry x and y coordinates</dd>
       </dl><dl><dt>
 
           <code><a href="g_transform.html">g_transform()</a></code>
 
         </dt>
-        <dd>Apply a coordinate transformation to a WKT geometry</dd>
+        <dd>Apply a coordinate transformation to a WKB/WKT geometry</dd>
       </dl><dl><dt>
 
           <code><a href="g_wk2wk.html">g_wk2wk()</a></code>
@@ -599,16 +598,16 @@
 
       <dl><dt>
 
-          <code><a href="ogr2ogr.html">ogr2ogr()</a></code>
-
-        </dt>
-        <dd>Convert vector data between different formats</dd>
-      </dl><dl><dt>
-
           <code><a href="ogrinfo.html">ogrinfo()</a></code>
 
         </dt>
         <dd>Retrieve information about a vector data source</dd>
+      </dl><dl><dt>
+
+          <code><a href="ogr2ogr.html">ogr2ogr()</a></code>
+
+        </dt>
+        <dd>Convert vector data between different formats</dd>
       </dl><dl><dt>
 
           <code><a href="ogr_manage.html">ogr_ds_exists()</a></code> <code><a href="ogr_manage.html">ogr_ds_format()</a></code> <code><a href="ogr_manage.html">ogr_ds_test_cap()</a></code> <code><a href="ogr_manage.html">ogr_ds_create()</a></code> <code><a href="ogr_manage.html">ogr_ds_layer_count()</a></code> <code><a href="ogr_manage.html">ogr_ds_layer_names()</a></code> <code><a href="ogr_manage.html">ogr_layer_exists()</a></code> <code><a href="ogr_manage.html">ogr_layer_test_cap()</a></code> <code><a href="ogr_manage.html">ogr_layer_create()</a></code> <code><a href="ogr_manage.html">ogr_layer_field_names()</a></code> <code><a href="ogr_manage.html">ogr_layer_rename()</a></code> <code><a href="ogr_manage.html">ogr_layer_delete()</a></code> <code><a href="ogr_manage.html">ogr_field_index()</a></code> <code><a href="ogr_manage.html">ogr_field_create()</a></code> <code><a href="ogr_manage.html">ogr_geom_field_create()</a></code> <code><a href="ogr_manage.html">ogr_field_rename()</a></code> <code><a href="ogr_manage.html">ogr_field_delete()</a></code> <code><a href="ogr_manage.html">ogr_execute_sql()</a></code>
@@ -617,7 +616,7 @@
         <dd>Utility functions for managing vector data sources</dd>
       </dl><dl><dt>
 
-          <code><a href="ogr_define.html">ogr_def_field()</a></code> <code><a href="ogr_define.html">ogr_def_geom_field()</a></code> <code><a href="ogr_define.html">ogr_def_layer()</a></code>
+          <code><a href="ogr_define.html">ogr_def_layer()</a></code> <code><a href="ogr_define.html">ogr_def_field()</a></code> <code><a href="ogr_define.html">ogr_def_geom_field()</a></code>
 
         </dt>
         <dd>OGR feature class definition for vector data</dd>
@@ -627,6 +626,12 @@
 
         </dt>
         <dd>GDAL OGR facilities for vector geoprocessing</dd>
+      </dl><dl><dt>
+
+          <code><a href="ogr_reproject.html">ogr_reproject()</a></code>
+
+        </dt>
+        <dd>Reproject a vector layer</dd>
       </dl><dl><dt>
 
           <code><a href="plot.OGRFeature.html">plot(<i>&lt;OGRFeature&gt;</i>)</a></code>
@@ -807,16 +812,34 @@
         <dd>Retrieve information on GDAL format drivers for raster and vector</dd>
       </dl><dl><dt>
 
-          <code><a href="gdal_version.html">gdal_version()</a></code>
+          <code><a href="gdal_version.html">gdal_version()</a></code> <code><a href="gdal_version.html">gdal_version_num()</a></code>
 
         </dt>
         <dd>Get GDAL version</dd>
+      </dl><dl><dt>
+
+          <code><a href="gdal_compute_version.html">gdal_compute_version()</a></code>
+
+        </dt>
+        <dd>Compute a GDAL integer version number from major, minor, revision</dd>
+      </dl><dl><dt>
+
+          <code><a href="get_cache_max.html">get_cache_max()</a></code>
+
+        </dt>
+        <dd>Get the maximum memory size available for the GDAL block cache</dd>
       </dl><dl><dt>
 
           <code><a href="get_cache_used.html">get_cache_used()</a></code>
 
         </dt>
         <dd>Get the size of memory in use by the GDAL block cache</dd>
+      </dl><dl><dt>
+
+          <code><a href="set_cache_max.html">set_cache_max()</a></code>
+
+        </dt>
+        <dd>Set the maximum memory size for the GDAL block cache</dd>
       </dl><dl><dt>
 
           <code><a href="get_config_option.html">get_config_option()</a></code>

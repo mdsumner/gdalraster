@@ -13,7 +13,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9100</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -73,7 +73,8 @@
   <code><a href="createCopy.html">createCopy()</a></code>,
   <code><a href="rasterFromRaster.html">rasterFromRaster()</a></code>,
   <code><a href="translate.html">translate()</a></code>,
-  <code><a href="getCreationOptions.html">getCreationOptions()</a></code></p></li>
+  <code><a href="getCreationOptions.html">getCreationOptions()</a></code>,
+  <code><a href="validateCreationOptions.html">validateCreationOptions()</a></code></p></li>
 <li><p>virtual raster:
   <code><a href="autoCreateWarpedVRT.html">autoCreateWarpedVRT()</a></code>,
   <code><a href="buildVRT.html">buildVRT()</a></code>,
@@ -93,47 +94,43 @@
 <li><p>geotransform conversion:
   <code><a href="apply_geotransform.html">apply_geotransform()</a></code>,
   <code><a href="get_pixel_line.html">get_pixel_line()</a></code>,
-  <code><a href="inv_geotransform.html">inv_geotransform()</a></code></p></li>
+  <code><a href="inv_geotransform.html">inv_geotransform()</a></code>,
+  <code><a href="pixel_extract.html">pixel_extract()</a></code></p></li>
+<li><p>data type convenience functions:
+  <code><a href="data_type_helpers.html">dt_size()</a></code>,
+  <code><a href="data_type_helpers.html">dt_is_complex()</a></code>,
+  <code><a href="data_type_helpers.html">dt_is_integer()</a></code>,
+  <code><a href="data_type_helpers.html">dt_is_floating()</a></code>,
+  <code><a href="data_type_helpers.html">dt_is_signed()</a></code>,
+  <code><a href="data_type_helpers.html">dt_union()</a></code>,
+  <code><a href="data_type_helpers.html">dt_union_with_value()</a></code>,
+  <code><a href="data_type_helpers.html">dt_find()</a></code>,
+  <code><a href="data_type_helpers.html">dt_find_for_value()</a></code></p></li>
 <li><p>coordinate transformation:
   <code><a href="transform_xy.html">transform_xy()</a></code>,
-  <code><a href="inv_project.html">inv_project()</a></code></p></li>
-<li><p>spatial reference convenience functions:
-  <code><a href="epsg_to_wkt.html">epsg_to_wkt()</a></code>,
-  <code><a href="srs_to_wkt.html">srs_to_wkt()</a></code>,
-  <code><a href="srs_find_epsg.html">srs_find_epsg()</a></code>,
-  <code><a href="srs_get_name.html">srs_get_name()</a></code>,
-  <code><a href="srs_is_geographic.html">srs_is_geographic()</a></code>,
-  <code><a href="srs_is_projected.html">srs_is_projected()</a></code>,
-  <code><a href="srs_is_same.html">srs_is_same()</a></code></p></li>
-<li><p>geometry convenience functions:
+  <code><a href="inv_project.html">inv_project()</a></code>,
+  <code><a href="transform_bounds.html">transform_bounds()</a></code></p></li>
+<li><p>spatial reference systems:
+  <code><a href="srs_convert.html">srs_convert</a></code>,
+  <code><a href="srs_query.html">srs_query</a></code></p></li>
+<li><p>geometry API:
   <code><a href="bbox_from_wkt.html">bbox_from_wkt()</a></code>,
   <code><a href="bbox_to_wkt.html">bbox_to_wkt()</a></code>,
   <code><a href="bbox_intersect.html">bbox_intersect()</a></code>,
   <code><a href="bbox_intersect.html">bbox_union()</a></code>,
   <code><a href="bbox_transform.html">bbox_transform()</a></code>,
-  <code><a href="g_area.html">g_area()</a></code>,
+  <code><a href="g_factory.html">g_factory</a></code>,
+  <code><a href="g_query.html">g_query</a></code>,
+  <code><a href="g_binary_pred.html">g_binary_pred</a></code>,
+  <code><a href="g_binary_op.html">g_binary_op</a></code>,
+  <code><a href="g_measures.html">g_measures</a></code>,
   <code><a href="g_buffer.html">g_buffer()</a></code>,
-  <code><a href="g_centroid.html">g_centroid()</a></code>,
-  <code><a href="g_binary_pred.html">g_contains()</a></code>,
-  <code><a href="g_binary_pred.html">g_crosses()</a></code>,
-  <code><a href="g_binary_op.html">g_difference()</a></code>,
-  <code><a href="g_binary_pred.html">g_disjoint()</a></code>,
-  <code><a href="g_distance.html">g_distance()</a></code>,
-  <code><a href="g_binary_pred.html">g_equals()</a></code>,
-  <code><a href="g_binary_op.html">g_intersection()</a></code>,
-  <code><a href="g_binary_pred.html">g_intersects()</a></code>,
-  <code><a href="g_is_empty.html">g_is_empty()</a></code>,
-  <code><a href="g_is_valid.html">g_is_valid()</a></code>,
-  <code><a href="g_length.html">g_length()</a></code>,
+  <code><a href="g_coords.html">g_coords()</a></code>,
+  <code><a href="g_envelope.html">g_envelope()</a></code>,
   <code><a href="g_make_valid.html">g_make_valid()</a></code>,
-  <code><a href="g_name.html">g_name()</a></code>,
-  <code><a href="g_binary_pred.html">g_overlaps()</a></code>,
-  <code><a href="g_summary.html">g_summary()</a></code>,
-  <code><a href="g_binary_op.html">g_sym_difference()</a></code>,
-  <code><a href="g_binary_pred.html">g_touches()</a></code>,
+  <code><a href="g_simplify.html">g_simplify()</a></code>,
+  <code><a href="g_swap_xy.html">g_swap_xy()</a></code>,
   <code><a href="g_transform.html">g_transform()</a></code>,
-  <code><a href="g_binary_op.html">g_union()</a></code>,
-  <code><a href="g_binary_pred.html">g_within()</a></code>,
   <code><a href="g_wk2wk.html">g_wk2wk()</a></code>,
   <code><a href="geos_version.html">geos_version()</a></code></p></li>
 <li><p>data management: <code><a href="addFilesInZip.html">addFilesInZip()</a></code>,
@@ -144,8 +141,9 @@
   <code><a href="identifyDriver.html">identifyDriver()</a></code>,
   <code><a href="inspectDataset.html">inspectDataset()</a></code></p></li>
 <li><p>OGR vector utilities:
-  <code><a href="ogr2ogr.html">ogr2ogr()</a></code>,
   <code><a href="ogrinfo.html">ogrinfo()</a></code>,
+  <code><a href="ogr2ogr.html">ogr2ogr()</a></code>,
+  <code><a href="ogr_reproject.html">ogr_reproject()</a></code>,
   <code><a href="ogr_manage.html">ogr_manage</a></code>,
   <code><a href="ogr_define.html">ogr_define</a></code></p></li>
 <li><p>virtual file systems:
@@ -170,9 +168,12 @@
   <code><a href="vsi_unlink.html">vsi_unlink()</a></code>,
   <code><a href="vsi_unlink_batch.html">vsi_unlink_batch()</a></code></p></li>
 <li><p>GDAL configuration:
-  <code><a href="gdal_version.html">gdal_version()</a></code>,
+  <code><a href="gdal_version.html">gdal_version</a></code>,
+  <code><a href="gdal_compute_version.html">gdal_compute_version()</a></code>,
   <code><a href="gdal_formats.html">gdal_formats()</a></code>,
   <code><a href="get_cache_used.html">get_cache_used()</a></code>,
+  <code><a href="get_cache_max.html">get_cache_max()</a></code>,
+  <code><a href="set_cache_max.html">set_cache_max()</a></code>,
   <code><a href="get_config_option.html">get_config_option()</a></code>,
   <code><a href="set_config_option.html">set_config_option()</a></code>,
   <code><a href="get_num_cpus.html">get_num_cpus()</a></code>,

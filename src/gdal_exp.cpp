@@ -28,17 +28,26 @@
 
 //' Get GDAL version
 //'
-//' `gdal_version()` returns runtime version information.
+//' `gdal_version()` returns a character vector of GDAL runtime version
+//' information. `gdal_version_num()` returns only the full version number
+//' (`gdal_version()[2]`) as an integer value.
 //'
-//' @returns Character vector of length four containing:
+//' @name gdal_version
+//'
+//' @returns
+//' `gdal_version()` returns a character vector of length four containing:
 //'   * "–version" - one line version message, e.g., “GDAL 3.6.3, released
 //'   2023/03/12”
 //'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “3060300” for
 //'   GDAL 3.6.3.0
 //'   * "GDAL_RELEASE_DATE" - formatted as a string, e.g., “20230312”
 //'   * "GDAL_RELEASE_NAME" - e.g., “3.6.3”
+//'
+//' `gdal_version_num()` returns `as.integer(gdal_version()[2])`
 //' @examples
 //' gdal_version()
+//'
+//' gdal_version_num()
 // [[Rcpp::export]]
 Rcpp::CharacterVector gdal_version() {
     Rcpp::CharacterVector ret(4);
@@ -50,8 +59,8 @@ Rcpp::CharacterVector gdal_version() {
 }
 
 
-//' @noRd
-// [[Rcpp::export(name = ".gdal_version_num")]]
+//' @rdname gdal_version
+// [[Rcpp::export]]
 int gdal_version_num() {
     std::string version(GDALVersionInfo("VERSION_NUM"));
     return std::stoi(version);
@@ -213,23 +222,163 @@ void set_config_option(const std::string &key, const std::string &value) {
 }
 
 
+//' Get the maximum memory size available for the GDAL block cache
+//'
+//' `get_cache_max()` returns the maximum amount of memory available to the
+//' GDALRasterBlock caching system for caching raster read/write data. Wrapper
+//' of `GDALGetCacheMax64()` with return value in MB by default.
+//'
+//' @details
+//' The first time this function is called, it will read the `GDAL_CACHEMAX`
+//' configuration option to initialize the maximum cache memory. The value of
+//' the configuration option can be expressed as x% of the usable physical RAM
+//' (which may potentially be used by other processes). Otherwise it is
+//' expected to be a value in MB.
+//' As of GDAL 3.10, the default value, if `GDAL_CACHEMAX` has not been set
+//' explicitly, is 5% of usable physical RAM.
+//'
+//' @param units Character string specifying units for the return value. One of
+//' `"MB"` (the default), `"GB"`, `"KB"` or `"bytes"` (values of `"byte"`,
+//' `"B"` and empty string `""` are also recognized to mean bytes).
+//' @returns A numeric value carrying the `integer64` class attribute. Maximum
+//' cache memory available in the requested units.
+//'
+//' @note
+//' The value of the `GDAL_CACHEMAX` configuration option is only consulted the
+//' first time the cache size is requested (i.e., it must be set as a
+//' configuration option prior to any raster I/O during the current session).
+//' To change this value programmatically during operation of the program it is
+//' better to use [set_cache_max()] (in which case, always given in bytes).
+//'
+//' @seealso
+//' [GDAL_CACHEMAX configuration option](https://gdal.org/en/stable/user/configoptions.html#performance-and-caching)
+//'
+//' [get_config_option()], [set_config_option()], [get_usable_physical_ram()],
+//' [get_cache_used()], [set_cache_max()]
+//'
+//' @examples
+//' get_cache_max()
+// [[Rcpp::export]]
+Rcpp::NumericVector get_cache_max(std::string units = "MB") {
+    int64_t nCacheMax = static_cast<int64_t>(GDALGetCacheMax64());
+    std::vector<int64_t> ret = {-1};
+
+    if (EQUAL(units.c_str(), "MB")) {
+        ret[0] = nCacheMax / (1000 * 1000);
+    }
+    else if (EQUAL(units.c_str(), "GB")) {
+        ret[0] = nCacheMax / (1000 * 1000 * 1000);
+    }
+    else if (EQUAL(units.c_str(), "KB")) {
+        ret[0] = nCacheMax / (1000);
+    }
+    else if (EQUAL(units.c_str(), "") || EQUAL(units.c_str(), "B") ||
+             EQUAL(units.c_str(), "bytes") || EQUAL(units.c_str(), "byte")) {
+
+        ret[0] = nCacheMax;
+    }
+    else {
+        Rcpp::stop("invalid value for 'units'");
+    }
+
+    return Rcpp::wrap(ret);
+}
+
+
 //' Get the size of memory in use by the GDAL block cache
 //'
 //' `get_cache_used()` returns the amount of memory currently in use for
-//' GDAL block caching. This a wrapper for `GDALGetCacheUsed64()` with return
-//' value as MB.
+//' GDAL block caching. Wrapper of `GDALGetCacheUsed64()` with return
+//' value in MB by default.
 //'
-//' @returns Integer. Amount of cache memory in use in MB.
+//' @param units Character string specifying units for the return value. One of
+//' `"MB"` (the default), `"GB"`, `"KB"` or `"bytes"` (values of `"byte"`,
+//' `"B"` and empty string `""` are also recognized to mean bytes).
+//' @returns A numeric value carrying the `integer64` class attribute. Amount
+//' of the available cache memory currently in use in the requested units.
 //'
 //' @seealso
 //' [GDAL Block Cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
 //'
+//' [get_cache_max()], [set_cache_max()]
+//'
 //' @examples
 //' get_cache_used()
 // [[Rcpp::export]]
-int get_cache_used() {
-    GIntBig nCacheUsed = GDALGetCacheUsed64();
-    return static_cast<int>(nCacheUsed / (1000 * 1000));
+Rcpp::NumericVector get_cache_used(std::string units = "MB") {
+    int64_t nCacheUsed = static_cast<int64_t>(GDALGetCacheUsed64());
+    std::vector<int64_t> ret = {-1};
+
+    if (EQUAL(units.c_str(), "MB")) {
+        ret[0] = nCacheUsed / (1000 * 1000);
+    }
+    else if (EQUAL(units.c_str(), "GB")) {
+        ret[0] = nCacheUsed / (1000 * 1000 * 1000);
+    }
+    else if (EQUAL(units.c_str(), "KB")) {
+        ret[0] = nCacheUsed / (1000);
+    }
+    else if (EQUAL(units.c_str(), "") || EQUAL(units.c_str(), "B") ||
+             EQUAL(units.c_str(), "bytes") || EQUAL(units.c_str(), "byte")) {
+
+        ret[0] = nCacheUsed;
+    }
+    else {
+        Rcpp::stop("invalid value for 'units'");
+    }
+
+    return Rcpp::wrap(ret);
+}
+
+
+//' Set the maximum memory size for the GDAL block cache
+//'
+//' `set_cache_max()` sets the maximum amount of memory that GDAL is permitted
+//' to use for GDALRasterBlock caching.
+//' *The unit of the value to set is bytes.* Wrapper of `GDALSetCacheMax64()`.
+//'
+//' @param nbytes A numeric value optionally carrying the `integer64` class
+//' attribute (assumed to be a whole number, will be coerced to integer by
+//' truncation). Specifies the new cache size in bytes (maximum number of bytes
+//' for caching).
+//' @returns No return value, called for side effects.
+//'
+//' @note
+//' **This function will not make any attempt to check the consistency of the
+//' passed value with the effective capabilities of the OS.**
+//'
+//' It is recommended to consult the documentation for `get_cache_max()` and
+//' `get_cache_used()` before using this function.
+//'
+//' [get_cache_max()], [get_cache_used()]
+//'
+//' @examples
+//' (cachemax <- get_cache_max("bytes"))
+//'
+//' set_cache_max(1e8)
+//' get_cache_max()  # returns in MB by default
+//'
+//' # reset to original
+//' set_cache_max(cachemax)
+//' get_cache_max()
+// [[Rcpp::export]]
+void set_cache_max(Rcpp::NumericVector nbytes) {
+    if (nbytes.size() != 1)
+        Rcpp::stop("'nbytes' must be a length-1 numeric vector");
+
+    int64_t nbytes_in = -1;
+
+    if (Rcpp::isInteger64(nbytes)) {
+        nbytes_in = Rcpp::fromInteger64(nbytes[0]);
+    }
+    else {
+        nbytes_in = static_cast<int64_t>(nbytes[0]);
+    }
+
+    if (nbytes_in < 0)
+        Rcpp::stop("'nbytes' cannot be a negative number");
+
+    GDALSetCacheMax64(nbytes_in);
 }
 
 
@@ -869,7 +1018,7 @@ Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
 
 
 //' Returns bbox geospatial x,y coordinates (xmin, ymin, xmax, ymax) from
-//' inpouts of geotransform vector and the grid pixel/line extent
+//' inputs of geotransform vector and the grid pixel/line extent
 //' @noRd
 // [[Rcpp::export(name = ".bbox_grid_to_geo")]]
 std::vector<double> bbox_grid_to_geo_(const std::vector<double> &gt,
@@ -896,12 +1045,9 @@ std::vector<double> bbox_grid_to_geo_(const std::vector<double> &gt,
     corners_x[3] = gt[0] + gt[1] * grid_xmax + gt[2] * grid_ymin;
     corners_y[3] = gt[3] + gt[4] * grid_xmax + gt[5] * grid_ymin;
 
-    double xmin = Rcpp::min(corners_x);
-    double xmax = Rcpp::max(corners_x);
-    double ymin = Rcpp::min(corners_y);
-    double ymax = Rcpp::max(corners_y);
+    std::vector<double> ret = {Rcpp::min(corners_x), Rcpp::min(corners_y),
+                               Rcpp::max(corners_x), Rcpp::max(corners_y)};
 
-    std::vector<double> ret = {xmin, ymin, xmax, ymax};
     return ret;
 }
 
@@ -1501,7 +1647,7 @@ bool fillNodata(const Rcpp::CharacterVector &filename, int band,
 //' out_file <- file.path(tempdir(), "storml.geojson")
 //'
 //' # Requires GDAL >= 3.8
-//' if (as.integer(gdal_version()[2]) >= 3080000) {
+//' if (gdal_version_num() >= gdal_compute_version(3, 8, 0)) {
 //'   # command-line arguments for gdal_footprint
 //'   args <- c("-t_srs", "EPSG:4326")
 //'   footprint(evt_file, out_file, args)
@@ -1698,6 +1844,9 @@ bool ogr2ogr(const Rcpp::CharacterVector &src_dsn,
         GDALReleaseDataset(hDstDS);
         ret = true;
     }
+    else {
+        Rcpp::Rcerr << CPLGetLastErrorMsg() << std::endl;
+    }
 
     GDALReleaseDataset(src_ds[0]);
 
@@ -1740,43 +1889,33 @@ bool ogr2ogr(const Rcpp::CharacterVector &src_dsn,
 //' metadata strings.
 //'
 //' @seealso
-//' [ogr2ogr()], the [ogr_manage] utilities
+//' [ogr2ogr()], [ogr_manage]
 //'
-//' @examples
+//' @examplesIf gdal_version_num() >= gdal_compute_version(3, 7, 0)
 //' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
 //'
-//' # Requires GDAL >= 3.7
-//' if (as.integer(gdal_version()[2]) >= 3070000) {
-//'   # Get the names of the layers in a GeoPackage file.
-//'   ogrinfo(src)
+//' # Get the names of the layers in a GeoPackage file
+//' ogrinfo(src)
 //'
-//'   # Summary of a layer
-//'   ogrinfo(src, "mtbs_perims")
+//' # Summary of a layer
+//' ogrinfo(src, "mtbs_perims")
 //'
-//'   # JSON format
-//'   args <- c("-json", "-nomd")
-//'   json <- ogrinfo(src, "mtbs_perims", args, cout = FALSE)
-//'   #info <- jsonlite::fromJSON(json)
+//' # Query an attribute to restrict the output of the features in a layer
+//' args <- c("-ro", "-nomd", "-where", "ig_year = 2020")
+//' ogrinfo(src, "mtbs_perims", args)
 //'
-//'   # Query an attribute to restrict the output of the features in a layer
-//'   args <- c("-ro", "-nomd", "-where", "ig_year = 2020")
-//'   ogrinfo(src, "mtbs_perims", args)
+//' # Copy to a temporary in-memory file that is writeable
+//' src_mem <- paste0("/vsimem/", basename(src))
+//' vsi_copy_file(src, src_mem)
 //'
-//'   # Copy to a temporary in-memory file that is writeable
-//'   src_mem <- paste0("/vsimem/", basename(src))
-//'   vsi_copy_file(src, src_mem)
-//'   print(src_mem)
+//' # Add a column to a layer
+//' args <- c("-sql", "ALTER TABLE mtbs_perims ADD burn_bnd_ha float")
+//' ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
 //'
-//'   # Add a column to a layer
-//'   args <- c("-sql", "ALTER TABLE mtbs_perims ADD burn_bnd_ha float")
-//'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
-//'
-//'   # Update values of the column with SQL and specify a dialect
-//'   sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
-//'   args <- c("-dialect", "sqlite", "-sql", sql)
-//'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
-//'   \dontshow{vsi_unlink(src_mem)}
-//' }
+//' # Update values of the column with SQL and specify a dialect
+//' sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
+//' args <- c("-dialect", "sqlite", "-sql", sql)
+//' ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
 // [[Rcpp::export(invisible = true)]]
 std::string ogrinfo(const Rcpp::CharacterVector &dsn,
                     const Rcpp::Nullable<Rcpp::CharacterVector> &layers =
@@ -1843,7 +1982,7 @@ std::string ogrinfo(const Rcpp::CharacterVector &dsn,
         Rcpp::stop("ogrinfo() failed (could not create options struct)");
     }
 
-    std::string info_out = "";
+    CPLString info_out = "";
     char *pszInfo = GDALVectorInfo(src_ds, psOptions);
     if (pszInfo != nullptr)
         info_out = pszInfo;
@@ -1855,12 +1994,8 @@ std::string ogrinfo(const Rcpp::CharacterVector &dsn,
     if (cout)
         Rcpp::Rcout << info_out;
 
-    if (as_json) {
-        info_out.erase(std::remove(info_out.begin(),
-                                   info_out.end(),
-                                   '\n'),
-                       info_out.cend());
-    }
+    if (as_json)
+        info_out.replaceAll('\n', ' ');
 
     return info_out;
 
@@ -2907,7 +3042,7 @@ SEXP identifyDriver(const Rcpp::CharacterVector &filename,
     std::string filename_in;
     filename_in = Rcpp::as<std::string>(check_gdal_filename(filename));
 
-    unsigned int nIdentifyFlags = GDAL_OF_ALL;
+    unsigned int nIdentifyFlags = GDAL_OF_RASTER | GDAL_OF_VECTOR;
     if (!raster && !vector)
         return R_NilValue;
     else if (!raster)

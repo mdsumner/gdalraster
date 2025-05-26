@@ -2,7 +2,7 @@
    Called via GDAL ogr headers, requires GDAL built against GEOS.
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #include "rcpp_util.h"
@@ -12,9 +12,9 @@
 #include "cpl_conv.h"
 #include "cpl_string.h"
 #include "ogr_api.h"
-#include "ogr_spatialref.h"
 #include "ogr_srs_api.h"
 
+#include "gdalraster.h"
 #include "srs_api.h"
 
 
@@ -693,6 +693,58 @@ SEXP g_make_valid(const Rcpp::RawVector &geom,
 }
 
 //' @noRd
+// [[Rcpp::export(name = ".g_swap_xy")]]
+SEXP g_swap_xy(const Rcpp::RawVector &geom, bool as_iso = false,
+               const std::string &byte_order = "LSB",
+               bool quiet = false) {
+// Swap x and y coordinates.
+
+    if ((geom.size() == 0))
+        Rcpp::stop("'geom' is empty");
+
+    OGRGeometryH hGeom = createGeomFromWkb(geom);
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to create geometry object from WKB, NA returned");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    OGR_G_SwapXY(hGeom);
+
+    if (hGeom == nullptr) {
+        OGR_G_DestroyGeometry(hGeom);
+        if (!quiet) {
+            Rcpp::warning("OGR_G_SwapXY() gave NULL geometry, NA returned");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    const int nWKBSize = OGR_G_WkbSize(hGeom);
+    if (!nWKBSize) {
+        OGR_G_DestroyGeometry(hGeom);
+        if (!quiet) {
+            Rcpp::warning("failed to obtain WKB size of output geometry");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    Rcpp::RawVector wkb = Rcpp::no_init(nWKBSize);
+    bool result = exportGeomToWkb(hGeom, &wkb[0], as_iso, byte_order);
+    OGR_G_DestroyGeometry(hGeom);
+    if (!result) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to export WKB raw vector for output geometry");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    return wkb;
+}
+
+//' @noRd
 // [[Rcpp::export(name = ".g_is_empty")]]
 Rcpp::LogicalVector g_is_empty(const Rcpp::RawVector &geom,
                                bool quiet = false) {
@@ -1222,7 +1274,6 @@ SEXP g_buffer(const Rcpp::RawVector &geom, double dist, int quad_segs = 30,
         Rcpp::stop("'geom' is empty");
 
     OGRGeometryH hGeom = createGeomFromWkb(geom);
-
     if (hGeom == nullptr) {
         if (!quiet) {
             Rcpp::warning(
@@ -1255,6 +1306,92 @@ SEXP g_buffer(const Rcpp::RawVector &geom, double dist, int quad_segs = 30,
     bool result = exportGeomToWkb(hBufferGeom, &wkb[0], as_iso, byte_order);
     OGR_G_DestroyGeometry(hGeom);
     OGR_G_DestroyGeometry(hBufferGeom);
+    if (!result) {
+        if (!quiet) {
+           Rcpp::warning(
+                    "failed to export WKB raw vector for output geometry");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    return wkb;
+}
+
+//' @noRd
+// [[Rcpp::export(name = ".g_simplify")]]
+SEXP g_simplify(const Rcpp::RawVector &geom, double tolerance,
+                bool preserve_topology = true, bool as_iso = false,
+                const std::string &byte_order = "LSB", bool quiet = false) {
+// Compute a simplified geometry. By default (preserve_topology = TRUE),
+// simplify the geometry while preserving topology.
+//
+// GEOS definitions:
+// (https://libgeos.org/doxygen/classgeos_1_1simplify_1_1TopologyPreservingSimplifier.html)
+// Simplifies a geometry, ensuring that the result is a valid geometry having
+// the same dimension and number of components as the input. The simplification
+// uses a maximum distance difference algorithm similar to the one used in the
+// Douglas-Peucker algorithm. In particular, if the input is an areal geometry
+// (Polygon or MultiPolygon), the result has the same number of shells and
+// holes (rings) as the input, in the same order. The result rings touch at no
+// more than the number of touching point in the input (although they may touch
+// at fewer points).
+// If preserve_topology = FALSE:
+// (https://libgeos.org/doxygen/classgeos_1_1simplify_1_1DouglasPeuckerSimplifier.html)
+// Simplifies a Geometry using the standard Douglas-Peucker algorithm. Ensures
+// that any polygonal geometries returned are valid. Simple lines are not
+// guaranteed to remain simple after simplification. Note that in general D-P
+// does not preserve topology - e.g. polygons can be split, collapse to lines
+// or disappear, holes can be created or disappear, and lines can cross. To
+// simplify geometry while preserving topology use TopologyPreservingSimplifier.
+// (However, using D-P is significantly faster).
+//
+// PostGIS notes:
+// https://postgis.net/docs/ST_SimplifyPreserveTopology.html
+// The simplification tolerance is a distance value, in the units of the input
+// SRS. Simplification removes vertices which are within the tolerance distance
+// of the simplified linework, as long as topology is preserved.
+// This function does not preserve boundaries shared between polygons.
+
+    if ((geom.size() == 0))
+        Rcpp::stop("'geom' is empty");
+
+    OGRGeometryH hGeom = createGeomFromWkb(geom);
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to create geometry object from WKB, NA returned");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    OGRGeometryH hSimplifiedGeom = nullptr;
+    if (preserve_topology)
+        hSimplifiedGeom = OGR_G_SimplifyPreserveTopology(hGeom, tolerance);
+    else
+        hSimplifiedGeom = OGR_G_Simplify(hGeom, tolerance);
+
+    if (hSimplifiedGeom == nullptr) {
+        OGR_G_DestroyGeometry(hGeom);
+        if (!quiet) {
+            Rcpp::warning("OGR API call gave NULL geometry, NA returned");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    const int nWKBSize = OGR_G_WkbSize(hSimplifiedGeom);
+    if (!nWKBSize) {
+        OGR_G_DestroyGeometry(hGeom);
+        OGR_G_DestroyGeometry(hSimplifiedGeom);
+        if (!quiet) {
+            Rcpp::warning("failed to obtain WKB size of output geometry");
+        }
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    Rcpp::RawVector wkb = Rcpp::no_init(nWKBSize);
+    bool result = exportGeomToWkb(hSimplifiedGeom, &wkb[0], as_iso, byte_order);
+    OGR_G_DestroyGeometry(hGeom);
+    OGR_G_DestroyGeometry(hSimplifiedGeom);
     if (!result) {
         if (!quiet) {
            Rcpp::warning(
@@ -1685,6 +1822,130 @@ double g_area(const Rcpp::RawVector &geom, bool quiet = false) {
 }
 
 //' @noRd
+// [[Rcpp::export(name = ".g_geodesic_area")]]
+double g_geodesic_area(const Rcpp::RawVector &geom, const std::string &srs,
+                       bool traditional_gis_order = true, bool quiet = false) {
+// Compute geometry area, considered as a surface on the underlying ellipsoid
+// of the SRS attached to the geometry.
+// The returned area will always be in square meters, and assumes that polygon
+// edges describe geodesic lines on the ellipsoid.
+// Requires GDAL >= 3.9
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 9, 0)
+    Rcpp::stop("g_geodesic_area() requires GDAL >= 3.9");
+
+#else
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+    if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
+        if (hSRS != nullptr)
+            OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("error importing SRS from user input");
+    }
+
+    if ((geom.size() == 0)) {
+        OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("'geom' is empty");
+    }
+
+    OGRGeometryH hGeom = createGeomFromWkb(geom);
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to create geometry object from WKB, NA returned");
+        }
+        OSRDestroySpatialReference(hSRS);
+        return NA_REAL;
+    }
+
+    OSRAxisMappingStrategy strategy = OAMS_TRADITIONAL_GIS_ORDER;
+    std::string save_opt =
+        get_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER");
+
+    if (!traditional_gis_order) {
+        strategy = OAMS_AUTHORITY_COMPLIANT;
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "NO");
+    }
+    OSRSetAxisMappingStrategy(hSRS, strategy);
+    OGR_G_AssignSpatialReference(hGeom, hSRS);
+
+    double ret = -1.0;
+    ret = OGR_G_GeodesicArea(hGeom);
+    OGR_G_DestroyGeometry(hGeom);
+    if (hSRS != nullptr)
+        OSRDestroySpatialReference(hSRS);
+    if (!traditional_gis_order)
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", save_opt);
+
+    if (ret < 0)
+        return NA_REAL;
+    else
+        return ret;
+#endif
+}
+
+//' @noRd
+// [[Rcpp::export(name = ".g_geodesic_length")]]
+double g_geodesic_length(const Rcpp::RawVector &geom, const std::string &srs,
+                         bool traditional_gis_order = true,
+                         bool quiet = false) {
+// Get the length of the curve, considered as a geodesic line on the underlying
+// ellipsoid of the SRS attached to the geometry.
+// The returned length will always be in meters.
+// Requires GDAL >= 3.10
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 10, 0)
+    Rcpp::stop("g_geodesic_length() requires GDAL >= 3.10");
+
+#else
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+    if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
+        if (hSRS != nullptr)
+            OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("error importing SRS from user input");
+    }
+
+    if ((geom.size() == 0)) {
+        OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("'geom' is empty");
+    }
+
+    OGRGeometryH hGeom = createGeomFromWkb(geom);
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to create geometry object from WKB, NA returned");
+        }
+        OSRDestroySpatialReference(hSRS);
+        return NA_REAL;
+    }
+
+    OSRAxisMappingStrategy strategy = OAMS_TRADITIONAL_GIS_ORDER;
+    std::string save_opt =
+        get_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER");
+
+    if (!traditional_gis_order) {
+        strategy = OAMS_AUTHORITY_COMPLIANT;
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "NO");
+    }
+    OSRSetAxisMappingStrategy(hSRS, strategy);
+    OGR_G_AssignSpatialReference(hGeom, hSRS);
+
+    double ret = -1.0;
+    ret = OGR_G_GeodesicLength(hGeom);
+    OGR_G_DestroyGeometry(hGeom);
+    if (hSRS != nullptr)
+        OSRDestroySpatialReference(hSRS);
+    if (!traditional_gis_order)
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", save_opt);
+
+    if (ret < 0)
+        return NA_REAL;
+    else
+        return ret;
+#endif
+}
+
+//' @noRd
 // [[Rcpp::export(name = ".g_centroid")]]
 Rcpp::NumericVector g_centroid(const Rcpp::RawVector &geom,
                                bool quiet = false) {
@@ -1749,8 +2010,9 @@ Rcpp::NumericVector g_centroid(const Rcpp::RawVector &geom,
 // [[Rcpp::export(name = ".g_transform")]]
 SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
                  const std::string &srs_to, bool wrap_date_line = false,
-                 int date_line_offset = 10, bool as_iso = false,
-                 const std::string &byte_order = "LSB", bool quiet = false) {
+                 int date_line_offset = 10, bool traditional_gis_order = true,
+                 bool as_iso = false, const std::string &byte_order = "LSB",
+                 bool quiet = false) {
 // Returns a transformed geometry as WKB
 // Apply arbitrary coordinate transformation to geometry.
 // This function will transform the coordinates of a geometry from their
@@ -1770,25 +2032,71 @@ SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
 // Zone 60) to a geographic CRS, it will cut geometries along the antimeridian.
 // So a LineString might be returned as a MultiLineString.
 
-    OGRSpatialReference oSourceSRS, oDestSRS;
-    OGRCoordinateTransformation *poCT = nullptr;
-    OGRGeomTransformerH hGeomTransformer = nullptr;
-    OGRErr err = OGRERR_NONE;
-
     std::string srs_from_in = srs_to_wkt(srs_from, false);
     std::string srs_to_in = srs_to_wkt(srs_to, false);
 
-    err = oSourceSRS.importFromWkt(srs_from_in.c_str());
-    if (err != OGRERR_NONE)
-        Rcpp::stop("failed to import source SRS");
+    OGRSpatialReferenceH hSRS_from = OSRNewSpatialReference(nullptr);
+    OGRSpatialReferenceH hSRS_to = OSRNewSpatialReference(nullptr);
 
-    err = oDestSRS.importFromWkt(srs_to_in.c_str());
-    if (err != OGRERR_NONE)
-        Rcpp::stop("failed to import destination SRS");
+    char *pszWKT1 = (char*) srs_from_in.c_str();
+    if (OSRImportFromWkt(hSRS_from, &pszWKT1) != OGRERR_NONE) {
+        if (hSRS_from != nullptr)
+            OSRDestroySpatialReference(hSRS_from);
+        if (hSRS_to != nullptr)
+            OSRDestroySpatialReference(hSRS_to);
+        Rcpp::stop("error importing 'srs_from' from user input");
+    }
 
-    poCT = OGRCreateCoordinateTransformation(&oSourceSRS, &oDestSRS);
-    if (poCT == nullptr)
+    char *pszWKT2 = (char*) srs_to_in.c_str();
+    if (OSRImportFromWkt(hSRS_to, &pszWKT2) != OGRERR_NONE) {
+        if (hSRS_from != nullptr)
+            OSRDestroySpatialReference(hSRS_from);
+        if (hSRS_to != nullptr)
+            OSRDestroySpatialReference(hSRS_to);
+        Rcpp::stop("error importing 'srs_to' from user input");
+    }
+
+    if ((geom.size() == 0)) {
+        OSRDestroySpatialReference(hSRS_from);
+        OSRDestroySpatialReference(hSRS_to);
+        Rcpp::stop("'geom' is empty");
+    }
+
+    OGRGeometryH hGeom = createGeomFromWkb(geom);
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                    "failed to create geometry object from WKB, NA returned");
+        }
+        OSRDestroySpatialReference(hSRS_from);
+        OSRDestroySpatialReference(hSRS_to);
+        return Rcpp::LogicalVector::create(NA_LOGICAL);
+    }
+
+    std::string save_opt =
+            get_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER");
+
+    if (traditional_gis_order) {
+        OSRSetAxisMappingStrategy(hSRS_from, OAMS_TRADITIONAL_GIS_ORDER);
+        OSRSetAxisMappingStrategy(hSRS_to, OAMS_TRADITIONAL_GIS_ORDER);
+    }
+    else {
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", "NO");
+        OSRSetAxisMappingStrategy(hSRS_from, OAMS_AUTHORITY_COMPLIANT);
+        OSRSetAxisMappingStrategy(hSRS_to, OAMS_AUTHORITY_COMPLIANT);
+    }
+
+    OGRCoordinateTransformationH hCT = nullptr;
+    hCT = OCTNewCoordinateTransformation(hSRS_from, hSRS_to);
+    if (hCT == nullptr) {
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", save_opt);
+        if (hSRS_from != nullptr)
+            OSRDestroySpatialReference(hSRS_from);
+        if (hSRS_to != nullptr)
+            OSRDestroySpatialReference(hSRS_to);
+        OGR_G_DestroyGeometry(hGeom);
         Rcpp::stop("failed to create coordinate transformer");
+    }
 
     std::vector<char *> options;
     std::string dl_offset = "DATELINEOFFSET=";
@@ -1799,32 +2107,31 @@ SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
     }
     options.push_back(nullptr);
 
-    hGeomTransformer = OGR_GeomTransformer_Create(
-            OGRCoordinateTransformation::ToHandle(poCT), options.data());
+    OGRGeomTransformerH hGeomTransformer = nullptr;
+    hGeomTransformer = OGR_GeomTransformer_Create(hCT, options.data());
     if (hGeomTransformer == nullptr) {
-        OGRCoordinateTransformation::DestroyCT(poCT);
+        OCTDestroyCoordinateTransformation(hCT);
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", save_opt);
+        if (hSRS_from != nullptr)
+            OSRDestroySpatialReference(hSRS_from);
+        if (hSRS_to != nullptr)
+            OSRDestroySpatialReference(hSRS_to);
+        OGR_G_DestroyGeometry(hGeom);
         Rcpp::stop("failed to create geometry transformer, NA returned");
-    }
-
-    if ((geom.size() == 0))
-        Rcpp::stop("'geom' is empty");
-
-    OGRGeometryH hGeom = createGeomFromWkb(geom);
-
-    if (hGeom == nullptr) {
-        if (!quiet) {
-            Rcpp::warning(
-                    "failed to create geometry object from WKB, NA returned");
-        }
-        return Rcpp::LogicalVector::create(NA_LOGICAL);
     }
 
     OGRGeometryH hGeom2 = nullptr;
     hGeom2 = OGR_GeomTransformer_Transform(hGeomTransformer, hGeom);
+
+    OGR_GeomTransformer_Destroy(hGeomTransformer);
+    OCTDestroyCoordinateTransformation(hCT);
+    OSRDestroySpatialReference(hSRS_from);
+    OSRDestroySpatialReference(hSRS_to);
+    OGR_G_DestroyGeometry(hGeom);
+    if (!traditional_gis_order)
+        set_config_option("OGR_CT_FORCE_TRADITIONAL_GIS_ORDER", save_opt);
+
     if (hGeom2 == nullptr) {
-        OGRCoordinateTransformation::DestroyCT(poCT);
-        OGR_GeomTransformer_Destroy(hGeomTransformer);
-        OGR_G_DestroyGeometry(hGeom);
         if (!quiet) {
             Rcpp::warning(
                     "transformation failed, NA returned");
@@ -1832,12 +2139,8 @@ SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
         return Rcpp::LogicalVector::create(NA_LOGICAL);
     }
 
-    OGRCoordinateTransformation::DestroyCT(poCT);
-    OGR_GeomTransformer_Destroy(hGeomTransformer);
-
     const int nWKBSize = OGR_G_WkbSize(hGeom2);
     if (!nWKBSize) {
-        OGR_G_DestroyGeometry(hGeom);
         OGR_G_DestroyGeometry(hGeom2);
         if (!quiet) {
             Rcpp::warning("failed to obtain WKB size of output geometry");
@@ -1847,7 +2150,6 @@ SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
 
     Rcpp::RawVector wkb = Rcpp::no_init(nWKBSize);
     bool result = exportGeomToWkb(hGeom2, &wkb[0], as_iso, byte_order);
-    OGR_G_DestroyGeometry(hGeom);
     OGR_G_DestroyGeometry(hGeom2);
     if (!result) {
         if (!quiet) {
@@ -1885,8 +2187,8 @@ SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
 //' 325298.1 5104929.4, 325298.1 5104929.4, 324467.3 5104814.2))"
 //' bbox_from_wkt(bnd, 100, 100)
 // [[Rcpp::export]]
-Rcpp::NumericVector bbox_from_wkt(const std::string &wkt,
-        double extend_x = 0, double extend_y = 0) {
+Rcpp::NumericVector bbox_from_wkt(const std::string &wkt, double extend_x = 0,
+                                  double extend_y = 0) {
 
     OGRGeometryH hGeometry = nullptr;
     char *pszWKT = nullptr;
@@ -1938,8 +2240,8 @@ Rcpp::NumericVector bbox_from_wkt(const std::string &wkt,
 //' bbox_to_wkt(ds$bbox())
 //' ds$close()
 // [[Rcpp::export]]
-Rcpp::String bbox_to_wkt(const Rcpp::NumericVector &bbox,
-        double extend_x = 0, double extend_y = 0) {
+Rcpp::String bbox_to_wkt(const Rcpp::NumericVector &bbox, double extend_x = 0,
+                         double extend_y = 0) {
 
     if (bbox.size() != 4)
         Rcpp::stop("invalid bounding box");

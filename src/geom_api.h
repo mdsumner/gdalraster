@@ -3,7 +3,7 @@
    For spatial predicate definitions: https://en.wikipedia.org/wiki/DE-9IM
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #ifndef SRC_GEOM_API_H_
@@ -46,6 +46,9 @@ Rcpp::LogicalVector g_is_valid(const Rcpp::RawVector &geom, bool quiet);
 SEXP g_make_valid(const Rcpp::RawVector &geom, const std::string &method,
                   bool keep_collapsed, bool as_iso,
                   const std::string &byte_order, bool quiet);
+
+SEXP g_swap_xy(const Rcpp::RawVector &geom, bool as_iso,
+               const std::string &byte_order, bool quiet);
 
 Rcpp::LogicalVector g_is_empty(const Rcpp::RawVector &geom, bool quiet);
 Rcpp::LogicalVector g_is_3D(const Rcpp::RawVector &geom, bool quiet);
@@ -90,6 +93,10 @@ Rcpp::LogicalVector g_overlaps(const Rcpp::RawVector &this_geom,
 SEXP g_buffer(const Rcpp::RawVector &geom, double dist, int quad_segs,
               bool as_iso, const std::string &byte_order, bool quiet);
 
+SEXP g_simplify(const Rcpp::RawVector &geom, double tolerance,
+                bool preserve_topology, bool as_iso,
+                const std::string &byte_order, bool quiet);
+
 SEXP g_intersection(const Rcpp::RawVector &this_geom,
                     const Rcpp::RawVector &other_geom,
                     bool as_iso, const std::string &byte_order,
@@ -116,11 +123,15 @@ double g_distance(const Rcpp::RawVector &this_geom,
 
 double g_length(const Rcpp::RawVector &geom, bool quiet);
 double g_area(const Rcpp::RawVector &geom, bool quiet);
+double g_geodesic_area(const Rcpp::RawVector &geom, const std::string &srs,
+                       bool traditional_gis_order, bool quiet);
+double g_geodesic_length(const Rcpp::RawVector &geom, const std::string &srs,
+                         bool traditional_gis_order, bool quiet);
 Rcpp::NumericVector g_centroid(const Rcpp::RawVector &geom, bool quiet);
 
 SEXP g_transform(const Rcpp::RawVector &geom, const std::string &srs_from,
                  const std::string &srs_to, bool wrap_date_line,
-                 int date_line_offset, bool as_iso,
+                 int date_line_offset, bool traditional_gis_order, bool as_iso,
                  const std::string &byte_order, bool quiet);
 
 Rcpp::NumericVector bbox_from_wkt(const std::string &wkt,

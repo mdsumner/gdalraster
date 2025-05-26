@@ -104,6 +104,7 @@ lyr$setAttributeFilter(query)
 lyr$getAttributeFilter()
 lyr$setIgnoredFields(fields)
 lyr$setSelectedFields(fields)
+lyr$getIgnoredFields()
 
 lyr$setSpatialFilter(wkt)
 lyr$setSpatialFilterRect(bbox)
@@ -175,7 +176,7 @@ are required in this form of the constructor, but \code{open_options} may be
 \code{$defaultGeomColName}\cr
 Character string specifying a name to use for returned columns when the
 geometry column name in the source layer is empty, like with shapefiles etc.
-Defaults to \code{"geometry"}.
+Defaults to \code{"geom"}.
 
 \code{$returnGeomAs}\cr
 Character string specifying the return format of feature geometries.
@@ -226,6 +227,8 @@ the GDAL API documentation for
 \href{https://gdal.org/en/stable/api/vector_c_api.html#_CPPv420OGR_L_GetArrowStream9OGRLayerHP16ArrowArrayStreamPPc}{OGR_L_GetArrowStream()}.
 \itemize{
 \item INCLUDE_FID=YES/NO. Defaults to YES.
+\item MAX_FEATURES_IN_BATCH=integer. Maximum number of features to retrieve in
+an ArrowArray batch. Defaults to 65536.
 \item TIMEZONE=unknown/UTC/(+|:)HH:MM or any other value supported by
 Arrow (GDAL >= 3.8).
 \item GEOMETRY_METADATA_ENCODING=OGC/GEOARROW (GDAL >= 3.8). The GDAL default is
@@ -402,6 +405,11 @@ selected fields, either by including named geometry field(s) or the special
 field \code{"OGR_GEOMETRY"} in the \code{fields} argument.
 No return value, called for side effects.
 
+\code{$getIgnoredFields()}\cr
+Returns a character vector containing the list of currently ignored fields,
+or an empty vector (\code{character(0)}) if no fields are currently set to
+ignored (or if the format driver does not support ignored fields).
+
 \code{$setSpatialFilter(wkt)}\cr
 Sets a new spatial filter from a geometry in WKT format. This method sets
 the geometry to be used as a spatial filter when fetching features via the
@@ -510,23 +518,26 @@ returns the remaining features.
 Fetching zero features is possible to retrieve the structure of the feature
 set as a data frame (columns fully typed).
 
-OGR field types are returned as the following R types (\code{NA} for OGR NULL
-values):
+OGR field types are returned as the following R types (type-specific \code{NA}
+for OGR NULL values):
 \itemize{
-\item \code{OFTInteger}: \code{integer}
-\item \code{OFTInteger} subtype \code{OFSTBoolean}: \code{logical}
-\item \code{OFTIntegerList}: vector of \code{integer} (list column)
-\item \code{OFTInteger64}: \code{numeric} carrying \code{"integer64"} class attribute \{bit64\}
-\item \code{OFTInteger64} subtype \code{OFSTBoolean}: \code{logical}
-\item \code{OFTInteger64List}: vector of \code{bit64::integer64} (list column)
-\item \code{OFTReal}: \code{numeric}
-\item \code{OFTRealList}: vector of \code{numeric} (list column)
-\item \code{OFTString}: \code{character} string
-\item \code{OFTStringList}: vector of \code{character} strings (list column)
-\item \code{OFTDate}: class \code{"Date"} (\code{numeric})
-\item \code{OFTDateTime}: class \code{"POSIXct"} (\code{numeric}, millisecond accuracy)
-\item \code{OFTTime}: \code{character} string (\code{"HH:MM:SS"})
-\item \code{OFTBinary}: \code{raw} vector (list column, \code{NULL} entries for OGR NULL values)
+\item \strong{OFTInteger}: \code{integer} value
+\item \strong{OFTInteger subtype OFSTBoolean}: \code{logical} value
+\item \strong{OFTIntegerList}: vector of \code{integer} (list column)
+\item \strong{OFTInteger64}: \code{numeric} value carrying the \code{"integer64"} class
+attribute
+\item \strong{OFTInteger64 subtype OFSTBoolean}: \code{logical} value
+\item \strong{OFTInteger64List}: vector of \code{bit64::integer64} (list column)
+\item \strong{OFTReal}: \code{numeric} value
+\item \strong{OFTRealList}: vector of \code{numeric} (list column)
+\item \strong{OFTString}: \code{character} string
+\item \strong{OFTStringList}: vector of \code{character} strings (list column)
+\item \strong{OFTDate}: \code{numeric} value of class \code{"Date"}
+\item \strong{OFTDateTime}: \code{numeric} value of class \code{"POSIXct"} (millisecond
+accuracy)
+\item \strong{OFTTime}: \code{character} string (\code{"HH:MM:SS"})
+\item \strong{OFTBinary}: \code{raw} vector (list column, \code{NULL} entries for OGR NULL
+values)
 }
 
 Geometries are not returned if the field \code{returnGeomAs} is set to \code{NONE}.
@@ -747,9 +758,7 @@ f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
 dsn <- file.path(tempdir(), basename(f))
 file.copy(f, dsn)
 
-lyr <- new(GDALVector, dsn, "mtbs_perims")
-
-lyr
+(lyr <- new(GDALVector, dsn, "mtbs_perims"))
 
 str(lyr)
 
@@ -785,9 +794,8 @@ lyr$returnGeomAs
 lyr$getFeatureCount()
 
 ## sequential read cursor
-feat <- lyr$getNextFeature()
-# a list of field names and their values, with class attribute `OGRFeature`
-feat
+# a single feature returned as a named list of fields and their values:
+(feat <- lyr$getNextFeature())
 
 ## set an attribute filter
 lyr$setAttributeFilter("ig_year = 2020")
@@ -811,13 +819,12 @@ lyr$getFeatureCount()
 ## get the bounding box of the largest 1988 fire and use as spatial filter
 ## first set a temporary attribute filter to do the lookup
 lyr$setAttributeFilter("ig_year = 1988 ORDER BY burn_bnd_ac DESC")
-feat <- lyr$getNextFeature()
-feat
+(feat <- lyr$getNextFeature())
 
 bbox <- g_wk2wk(feat$geom) |> bbox_from_wkt()
 
 ## set spatial filter on the full layer
-lyr$setAttributeFilter("")  # clears
+lyr$setAttributeFilter("")  # clears the attribute filter
 lyr$setSpatialFilterRect(bbox)
 lyr$getFeatureCount()
 
@@ -833,9 +840,9 @@ nrow(feat_set)
 ## no features remaining
 feat_set <- lyr$fetch(20)
 nrow(feat_set)
-str(feat_set)  # 0-row data frame with columns typed
+str(feat_set)  # 0-row data frame with columns fully typed
 
-## fetch all pending features
+## or, fetch all pending features from the beginning
 feat_set <- lyr$fetch(-1)  # resets reading to the first feature
 nrow(feat_set)
 plot(feat_set)
@@ -845,7 +852,7 @@ lyr$getFeatureCount()
 
 lyr$close()
 
-## simple example for feature write methods showing use of various data types
+## simple example of feature write methods showing use of various data types
 ## create and write to a new layer in a GeoPackage data source
 dsn2 <- tempfile(fileext = ".gpkg")
 
@@ -864,33 +871,33 @@ defn$dt_modified <- ogr_def_field("OFTDateTime",
                                   default_value = "CURRENT_TIMESTAMP")
 defn$blobs <- ogr_def_field("OFTBinary")
 
-ogr_ds_create("GPKG", dsn2, "test_layer", layer_defn = defn)
+lyr <- ogr_ds_create("GPKG", dsn2, "test_layer", layer_defn = defn,
+                     return_obj = TRUE)
 
-lyr <- new(GDALVector, dsn2, "test_layer", read_only = FALSE)
 # lyr$getLayerDefn() |> str()
 
 ## define a feature to write
 feat1 <- list()
-## $FID is omitted since it is assigned when written (could also be NA)
-## $dt_modified is omitted since the datasource sets a default timestamp
+# $FID is omitted since it is assigned when written (could also be NA)
+# $dt_modified is omitted since a default timestamp is defined on the field
 feat1$unique_int <- 1001
 feat1$bool_data <- TRUE
-## passing a string to as.integer64()
-## this value is too large to be represented exactly as R numeric (double)
+# pass a string to as.integer64() since the value is too large to be
+# represented exactly as an R numeric value (i.e., double)
 feat1$large_ints <- bit64::as.integer64("90071992547409910")
 feat1$doubles <- 1.234
 feat1$strings <- "A test string"
-feat1$dates <- as.Date("2024-01-01")
+feat1$dates <- as.Date("2025-01-01")
 feat1$blobs <- charToRaw("A binary object")
 feat1$geom <- "POINT (1 1)"  # can be a WKT string or raw vector of WKB
 
 ## create as a new feature in the layer
 lyr$createFeature(feat1)
 
-## the assigned FID
+## get the assigned FID
 lyr$getLastWriteFID()
 
-## this fails due to the unique constraint
+## attempt to re-write the same feature fails due to the unique constraint
 lyr$createFeature(feat1)
 
 feat2 <- list()
@@ -910,7 +917,7 @@ lyr$getLastWriteFID()
 lyr$open(read_only = TRUE)
 
 lyr$getFeatureCount()
-feat_set <- lyr$fetch(-1)  # -1 for all features reading from start
+feat_set <- lyr$fetch(-1)  # -1 to fetch all features from the beginning
 str(feat_set)
 
 ## edit an existing feature, e.g., feat <- lyr$getFeature(2)
@@ -918,7 +925,7 @@ str(feat_set)
 feat <- feat_set[2,]
 str(feat)
 
-Sys.sleep(1)  # only to ensure a timestamp difference
+Sys.sleep(1)  # to ensure a timestamp difference
 
 feat$bool_data <- TRUE
 feat$strings <- paste(feat$strings, "- edited")
@@ -928,9 +935,6 @@ feat$geom <- "POINT (2.001 2.001)"
 lyr$open(read_only = FALSE)
 
 ## lyr$setFeature() re-writes the feature identified by the $FID element
-## N.B., all fields are re-written:
-##   any fields omitted from the input feature, or set to NA, will be
-##   re-written as OGR NULL
 lyr$setFeature(feat)
 
 lyr$open(read_only = TRUE)
@@ -944,28 +948,21 @@ lyr$close()
 
 ## Arrow array stream exposed as a nanoarrow_array_stream object
 ## requires GDAL >= 3.6
-if (as.integer(gdal_version()[2]) >= 3060000) {
+if (gdal_version_num() >= gdal_compute_version(3, 6, 0)) {
 
   sql <- "SELECT incid_name, geom from mtbs_perims LIMIT 5"
   lyr <- new(GDALVector, dsn, sql)
 
   stream <- lyr$getArrowStream()
-  print(stream)
-
-  stream$get_schema() |> print()
-
   batch <- stream$get_next()
-  str(batch) |> print()
 
-  # disable warning for the example that can be safely ignored here
+  # disable a warning for the example that can be safely ignored here
   options(nanoarrow.warn_unregistered_extension = FALSE)
 
   d <- as.data.frame(batch)
   head(d) |> print()
 
-  # the geometry column is a list column of WKB raw vectors, e.g.,
-  g_name(d$geom) |> print()
-
+  # the geometry column is a list column of WKB raw vectors
   g_centroid(d$geom) |> print()
 
   # the last batch is NULL

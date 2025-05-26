@@ -24,7 +24,7 @@ test_that("geom functions work on wkb/wkt geometries", {
     pt_xy <- cbind(x, y)
     expect_error(g_create("POLYGON", pt_xy))
 
-    if (.gdal_version_num() >= 3050000) {
+    if (gdal_version_num() >= 3050000) {
         # OGR_GEOMETRY_ACCEPT_UNCLOSED_RING config option added at 3.5.0
         x <- c(324467.3, 323909.4, 323794.2, 324970.7)
         y <- c(5104814.2, 5104365.4, 5103455.8, 5102885.8)
@@ -516,7 +516,7 @@ test_that("g_transform / bbox_transform return correct values", {
                  tolerance = 1e-4)
 
     # bbox_transform
-    skip_if(.gdal_version_num() < 3040000)
+    skip_if(gdal_version_num() < 3040000)
 
     bb <- c(-1405880.71737131, -1371213.7625429356,
             5405880.71737131, 5371213.762542935)
@@ -589,7 +589,7 @@ test_that("geometry properties are correct", {
     expect_equal(res, bb_mat)
 
 
-    skip_if(.gdal_version_num() < 3070000 )
+    skip_if(gdal_version_num() < 3070000 )
 
     g <- "MULTIPOLYGON (((10 0,0 0,5 5,10 0)),((10 10,5 5,0 10,10 10)))"
     expected_value <-
@@ -675,6 +675,29 @@ test_that("g_buffer returns correct values", {
     expect_equal(bb, c(-10, -10,  10,  10))
 })
 
+test_that("g_simplify returns correct values", {
+    g1 <- "LINESTRING(0 0,1 0,10 0)"
+    g_simp <- g_simplify(g1, tolerance = 5, as_wkb = FALSE)
+    g_expect <- "LINESTRING (0 0,10 0)"
+    expect_equal(g_simp, g_expect)
+    # wkb input
+    g_simp <- g_simplify(g_wk2wk(g1), tolerance = 5, as_wkb = FALSE)
+    expect_equal(g_simp, g_expect)
+    # preserve_topology = FALSE
+    g_simp <- g_simplify(g1, tolerance = 5, preserve_topology = FALSE,
+                         as_wkb = FALSE)
+    expect_equal(g_simp, g_expect)
+    # vector/list input
+    g_expect <- rep(g_expect, 2)
+    g2 <- "LINESTRING(0 0,1 1,10 0)"
+    # character vector of wkt input
+    g_simp <- g_simplify(c(g1, g2), tolerance = 5, as_wkb = FALSE)
+    expect_equal(g_simp, g_expect)
+    # list of wkb input
+    g_simp <- g_simplify(g_wk2wk(c(g1, g2)), tolerance = 5, as_wkb = FALSE)
+    expect_equal(g_simp, g_expect)
+})
+
 test_that("geometry measures are correct", {
     expect_equal(g_distance("POINT (0 0)", "POINT (5 12)"), 13)
 
@@ -690,11 +713,80 @@ test_that("geometry measures are correct", {
     expect_equal(res, c(325621.1, 5103477.0))
 })
 
+test_that("geodesic measures are correct", {
+    # tests based on gdal/autotest/ogr/ogr_geom.py
+    # https://github.com/OSGeo/gdal/blob/28e94e2f52893d4206830011d75efe1783f1b7c1/autotest/ogr/ogr_geom.py
+    skip_if(gdal_version_num() < 3090000)
+
+    ## geodesic area
+    # lon/lat order (traditional_gis_order = TRUE by default)
+    g <- "POLYGON((2 49,3 49,3 48,2 49))"
+    a <- g_geodesic_area(g, "EPSG:4326")
+    expect_equal(a, 4068384291.8911743, tolerance = 1e4)
+
+    g <- "POLYGON((2 89,3 89,3 88,2 89))"
+    a <- g_geodesic_area(g, "EPSG:4326")
+    expect_equal(a, 108860488.12023926, tolerance = 1e4)
+
+    # lat/lon order
+    g <- "POLYGON((49 2,49 3,48 3,49 2))"
+    a <- g_geodesic_area(g, "EPSG:4326", traditional_gis_order = FALSE)
+    expect_equal(a, 4068384291.8911743, tolerance = 1e4)
+
+    # projected srs
+    g <- "POLYGON((2 49,3 49,3 48,2 49))"
+    g2 <- g_transform(g, "EPSG:4326", "EPSG:32631")
+    a <- g_geodesic_area(g2, "EPSG:32631")
+    expect_equal(a, 4068384291.8911743, tolerance = 1e4)
+    # For comparison: cartesian area in UTM
+    a <- g_area(g2)
+    expect_equal(a, 4065070548.465351, tolerance = 1e4)
+    # start with lat/lon order
+    g <- "POLYGON((49 2,49 3,48 3,49 2))"
+    g2 <- g_transform(g, "EPSG:4326", "EPSG:32631",
+                      traditional_gis_order = FALSE)
+    a <- g_geodesic_area(g2, "EPSG:32631")
+    expect_equal(a, 4068384291.8911743, tolerance = 1e4)
+
+
+    skip_if(gdal_version_num() < 3100000)
+
+    ## geodesic length
+    # lon/lat order (traditional_gis_order = TRUE by default)
+    g <- "LINESTRING(2 49,3 49)"
+    l <- g_geodesic_length(g, "EPSG:4326")
+    expect_equal(l, 73171.26435678436, tolerance = 1e4)
+
+    g <- "POLYGON((2 49,3 49,3 48,2 49))"
+    l <- g_geodesic_length(g, "EPSG:4326")
+    expect_equal(l, 317885.78639964823, tolerance = 1e4)
+
+    # lat/lon order
+    g <- "LINESTRING(49 3,48 3)"
+    l <- g_geodesic_length(g, "EPSG:4326", traditional_gis_order = FALSE)
+    expect_equal(l, 111200.0367623785, tolerance = 1e4)
+
+    # projected srs
+    g <- "POLYGON((2 49,3 49,3 48,2 49))"
+    g2 <- g_transform(g, "EPSG:4326", "EPSG:32631")
+    l <- g_geodesic_length(g2, "EPSG:32631")
+    expect_equal(l, 317885.78639964823, tolerance = 1e4)
+    # For comparison: cartesian length in UTM
+    l <- g_length(g2)
+    expect_equal(l, 317763.15996565996, tolerance = 1e4)
+    # start with lat/lon order
+    g <- "POLYGON((49 2,49 3,48 3,49 2))"
+    g2 <- g_transform(g, "EPSG:4326", "EPSG:32631",
+                      traditional_gis_order = FALSE)
+    l <- g_geodesic_length(g2, "EPSG:32631")
+    expect_equal(l, 317885.78639964823, tolerance = 1e4)
+})
+
 test_that("make_valid works", {
     # test only with recent GDAL and GEOS
     # these tests could give different results if used across a range of older
     # GDAL/GEOS versions, and the STRUCTURE method requires GEOS >= 3.10
-    skip_if(.gdal_version_num() < 3080000 ||
+    skip_if(gdal_version_num() < 3080000 ||
                 geos_version()$major < 3 ||
                 (geos_version()$major == 3 && geos_version()$minor < 11))
 
@@ -736,6 +828,26 @@ test_that("make_valid works", {
     expect_equal(length(wkb_list), length(wkt_vec))
     expect_true(is.na(wkb_list[[2]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
+})
+
+test_that("swap xy works", {
+    g <- "GEOMETRYCOLLECTION(POINT(1 2),LINESTRING(1 2,2 3),POLYGON((0 0,0 1,1 1,0 0)))"
+    g_swapped <- g_swap_xy(g, as_wkb = FALSE)
+    g_expect <- "GEOMETRYCOLLECTION (POINT (2 1),LINESTRING (2 1,3 2),POLYGON ((0 0,1 0,1 1,0 0)))"
+    expect_equal(g_swapped, g_expect)
+    # wkb input
+    g_swapped <- g_swap_xy(g_wk2wk(g), as_wkb = FALSE)
+    expect_equal(g_swapped, g_expect)
+    # vector/list input
+    g1 <- "POINT(1 2)"
+    g2 <- "POINT(2 3)"
+    g_expect <- c("POINT (2 1)", "POINT (3 2)")
+    # character vector of wkt input
+    g_swapped <- g_swap_xy(c(g1, g2), as_wkb = FALSE)
+    expect_equal(g_swapped, g_expect)
+    # list of wkb input
+    g_swapped <- g_swap_xy(g_wk2wk(c(g1, g2)), as_wkb = FALSE)
+    expect_equal(g_swapped, g_expect)
 })
 
 test_that("g_coords returns a data frame of vertices", {

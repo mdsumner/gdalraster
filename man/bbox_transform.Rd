@@ -38,18 +38,24 @@ With \code{use_transform_bounds = TRUE} (the default) this function returns:
 transform_bounds(bbox, srs_from, srs_to)
 }\if{html}{\out{</div>}}
 
+See Details for \code{\link[=transform_bounds]{transform_bounds()}} for cases where the bounds crossed the
+antimeridian.
+
 With \code{use_transform_bounds = FALSE}, this function returns:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{bbox_to_wkt(bbox) |>
   g_transform(srs_from, srs_to) |>
   bbox_from_wkt()
 }\if{html}{\out{</div>}}
+
+See the Note for \code{\link[=g_transform]{g_transform()}} for cases where the bounds crossed the
+antimeridian.
 }
 \examples{
 bb <- c(-1405880.72, -1371213.76, 5405880.72, 5371213.76)
 
 # the default assumes GDAL >= 3.4
-if (as.integer(gdal_version()[2]) >= 3040000) {
+if (gdal_version_num() >= gdal_compute_version(3, 4, 0)) {
   bb_wgs84 <- bbox_transform(bb, "EPSG:32661", "EPSG:4326")
 } else {
   bb_wgs84 <- bbox_transform(bb, "EPSG:32661", "EPSG:4326",

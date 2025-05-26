@@ -43,11 +43,16 @@ The return value is a list with named elements.
 Subdataset names are the character strings that can be used to
 instantiate \code{GDALRaster} objects.
 See https://gdal.org/en/stable/en/latest/user/raster_data_model.html#subdatasets-domain.
+
+PostgreSQL / PostGISRaster are handled as a special case. If additional
+arguments \code{raster} or \code{vector} are not given for \code{identifyDriver()}, then
+\code{raster = FALSE} is assumed.
 }
 \examples{
-src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
+ynp_dsn <- file.path("/vsizip", f, "ynp_features.gpkg")
 
-inspectDataset(src)
+inspectDataset(ynp_dsn)
 }
 \seealso{
 \code{\link[=gdal_formats]{gdal_formats()}}, \code{\link[=identifyDriver]{identifyDriver()}}

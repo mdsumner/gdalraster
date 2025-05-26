@@ -100,6 +100,11 @@ DEFAULT_DEM_PROC <- list(
     if (endsWith(tolower(file), ".fgb")) {
         return("FlatGeobuf")
     }
+    if (endsWith(tolower(file), ".geojson") ||
+        endsWith(tolower(file), ".json")) {
+
+        return("GeoJSON")
+    }
     return(NULL)
 }
 
@@ -164,7 +169,7 @@ DEFAULT_DEM_PROC <- list(
 #' @param as_raw Logical. If `TRUE` and the underlying data type is Byte,
 #' return output as R's raw vector type. This maps to the setting
 #' `$readByteAsRaw` on the `GDALRaster` object, which will be temporarily
-#' updated in this function. To control this behaviour in a persistent way on
+#' updated in this function. To control this behavior in a persistent way on
 #' a dataset see \code{$readByteAsRaw} in [`GDALRaster-class`][GDALRaster].
 #' @returns If `as_list = FALSE` (the default), a vector of `raw`, `integer`,
 #' `double` or `complex` containing the values that were read. It is organized
@@ -1613,7 +1618,7 @@ pixel_extract <- function(raster, xy, bands = NULL, interp = NULL,
 
     if (is.null(xy_srs))
         xy_srs <- ""
-    else if (!is.character(interp) || length(interp) > 1)
+    else if (!is.character(xy_srs) || length(xy_srs) > 1)
         stop("'xy_srs' must be a character string", call. = FALSE)
 
     if (is.null(max_ram))
@@ -1627,7 +1632,7 @@ pixel_extract <- function(raster, xy, bands = NULL, interp = NULL,
     mem_dir <- ""
     f_mem <- ""
     f_in <- ds$getDescription(band = 0)
-    if (max_ram > 0 && length(xy) > 1 && .gdal_version_num() >= 3060000 &&
+    if (max_ram > 0 && length(xy) > 1 && gdal_version_num() >= 3060000 &&
         !vsi_is_local(f_in)) {
 
         # use MEM dataset if possible
@@ -2038,7 +2043,7 @@ polygonize <- function(raster_file,
 #' will be used. The resolution or size must be specified using either the `tr`
 #' or `ts` argument for all new rasters. The target raster will be overwritten
 #' if it already exists and any of these creation-related options are used.
-#' 
+#'
 #' To update an existing raster in-place, an object of class `GDALRaster` may
 #' be given for the `dstfile` argument. The `GDALRaster` object should be open
 #' for write access.

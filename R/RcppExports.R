@@ -136,23 +136,32 @@ dt_find_for_value <- function(value, is_complex = FALSE) {
 
 #' Get GDAL version
 #'
-#' `gdal_version()` returns runtime version information.
+#' `gdal_version()` returns a character vector of GDAL runtime version
+#' information. `gdal_version_num()` returns only the full version number
+#' (`gdal_version()[2]`) as an integer value.
 #'
-#' @returns Character vector of length four containing:
+#' @name gdal_version
+#'
+#' @returns
+#' `gdal_version()` returns a character vector of length four containing:
 #'   * "–version" - one line version message, e.g., “GDAL 3.6.3, released
 #'   2023/03/12”
 #'   * "GDAL_VERSION_NUM" - formatted as a string, e.g., “3060300” for
 #'   GDAL 3.6.3.0
 #'   * "GDAL_RELEASE_DATE" - formatted as a string, e.g., “20230312”
 #'   * "GDAL_RELEASE_NAME" - e.g., “3.6.3”
+#'
+#' `gdal_version_num()` returns `as.integer(gdal_version()[2])`
 #' @examples
 #' gdal_version()
+#'
+#' gdal_version_num()
 gdal_version <- function() {
     .Call(`_gdalraster_gdal_version`)
 }
 
-#' @noRd
-.gdal_version_num <- function() {
+#' @rdname gdal_version
+gdal_version_num <- function() {
     .Call(`_gdalraster_gdal_version_num`)
 }
 
@@ -237,21 +246,101 @@ set_config_option <- function(key, value) {
     invisible(.Call(`_gdalraster_set_config_option`, key, value))
 }
 
+#' Get the maximum memory size available for the GDAL block cache
+#'
+#' `get_cache_max()` returns the maximum amount of memory available to the
+#' GDALRasterBlock caching system for caching raster read/write data. Wrapper
+#' of `GDALGetCacheMax64()` with return value in MB by default.
+#'
+#' @details
+#' The first time this function is called, it will read the `GDAL_CACHEMAX`
+#' configuration option to initialize the maximum cache memory. The value of
+#' the configuration option can be expressed as x% of the usable physical RAM
+#' (which may potentially be used by other processes). Otherwise it is
+#' expected to be a value in MB.
+#' As of GDAL 3.10, the default value, if `GDAL_CACHEMAX` has not been set
+#' explicitly, is 5% of usable physical RAM.
+#'
+#' @param units Character string specifying units for the return value. One of
+#' `"MB"` (the default), `"GB"`, `"KB"` or `"bytes"` (values of `"byte"`,
+#' `"B"` and empty string `""` are also recognized to mean bytes).
+#' @returns A numeric value carrying the `integer64` class attribute. Maximum
+#' cache memory available in the requested units.
+#'
+#' @note
+#' The value of the `GDAL_CACHEMAX` configuration option is only consulted the
+#' first time the cache size is requested (i.e., it must be set as a
+#' configuration option prior to any raster I/O during the current session).
+#' To change this value programmatically during operation of the program it is
+#' better to use [set_cache_max()] (in which case, always given in bytes).
+#'
+#' @seealso
+#' [GDAL_CACHEMAX configuration option](https://gdal.org/en/stable/user/configoptions.html#performance-and-caching)
+#'
+#' [get_config_option()], [set_config_option()], [get_usable_physical_ram()],
+#' [get_cache_used()], [set_cache_max()]
+#'
+#' @examples
+#' get_cache_max()
+get_cache_max <- function(units = "MB") {
+    .Call(`_gdalraster_get_cache_max`, units)
+}
+
 #' Get the size of memory in use by the GDAL block cache
 #'
 #' `get_cache_used()` returns the amount of memory currently in use for
-#' GDAL block caching. This a wrapper for `GDALGetCacheUsed64()` with return
-#' value as MB.
+#' GDAL block caching. Wrapper of `GDALGetCacheUsed64()` with return
+#' value in MB by default.
 #'
-#' @returns Integer. Amount of cache memory in use in MB.
+#' @param units Character string specifying units for the return value. One of
+#' `"MB"` (the default), `"GB"`, `"KB"` or `"bytes"` (values of `"byte"`,
+#' `"B"` and empty string `""` are also recognized to mean bytes).
+#' @returns A numeric value carrying the `integer64` class attribute. Amount
+#' of the available cache memory currently in use in the requested units.
 #'
 #' @seealso
 #' [GDAL Block Cache](https://usdaforestservice.github.io/gdalraster/articles/gdal-block-cache.html)
 #'
+#' [get_cache_max()], [set_cache_max()]
+#'
 #' @examples
 #' get_cache_used()
-get_cache_used <- function() {
-    .Call(`_gdalraster_get_cache_used`)
+get_cache_used <- function(units = "MB") {
+    .Call(`_gdalraster_get_cache_used`, units)
+}
+
+#' Set the maximum memory size for the GDAL block cache
+#'
+#' `set_cache_max()` sets the maximum amount of memory that GDAL is permitted
+#' to use for GDALRasterBlock caching.
+#' *The unit of the value to set is bytes.* Wrapper of `GDALSetCacheMax64()`.
+#'
+#' @param nbytes A numeric value optionally carrying the `integer64` class
+#' attribute (assumed to be a whole number, will be coerced to integer by
+#' truncation). Specifies the new cache size in bytes (maximum number of bytes
+#' for caching).
+#' @returns No return value, called for side effects.
+#'
+#' @note
+#' **This function will not make any attempt to check the consistency of the
+#' passed value with the effective capabilities of the OS.**
+#'
+#' It is recommended to consult the documentation for `get_cache_max()` and
+#' `get_cache_used()` before using this function.
+#'
+#' [get_cache_max()], [get_cache_used()]
+#'
+#' @examples
+#' (cachemax <- get_cache_max("bytes"))
+#'
+#' set_cache_max(1e8)
+#' get_cache_max()  # returns in MB by default
+#'
+#' # reset to original
+#' set_cache_max(cachemax)
+#' get_cache_max()
+set_cache_max <- function(nbytes) {
+    invisible(.Call(`_gdalraster_set_cache_max`, nbytes))
 }
 
 #' @noRd
@@ -519,7 +608,7 @@ inv_geotransform <- function(gt) {
 }
 
 #' Returns bbox geospatial x,y coordinates (xmin, ymin, xmax, ymax) from
-#' inpouts of geotransform vector and the grid pixel/line extent
+#' inputs of geotransform vector and the grid pixel/line extent
 #' @noRd
 .bbox_grid_to_geo <- function(gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax) {
     .Call(`_gdalraster_bbox_grid_to_geo_`, gt, grid_xmin, grid_xmax, grid_ymin, grid_ymax)
@@ -707,7 +796,7 @@ fillNodata <- function(filename, band, mask_file = "", max_dist = 100, smooth_it
 #' out_file <- file.path(tempdir(), "storml.geojson")
 #'
 #' # Requires GDAL >= 3.8
-#' if (as.integer(gdal_version()[2]) >= 3080000) {
+#' if (gdal_version_num() >= gdal_compute_version(3, 8, 0)) {
 #'   # command-line arguments for gdal_footprint
 #'   args <- c("-t_srs", "EPSG:4326")
 #'   footprint(evt_file, out_file, args)
@@ -823,43 +912,33 @@ ogr2ogr <- function(src_dsn, dst_dsn, src_layers = NULL, cl_arg = NULL, open_opt
 #' metadata strings.
 #'
 #' @seealso
-#' [ogr2ogr()], the [ogr_manage] utilities
+#' [ogr2ogr()], [ogr_manage]
 #'
-#' @examples
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 7, 0)
 #' src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
 #'
-#' # Requires GDAL >= 3.7
-#' if (as.integer(gdal_version()[2]) >= 3070000) {
-#'   # Get the names of the layers in a GeoPackage file.
-#'   ogrinfo(src)
+#' # Get the names of the layers in a GeoPackage file
+#' ogrinfo(src)
 #'
-#'   # Summary of a layer
-#'   ogrinfo(src, "mtbs_perims")
+#' # Summary of a layer
+#' ogrinfo(src, "mtbs_perims")
 #'
-#'   # JSON format
-#'   args <- c("-json", "-nomd")
-#'   json <- ogrinfo(src, "mtbs_perims", args, cout = FALSE)
-#'   #info <- jsonlite::fromJSON(json)
+#' # Query an attribute to restrict the output of the features in a layer
+#' args <- c("-ro", "-nomd", "-where", "ig_year = 2020")
+#' ogrinfo(src, "mtbs_perims", args)
 #'
-#'   # Query an attribute to restrict the output of the features in a layer
-#'   args <- c("-ro", "-nomd", "-where", "ig_year = 2020")
-#'   ogrinfo(src, "mtbs_perims", args)
+#' # Copy to a temporary in-memory file that is writeable
+#' src_mem <- paste0("/vsimem/", basename(src))
+#' vsi_copy_file(src, src_mem)
 #'
-#'   # Copy to a temporary in-memory file that is writeable
-#'   src_mem <- paste0("/vsimem/", basename(src))
-#'   vsi_copy_file(src, src_mem)
-#'   print(src_mem)
+#' # Add a column to a layer
+#' args <- c("-sql", "ALTER TABLE mtbs_perims ADD burn_bnd_ha float")
+#' ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
 #'
-#'   # Add a column to a layer
-#'   args <- c("-sql", "ALTER TABLE mtbs_perims ADD burn_bnd_ha float")
-#'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
-#'
-#'   # Update values of the column with SQL and specify a dialect
-#'   sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
-#'   args <- c("-dialect", "sqlite", "-sql", sql)
-#'   ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
-#'   \dontshow{vsi_unlink(src_mem)}
-#' }
+#' # Update values of the column with SQL and specify a dialect
+#' sql <- "UPDATE mtbs_perims SET burn_bnd_ha = (burn_bnd_ac / 2.471)"
+#' args <- c("-dialect", "sqlite", "-sql", sql)
+#' ogrinfo(src_mem, cl_arg = args, read_only = FALSE)
 ogrinfo <- function(dsn, layers = NULL, cl_arg = as.character( c("-so", "-nomd")), open_options = NULL, read_only = TRUE, cout = TRUE) {
     invisible(.Call(`_gdalraster_ogrinfo`, dsn, layers, cl_arg, open_options, read_only, cout))
 }
@@ -1382,9 +1461,9 @@ validateCreationOptions <- function(format, options) {
 #' tmp_file <- "/vsimem/elev_temp.tif"
 #'
 #' # Requires GDAL >= 3.7
-#' if (as.integer(gdal_version()[2]) >= 3070000) {
+#' if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
 #'   result <- vsi_copy_file(elev_file, tmp_file)
-#'   print(result)
+#'   (result == 0)
 #'   print(vsi_stat(tmp_file, "size"))
 #'
 #'   vsi_unlink(tmp_file)
@@ -1666,13 +1745,12 @@ vsi_rmdir <- function(path, recursive = FALSE) {
 #' [deleteDataset()], [vsi_rmdir()], [vsi_unlink_batch()]
 #'
 #' @examples
-#' # regular file system for illustration
 #' elev_file <- system.file("extdata/storml_elev.tif", package="gdalraster")
-#' tmp_file <- file.path(tempdir(), "tmp.tif")
-#' file.copy(elev_file,  tmp_file)
-#' vsi_stat(tmp_file)
-#' vsi_unlink(tmp_file)
-#' vsi_stat(tmp_file)
+#' mem_file <- file.path("/vsimem", "tmp.tif")
+#' copyDatasetFiles(mem_file, elev_file)
+#' vsi_read_dir("/vsimem")
+#' vsi_unlink(mem_file)
+#' vsi_read_dir("/vsimem")
 vsi_unlink <- function(filename) {
     .Call(`_gdalraster_vsi_unlink`, filename)
 }
@@ -1701,9 +1779,9 @@ vsi_unlink <- function(filename) {
 #' tcc_file <- system.file("extdata/storml_tcc.tif", package="gdalraster")
 #'
 #' tmp_elev <- file.path(tempdir(), "tmp_elev.tif")
-#' file.copy(elev_file,  tmp_elev)
+#' file.copy(elev_file, tmp_elev)
 #' tmp_tcc <- file.path(tempdir(), "tmp_tcc.tif")
-#' file.copy(tcc_file,  tmp_tcc)
+#' file.copy(tcc_file, tmp_tcc)
 #' vsi_unlink_batch(c(tmp_elev, tmp_tcc))
 vsi_unlink_batch <- function(filenames) {
     .Call(`_gdalraster_vsi_unlink_batch`, filenames)
@@ -1763,6 +1841,10 @@ vsi_unlink_batch <- function(filenames) {
 #' base_url <- "https://raw.githubusercontent.com/usdaforestservice/"
 #' f <- "gdalraster/main/sample-data/landsat_c2ard_sr_mt_hood_jul2022_utm.tif"
 #' url_file <- paste0("/vsicurl/", base_url, f)
+#'
+#' # try to be CRAN-compliant for the example:
+#' set_config_option("GDAL_HTTP_CONNECTTIMEOUT", "10")
+#' set_config_option("GDAL_HTTP_TIMEOUT", "10")
 #'
 #' vsi_stat(url_file)
 #' vsi_stat(url_file, "type")
@@ -1853,7 +1935,7 @@ vsi_get_fs_prefixes <- function() {
 #'
 #' @examples
 #' # Requires GDAL >= 3.6
-#' if (as.integer(gdal_version()[2]) >= 3060000)
+#' if (gdal_version_num() >= gdal_compute_version(3, 6, 0))
 #'   vsi_supports_seq_write("/vsimem/test-mem-file.gpkg", TRUE)
 vsi_supports_seq_write <- function(filename, allow_local_tmpfile) {
     .Call(`_gdalraster_vsi_supports_seq_write`, filename, allow_local_tmpfile)
@@ -1881,7 +1963,7 @@ vsi_supports_seq_write <- function(filename, allow_local_tmpfile) {
 #'
 #' @examples
 #' # Requires GDAL >= 3.6
-#' if (as.integer(gdal_version()[2]) >= 3060000)
+#' if (gdal_version_num() >= gdal_compute_version(3, 6, 0))
 #'   vsi_supports_rnd_write("/vsimem/test-mem-file.gpkg", TRUE)
 vsi_supports_rnd_write <- function(filename, allow_local_tmpfile) {
     .Call(`_gdalraster_vsi_supports_rnd_write`, filename, allow_local_tmpfile)
@@ -1998,22 +2080,18 @@ vsi_clear_path_options <- function(path_prefix) {
 #' @seealso
 #' [vsi_stat()], [addFilesInZip()]
 #'
-#' @examples
-#' # create an SOZip-enabled file and validate
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 7, 0)
+#' # validate an SOZip-enabled file
 #' # Requires GDAL >= 3.7
-#' f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+#' f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
 #'
-#' if (as.integer(gdal_version()[2]) >= 3070000) {
-#'   zip_file <- tempfile(fileext=".zip")
-#'   addFilesInZip(zip_file, f, full_paths=FALSE, sozip_enabled="YES")
-#'   zip_vsi <- file.path("/vsizip", zip_file)
-#'   print("Files in zip archive:")
-#'   print(vsi_read_dir(zip_vsi))
-#'   print("SOZip metadata:")
-#'   print(vsi_get_file_metadata(zip_vsi, domain="ZIP"))
+#' zf <- file.path("/vsizip", f)
+#' # files in zip archive
+#' vsi_read_dir(zf)
 #'
-#'   vsi_unlink(zip_file)
-#' }
+#' # SOZip metadata for ynp_features.gpkg
+#' zf_gpkg <- file.path(zf, "ynp_features.gpkg")
+#' vsi_get_file_metadata(zf_gpkg, domain = "ZIP")
 vsi_get_file_metadata <- function(filename, domain) {
     .Call(`_gdalraster_vsi_get_file_metadata`, filename, domain)
 }
@@ -2120,7 +2198,7 @@ vsi_get_signed_url <- function(filename, options = NULL) {
 #'
 #' @examples
 #' # Requires GDAL >= 3.6
-#' if (as.integer(gdal_version()[2]) >= 3060000)
+#' if (gdal_version_num() >= gdal_compute_version(3, 6, 0))
 #'   print(vsi_is_local("/vsimem/test-mem-file.tif"))
 vsi_is_local <- function(filename) {
     .Call(`_gdalraster_vsi_is_local`, filename)
@@ -2200,6 +2278,11 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_swap_xy <- function(geom, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_swap_xy`, geom, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_is_empty <- function(geom, quiet = FALSE) {
     .Call(`_gdalraster_g_is_empty`, geom, quiet)
 }
@@ -2275,6 +2358,11 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_simplify <- function(geom, tolerance, preserve_topology = TRUE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_simplify`, geom, tolerance, preserve_topology, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_intersection <- function(this_geom, other_geom, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_intersection`, this_geom, other_geom, as_iso, byte_order, quiet)
 }
@@ -2310,13 +2398,23 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_geodesic_area <- function(geom, srs, traditional_gis_order = TRUE, quiet = FALSE) {
+    .Call(`_gdalraster_g_geodesic_area`, geom, srs, traditional_gis_order, quiet)
+}
+
+#' @noRd
+.g_geodesic_length <- function(geom, srs, traditional_gis_order = TRUE, quiet = FALSE) {
+    .Call(`_gdalraster_g_geodesic_length`, geom, srs, traditional_gis_order, quiet)
+}
+
+#' @noRd
 .g_centroid <- function(geom, quiet = FALSE) {
     .Call(`_gdalraster_g_centroid`, geom, quiet)
 }
 
 #' @noRd
-.g_transform <- function(geom, srs_from, srs_to, wrap_date_line = FALSE, date_line_offset = 10L, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
-    .Call(`_gdalraster_g_transform`, geom, srs_from, srs_to, wrap_date_line, date_line_offset, as_iso, byte_order, quiet)
+.g_transform <- function(geom, srs_from, srs_to, wrap_date_line = FALSE, date_line_offset = 10L, traditional_gis_order = TRUE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_transform`, geom, srs_from, srs_to, wrap_date_line, date_line_offset, traditional_gis_order, as_iso, byte_order, quiet)
 }
 
 #' Get the bounding box of a geometry specified in OGC WKT format
@@ -2726,7 +2824,7 @@ srs_to_wkt <- function(srs, pretty = FALSE) {
 #' ds$close()
 #'
 #' # Requires GDAL >= 3.4
-#' if (as.integer(gdal_version()[2]) >= 3040000) {
+#' if (gdal_version_num() >= gdal_compute_version(3, 4, 0)) {
 #'   if (srs_is_dynamic("WGS84"))
 #'     print("WGS84 is dynamic")
 #'
@@ -2867,6 +2965,8 @@ srs_get_axis_mapping_strategy <- function(srs) {
 #' Reference System API. Requires GDAL >= 3.4.
 #'
 #' @details
+#' The following refer to the *output* values `xmin`, `ymin`, `xmax`, `ymax`:
+#'
 #' If the destination CRS is geographic, the first axis is longitude, and
 #' `xmax < xmin` then the bounds crossed the antimeridian. In this scenario
 #' there are two polygons, one on each side of the antimeridian. The first

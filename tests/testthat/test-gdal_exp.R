@@ -29,8 +29,31 @@ test_that("get/set_config_option work", {
     set_config_option("GDAL_CACHEMAX", co)
 })
 
-test_that("get_cache_used returns integer", {
-    expect_type(get_cache_used(), "integer")
+test_that("get_cache_used returns integer64", {
+    expect_s3_class(get_cache_used(), "integer64")
+    expect_s3_class(get_cache_used("GB"), "integer64")
+    expect_s3_class(get_cache_used("KB"), "integer64")
+    expect_s3_class(get_cache_used(""), "integer64")
+    expect_s3_class(get_cache_used("bytes"), "integer64")
+    expect_error(get_cache_used("MiB"))
+})
+
+test_that("get_cache_max returns integer64", {
+    expect_s3_class(get_cache_max(), "integer64")
+    expect_s3_class(get_cache_max("GB"), "integer64")
+    expect_s3_class(get_cache_max("KB"), "integer64")
+    expect_s3_class(get_cache_max(""), "integer64")
+    expect_s3_class(get_cache_max("bytes"), "integer64")
+    expect_error(get_cache_max("MiB"))
+})
+
+test_that("set_cache_max works", {
+    cachemax <- get_cache_max("bytes")
+    set_cache_max(1e8)
+    expect_equal(get_cache_max("bytes"), as.integer64(1e8))
+    # reset to original
+    set_cache_max(cachemax)
+    expect_equal(get_cache_max("bytes"), cachemax)
 })
 
 test_that("get_num_cpus returns integer", {
@@ -326,7 +349,7 @@ test_that("buildVRT works", {
 })
 
 test_that("footprint runs without error", {
-    skip_if(.gdal_version_num() < 3080000)
+    skip_if(gdal_version_num() < 3080000)
 
     evt_file <- system.file("extdata/storml_evt.tif", package="gdalraster")
     args <- c("-t_srs", "EPSG:4326")
@@ -384,7 +407,7 @@ test_that("ogr2ogr works", {
 })
 
 test_that("ogrinfo works", {
-    skip_if(.gdal_version_num() < 3070000)
+    skip_if(gdal_version_num() < 3070000)
 
     src <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
 
@@ -434,10 +457,14 @@ test_that("identifyDriver works", {
     expect_equal(identifyDriver(src), "GPKG")
     expect_equal(identifyDriver(src, raster = FALSE), "GPKG")
     expect_equal(identifyDriver(src, vector = FALSE), "GPKG")
-    expect_equal(identifyDriver(src), "GPKG")
     expect_equal(identifyDriver(src, allowed_drivers = c("GPKG", "GTiff")), "GPKG")
     expect_true(is.null(identifyDriver(src, allowed_drivers = c("GTiff", "GeoJSON"))))
     expect_equal(identifyDriver(src, file_list = "ynp_fires_1984_2022.gpkg"), "GPKG")
+
+    # PostGISRaster vs. PostgreSQL
+    dsn <- "PG:dbname='testdb', host='127.0.0.1' port='5444' user='user' password='pwd'"
+    expect_equal(identifyDriver(dsn), "PostGISRaster")
+    expect_equal(identifyDriver(dsn, raster = FALSE), "PostgreSQL")
 })
 
 test_that("flip_vertical works", {

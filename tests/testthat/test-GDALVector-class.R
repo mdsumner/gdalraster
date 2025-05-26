@@ -53,6 +53,10 @@ test_that("class constructors work", {
 
     # default construstrctor with no arguments should not error
     expect_no_error(lyr <- new(GDALVector))
+
+    # not recognized as being in a supported file format
+    f <- system.file("extdata/doctype.xml", package="gdalraster")
+    expect_error(lyr <- new(GDALVector, f))
 })
 
 test_that("class basic interface works", {
@@ -162,6 +166,7 @@ test_that("set ignored/selected fields works", {
     lyr <- new(GDALVector, dsn, "mtbs_perims")
 
     # set ignored, no geom
+    expect_vector(lyr$getIgnoredFields(), ptype = character(), size = 0)
     lyr$returnGeomAs <- "NONE"
     expect_true(lyr$testCapability()$IgnoreFields)
     feat <- lyr$getNextFeature()
@@ -171,12 +176,15 @@ test_that("set ignored/selected fields works", {
     expect_length(feat, 9)
     expect_true(is.null(feat$event_id))
     expect_false(is.null(feat$incid_name))
+    expect_equal(lyr$getIgnoredFields(), "event_id")
     lyr$setIgnoredFields("")
     feat <- lyr$getNextFeature()
     expect_length(feat, 10)
+    expect_vector(lyr$getIgnoredFields(), ptype = character(), size = 0)
     lyr$setIgnoredFields(c("event_id", "map_id", "ig_year"))
     feat <- lyr$getNextFeature()
     expect_length(feat, 7)
+    expect_equal(lyr$getIgnoredFields(), c("event_id", "map_id", "ig_year"))
     lyr$setIgnoredFields("")
     feat <- lyr$getNextFeature()
     expect_length(feat, 10)
@@ -188,6 +196,7 @@ test_that("set ignored/selected fields works", {
     feat <- lyr$getNextFeature()
     expect_length(feat, 2)
     expect_true(is.character(feat$event_id))
+    expect_true(length(lyr$getIgnoredFields()) > 1)
     lyr$setSelectedFields("")
     feat <- lyr$getNextFeature()
     expect_length(feat, 10)
@@ -197,12 +206,14 @@ test_that("set ignored/selected fields works", {
     lyr$setSelectedFields("")
     feat <- lyr$getNextFeature()
     expect_length(feat, 10)
+    expect_true(length(lyr$getIgnoredFields()) == 0)
 
     # geometry
     # ignoring "OGR_GEOMETRY" is redundant with returnGeomAs = "NONE"
     # make sure we can repeat "OGR_GEOMETRY" in the ignore list
     lyr$returnGeomAs <- "NONE"
     lyr$setIgnoredFields("OGR_GEOMETRY")
+    expect_equal(lyr$getIgnoredFields(), "OGR_GEOMETRY")
     feat <- lyr$getNextFeature()
     expect_length(feat, 10)
     expect_true(is.null(feat$geom))
@@ -215,9 +226,11 @@ test_that("set ignored/selected fields works", {
     expect_length(feat, 10)
     expect_true(is.null(feat$geom))
     lyr$setIgnoredFields(c("event_id", "OGR_GEOMETRY"))
+    expect_equal(lyr$getIgnoredFields(), c("event_id", "OGR_GEOMETRY"))
     feat <- lyr$getNextFeature()
     expect_length(feat, 9)
     lyr$setIgnoredFields("")
+    expect_true(length(lyr$getIgnoredFields()) == 0)
     feat <- lyr$getNextFeature()
     expect_length(feat, 11)
     # selected
@@ -226,6 +239,7 @@ test_that("set ignored/selected fields works", {
     feat <- lyr$getNextFeature()
     expect_length(feat, 3)
     expect_false(is.null(feat$geom))
+    expect_true(length(lyr$getIgnoredFields()) > 1)
 
     # test fetch past end with ignored fields does not crash
     # https://github.com/USDAForestService/gdalraster/issues/539
@@ -436,7 +450,7 @@ test_that("feature write methods work", {
     expect_true(lyr$setFeature(feat))
     expect_equal(lyr$getFeatureCount(), start_count + 1)
 
-    if(.gdal_version_num() > 3060000) {
+    if(gdal_version_num() > 3060000) {
         # edit an existing feature and upsert with existing FID
         feat <- NULL
         feat <- lyr$getNextFeature()
@@ -486,7 +500,7 @@ test_that("feature write methods work", {
     expect_equal(test2_feat$ig_year, 9999)
     test2_feat <- NULL
 
-    if(.gdal_version_num() > 3060000) {
+    if(gdal_version_num() > 3060000) {
         lyr$setAttributeFilter("event_id = 'ZZ03'")
         test3_feat <- lyr$getNextFeature()
         expect_false(is.null(test3_feat))
@@ -925,7 +939,7 @@ test_that("feature write methods work", {
     feat1$real_fld <- 0.123
     feat1$str_fld <- "test string"
     feat1$date_fld <- as.Date("2100-01-01")
-    feat1$geometry <- "POLYGON ((0 0,0 10,10 10,0 0),(0.25 0.5,1 1,0.5 1,0.25 0.5))"
+    feat1$geom <- "POLYGON ((0 0,0 10,10 10,0 0),(0.25 0.5,1 1,0.5 1,0.25 0.5))"
 
     test1_fid <- NULL
     expect_true(lyr$createFeature(feat1))
@@ -943,7 +957,7 @@ test_that("feature write methods work", {
     expect_equal(f$real_fld, feat1$real_fld)
     expect_equal(f$str_fld, feat1$str_fld)
     expect_equal(f$date_fld, feat1$date_fld)
-    expect_true(g_equals(f$geometry, feat1$geometry))
+    expect_true(g_equals(f$geom, feat1$geom))
 
     lyr$close()
     deleteDataset(dsn4)
@@ -966,14 +980,14 @@ test_that("feature write methods work", {
     feat1 <- list()
     feat1$real_field <- 0.123
     feat1$str_field <- "test string 1"
-    feat1$geometry <- "POINT (1 10)"
+    feat1$geom <- "POINT (1 10)"
     expect_true(lyr$createFeature(feat1))
 
 
     feat2 <- list()
     feat2$real_field <- 0.234
     feat2$str_field <- "test string 2"
-    feat2$geometry <- "POINT (2 20)"
+    feat2$geom <- "POINT (2 20)"
     expect_true(lyr$createFeature(feat2))
 
     # close and re-open
@@ -995,12 +1009,12 @@ test_that("feature write methods work", {
     pts <-  matrix(c(0.25, 0.25, 0.75, 0.25, 0.75, 0.75, 0.25, 0.75,
                      0.25, 0.25), ncol = 2, byrow = TRUE)
     feat <- list()
-    feat$geometry <- g_create("POLYGON", pts)
+    feat$geom <- g_create("POLYGON", pts)
     expect_true(lyr$createFeature(feat))
     lyr$open(read_only = TRUE)
     expect_equal(lyr$getFeatureCount(), 1)
     feat_chk <- lyr$getNextFeature()
-    expect_true(g_equals(feat$geometry, feat_chk$geometry))
+    expect_true(g_equals(feat$geom, feat_chk$geom))
 
     lyr$close()
     unlink(dsn6)
@@ -1088,7 +1102,7 @@ test_that("get/set metadata works", {
 })
 
 test_that("field domain specifications are returned correctly", {
-    skip_if(.gdal_version_num() < 3030000)
+    skip_if(gdal_version_num() < 3030000)
 
     f <- system.file("extdata/domains.gpkg", package="gdalraster")
     dsn <- file.path(tempdir(), basename(f))
@@ -1182,7 +1196,7 @@ test_that("info() prints output to the console", {
     lyr$close()
 
     lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
-    if (.gdal_version_num() >= 3070000) {
+    if (gdal_version_num() >= 3070000) {
         expect_output(lyr$info(), "Feature Count: 10")
     } else {
         # we only get the fallback minimal info
@@ -1192,7 +1206,7 @@ test_that("info() prints output to the console", {
 
     # default layer first by index
     lyr <- new(GDALVector, dsn)
-    if (.gdal_version_num() >= 3070000) {
+    if (gdal_version_num() >= 3070000) {
         expect_output(lyr$info(), "Feature Count: 61")
     } else {
         # we only get the fallback minimal info
@@ -1202,7 +1216,7 @@ test_that("info() prints output to the console", {
 
     unlink(dsn)
 
-    skip_if_not(.gdal_version_num() >= 3070000)
+    skip_if_not(gdal_version_num() >= 3070000)
 
     f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
     dsn <- file.path(tempdir(), basename(f))
@@ -1235,7 +1249,7 @@ test_that("info() prints output to the console", {
 })
 
 test_that("ArrowArrayStream is readable", {
-    skip_if(.gdal_version_num() < 3060000)
+    skip_if(gdal_version_num() < 3060000)
     skip_if_not_installed("nanoarrow")
 
     f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
@@ -1272,7 +1286,7 @@ test_that("ArrowArrayStream is readable", {
 })
 
 test_that("nanoarrow_array_stream implicit release works", {
-    skip_if(.gdal_version_num() < 3060000)
+    skip_if(gdal_version_num() < 3060000)
     skip_if_not_installed("nanoarrow")
 
     f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")

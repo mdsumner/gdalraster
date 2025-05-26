@@ -52,7 +52,7 @@ class GDALVector {
     std::string m_dialect {""};
 
     // exposed read/write fields
-    std::string defaultGeomColName {"geometry"};
+    std::string defaultGeomColName {"geom"};
     bool promoteToMulti {false};
     bool convertToLinear {false};
     std::string returnGeomAs {"WKB"};
@@ -85,6 +85,7 @@ class GDALVector {
     std::string getAttributeFilter() const;
     void setIgnoredFields(const Rcpp::RObject &fields);
     void setSelectedFields(const Rcpp::RObject &fields);
+    Rcpp::CharacterVector getIgnoredFields() const;
 
     void setSpatialFilter(const std::string &wkt);
     void setSpatialFilterRect(const Rcpp::RObject &bbox);

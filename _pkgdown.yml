@@ -102,7 +102,9 @@ reference:
   - g_length
   - g_make_valid
   - g_name
+  - g_simplify
   - g_summary
+  - g_swap_xy
   - g_transform
   - g_wk2wk
   - geos_version
@@ -118,8 +120,8 @@ reference:
   - renameDataset
 - subtitle: OGR vector utilities
 - contents:
-  - ogr2ogr
   - ogrinfo
+  - ogr2ogr
   - ogr_ds_exists
   - ogr_ds_format
   - ogr_ds_test_cap
@@ -141,6 +143,7 @@ reference:
   - ogr_def_geom_field
   - ogr_def_layer
   - ogr_proc
+  - ogr_reproject
   - plot.OGRFeature
   - plot.OGRFeatureSet
   - print.OGRFeature
@@ -172,7 +175,10 @@ reference:
 - contents:
   - gdal_formats
   - gdal_version
+  - gdal_compute_version
+  - get_cache_max
   - get_cache_used
+  - set_cache_max
   - get_config_option
   - set_config_option
   - get_num_cpus

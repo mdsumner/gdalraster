@@ -21,32 +21,30 @@ character vector containing one or more WKT strings.}
 \item{method}{Character string. One of \code{"LINEWORK"} (the default) or
 \code{"STRUCTURE"} (requires GEOS >= 3.10 and GDAL >= 3.4). See Details.}
 
-\item{keep_collapsed}{Logical, applies only to the STRUCTURE method.
+\item{keep_collapsed}{Logical value, applies only to the STRUCTURE method.
 Defaults to \code{FALSE}. See Details.}
 
-\item{as_wkb}{Logical, \code{TRUE} to return the output geometry in WKB
+\item{as_wkb}{Logical value, \code{TRUE} to return the output geometry in WKB
 format (the default), or \code{FALSE} to return as WKT.}
 
-\item{as_iso}{Logical, \code{TRUE} to export as ISO WKB/WKT (ISO 13249
+\item{as_iso}{Logical value, \code{TRUE} to export as ISO WKB/WKT (ISO 13249
 SQL/MM Part 3), or \code{FALSE} (the default) to export as "Extended WKB/WKT".}
 
 \item{byte_order}{Character string specifying the byte order when output is
 WKB. One of \code{"LSB"} (the default) or \code{"MSB"} (uncommon).}
 
-\item{quiet}{Logical, \code{TRUE} to suppress warnings. Defaults to \code{FALSE}.}
+\item{quiet}{Logical value, \code{TRUE} to suppress warnings. Defaults to \code{FALSE}.}
 }
 \value{
 A geometry as WKB raw vector or WKT string, or a list/character vector of
 geometries as WKB/WKT with length equal to \code{length(geom)}. \code{NA} is returned
-with a warning if an input geometry cannot be converted into an OGR
-geometry object, or if an error occurs in the call to MakeValid() in the
-underlying OGR API.
+with a warning if WKB input cannot be converted into an OGR geometry object,
+or if an error occurs in the call to MakeValid() in the underlying OGR API.
 }
 \description{
 \code{g_make_valid()} attempts to make an invalid geometry valid without losing
 vertices. Already-valid geometries are cloned without further intervention.
-Wrapper of \code{OGR_G_MakeValid()}/\code{OGR_G_MakeValidEx()} in the GDAL Vector C
-API.
+Wrapper of \code{OGR_G_MakeValid()}/\code{OGR_G_MakeValidEx()} in the GDAL API.
 }
 \details{
 LINEWORK is the default method, which combines all rings into a set of noded

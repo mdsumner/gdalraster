@@ -213,6 +213,19 @@ class GDALRaster {
 
     void show() const;
 
+    Rcpp::CharacterVector getCompressionFormats(int xoff, int yoff,
+                                       int xsize, int ysize,
+                                       int nbands,
+                                       Rcpp::IntegerVector bandlist) const;
+
+    Rcpp::RawVector readCompressedData(
+        Rcpp::CharacterVector format, int xoff,
+        int yoff, int xsize, int ysize,
+        int nbands, Rcpp::IntegerVector bandlist
+//        void **ppBuffer, size_t *pnBufferSize,
+//        char **ppszDetailedFormat
+) const;
+
     // methods for internal use not exported to R
     void checkAccess_(GDALAccess access_needed) const;
     GDALRasterBandH getBand_(int band) const;

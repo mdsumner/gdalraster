@@ -2062,6 +2062,68 @@ int GDALRaster::getChecksum(int band, int xoff, int yoff,
     return GDALChecksumImage(hBand, xoff, yoff, xsize, ysize);
 }
 
+Rcpp::CharacterVector GDALRaster::getCompressionFormats(int xoff, int yoff,
+                                            int xsize, int ysize,
+                                            int nbands,
+                                            Rcpp::IntegerVector bandlist) const{
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)
+  checkAccess_(GA_ReadOnly);
+  char** pszAvailableFormats =
+    GDALDatasetGetCompressionFormats(m_hDataset, xoff, yoff, xsize, ysize, nbands,
+                                     nullptr);
+  int nitems = CSLCount(pszAvailableFormats);
+  if (nitems > 0) {
+    Rcpp::CharacterVector formats(nitems);
+    for (int i = 0; i < nitems; i++) {
+      const CPLStringList aosTokens(CSLTokenizeString2(pszAvailableFormats[i], ";", 0));
+      formats[i] = aosTokens[0];
+    }
+    return formats;
+  }
+  return Rcpp::CharacterVector(0);
+#endif
+  return Rcpp::CharacterVector(0);
+
+}
+
+
+Rcpp::RawVector GDALRaster::readCompressedData(
+    Rcpp::CharacterVector format, int xoff,
+    int yoff, int xsize, int ysize,
+    int nbands, Rcpp::IntegerVector bandlist) const {
+  //        void **ppBuffer, size_t *pnBufferSize,
+  //        char **ppszDetailedFormat
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 7, 0)
+  checkAccess_(GA_ReadOnly);
+  void* pBuffer = nullptr;
+  size_t nBufferSize = 0;
+  CPLErr eErr =
+    GDALDatasetReadCompressedData(m_hDataset, format[0],
+                                  xoff, yoff,
+                                  xsize, ysize,
+                                  nbands,
+                                  nullptr, // panBandList
+                                  &pBuffer,
+                                  &nBufferSize,
+                                  nullptr // ppszDetailedFormat
+    );
+  if (eErr == CE_None)
+  {
+    //CPLAssert(pBuffer != nullptr);
+    //CPLAssert(nBufferSize > 0);
+    Rcpp::RawVector outraw(nBufferSize);
+    std::memcpy(outraw.begin(), pBuffer , nBufferSize);
+    // for (int i = 0; i < nBufferSize; i++) {
+    //   outraw[i] = pBuffer[i];
+    // }
+    return outraw;
+  }
+
+#endif
+ return Rcpp::RawVector(0);
+}
+
 void GDALRaster::close() {
     // make sure caches are flushed when access was GA_Update:
     // since the dataset was opened shared, and could still have a shared
@@ -2355,6 +2417,9 @@ RCPP_MODULE(mod_GDALRaster) {
         "Close the GDAL dataset for proper cleanup")
     .const_method("show", &GDALRaster::show,
         "S4 show()")
-
-    ;
+    .const_method("getCompressionFormats", &GDALRaster::getCompressionFormats,
+        "Return the compression formats that can be natively obtained for the window of interest and requested bands.")
+    .const_method("readCompressedData", &GDALRaster::readCompressedData,
+        "Return the compressed content that can be natively obtained for the window of interest and requested bands.")
+;
 }

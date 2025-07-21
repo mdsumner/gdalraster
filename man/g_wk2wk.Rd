@@ -40,14 +40,14 @@ MultiLineString, MultiPolygon and GeometryCollection. For other geometry
 types, it is equivalent to ISO.
 
 When the return value is a list of WKB raw vectors, an element in the
-returned list will contain \code{NA} if the corresponding input string was \code{NA}
-or empty (\code{""}).
+returned list will contain \code{NULL} (and a warning emitted) if the
+corresponding input string was \code{NA} or empty (\code{""}).
 
 When input is a list of WKB raw vectors, a corresponding element in the
-returned character vector will be an empty string (\code{""}) if the input was
-a raw vector of length \code{0} (\code{raw(0)}). If an input list element is not a raw
-vector, then the corresponding element in the returned character vector will
-be \code{NA}.
+returned character vector will be \code{NA} if the input was a raw vector of
+length \code{0} (i.e., \code{raw(0)}). If an input list element is not a raw vector,
+then the corresponding element in the returned character vector will also
+be \code{NA}. A warning is emitted in each case.
 }
 \examples{
 wkt <- "POINT (-114 47)"

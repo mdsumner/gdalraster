@@ -2,7 +2,7 @@
    Wraps a subset of the GDAL Spatial Reference System C API (ogr_srs_api.h)
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #ifndef SRC_SRS_API_H_
@@ -13,6 +13,9 @@
 
 std::string epsg_to_wkt(int epsg, bool pretty);
 std::string srs_to_wkt(const std::string &srs, bool pretty);
+std::string srs_to_wkt(const std::string &srs, bool pretty, bool gcs_only);
+std::string srs_to_projjson(const std::string &srs, bool multiline,
+                            int indent_width, const std::string &schema);
 
 std::string srs_get_name(const std::string &srs);
 SEXP srs_find_epsg(const std::string &srs, bool all_matches);

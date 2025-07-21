@@ -2,7 +2,7 @@
    Encapsulates a subset of GDALDataset, GDALDriver and GDALRasterBand.
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #include <errno.h>
@@ -228,7 +228,7 @@ void GDALRaster::info() const {
     CPLFree(pszGDALInfoOutput);
 }
 
-std::string GDALRaster::infoAsJSON() const {
+Rcpp::String GDALRaster::infoAsJSON() const {
     checkAccess_(GA_ReadOnly);
 
     const Rcpp::CharacterVector argv = infoOptions;
@@ -253,14 +253,14 @@ std::string GDALRaster::infoAsJSON() const {
         Rcpp::stop("creation of GDALInfoOptions failed (check $infoOptions)");
 
     char *pszGDALInfoOutput = GDALInfo(m_hDataset, psOptions);
-    CPLString out = "";
+    Rcpp::String out = "";
     if (pszGDALInfoOutput != nullptr)
         out = pszGDALInfoOutput;
 
     GDALInfoOptionsFree(psOptions);
-    CPLFree(pszGDALInfoOutput);
 
-    out.replaceAll('\n', ' ');
+    out.replace_all("\n", " ");
+    CPLFree(pszGDALInfoOutput);
 
     return out;
 }
@@ -540,13 +540,15 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
         bands_in = Rcpp::seq(1, getRasterCount());
     else
         bands_in = bands;
-    R_xlen_t num_bands = bands_in.size();
+    const R_xlen_t num_bands = bands_in.size();
 
     Rcpp::CharacterVector band_names = Rcpp::CharacterVector::create();
     for (auto& b : bands_in) {
         GDALRasterBandH hBand = GDALGetRasterBand(m_hDataset, b);
-        if (hBand == nullptr)
+        if (hBand == nullptr) {
+            Rcpp::Rcout << "invalid band number: " << b << std::endl;
             Rcpp::stop("failed to access the requested band");
+        }
         GDALDataType eDT = GDALGetRasterDataType(hBand);
         if (GDALDataTypeIsComplex(eDT)) {
             Rcpp::stop("complex data types currently unsupported for extract");
@@ -594,9 +596,9 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
     if (Rcpp::any(Rcpp::is_na(inv_gt)))
         Rcpp::stop("failed to get inverse geotransform");
 
-    int krnl_size = krnl_dim * krnl_dim;
-    int raster_xsize = GDALGetRasterXSize(m_hDataset);
-    int raster_ysize = GDALGetRasterYSize(m_hDataset);
+    const int krnl_size = krnl_dim * krnl_dim;
+    const int raster_xsize = GDALGetRasterXSize(m_hDataset);
+    const int raster_ysize = GDALGetRasterYSize(m_hDataset);
 
     GDALProgressFunc pfnProgress = GDALTermProgressR;
     uint64_t pts_outside = 0;
@@ -628,8 +630,8 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
         for (R_xlen_t row_idx = 0; row_idx < num_pts; ++row_idx) {
             // row_idx refers to rows of the input and output matrices
 
-            double geo_x = xy_in(row_idx, 0);
-            double geo_y = xy_in(row_idx, 1);
+            const double geo_x = xy_in(row_idx, 0);
+            const double geo_y = xy_in(row_idx, 1);
             if (Rcpp::NumericVector::is_na(geo_x) ||
                 Rcpp::NumericVector::is_na(geo_y)) {
 
@@ -644,10 +646,15 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
             // allow input coordinates exactly on the bottom or right edges
             // match behavior in: https://github.com/OSGeo/gdal/pull/12087
 
+            const bool pt_is_on_right_edge =
+                ARE_REAL_EQUAL(grid_x, static_cast<double>(raster_xsize));
+
+            const bool pt_is_on_bottom_edge =
+                ARE_REAL_EQUAL(grid_y, static_cast<double>(raster_ysize));
+
             if ((grid_x < 0 || grid_x > static_cast<double>(raster_xsize) ||
                  grid_y < 0 || grid_y > static_cast<double>(raster_ysize)) &&
-                !(ARE_REAL_EQUAL(grid_x, static_cast<double>(raster_xsize)) ||
-                  ARE_REAL_EQUAL(grid_y, static_cast<double>(raster_ysize)))) {
+                !(pt_is_on_right_edge || pt_is_on_bottom_edge)) {
 
                 if (band_idx == 0)
                     pts_outside += 1;
@@ -658,13 +665,13 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
             }
 
             if (eResampleAlg == GRIORA_NearestNeighbour && krnl_dim == 1) {
-                if (ARE_REAL_EQUAL(grid_x, static_cast<double>(raster_xsize)))
+                if (pt_is_on_right_edge)
                     grid_x -= 0.25;
-                if (ARE_REAL_EQUAL(grid_y, static_cast<double>(raster_ysize)))
+                if (pt_is_on_bottom_edge)
                     grid_y -= 0.25;
 
-                int x_off = static_cast<int>(std::floor(grid_x));
-                int y_off = static_cast<int>(std::floor(grid_y));
+                const int x_off = static_cast<int>(std::floor(grid_x));
+                const int y_off = static_cast<int>(std::floor(grid_y));
 
                 Rcpp::NumericVector v = Rcpp::as<Rcpp::NumericVector>(
                                                 read(bands_in[band_idx],
@@ -723,8 +730,8 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
                 if (v.size() == 4) {
                     // convert to unit square coordinates for the 2x2 kernel
                     // the center of the lower left pixel in the kernel is 0,0
-                    double x = grid_x - (x_off + 0.5);
-                    double y = (y_off + 1.5) - grid_y;
+                    const double x = grid_x - (x_off + 0.5);
+                    const double y = (y_off + 1.5) - grid_y;
 
                     // pixels in v are left to right, top to bottom
                     // pixel values in the square:
@@ -739,12 +746,12 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
                 }
                 else if (read_xsize == 2 && read_ysize == 1) {
                     // linear interp along x
-                    double t = grid_x - (x_off + 0.5);
+                    const double t = grid_x - (x_off + 0.5);
                     values(row_idx, band_idx) = v[0] + t * (v[1] - v[0]);
                 }
                 else if (read_xsize == 1 && read_ysize == 2) {
                     // linear interp along y
-                    double t = (y_off + 1.5) - grid_y;
+                    const double t = (y_off + 1.5) - grid_y;
                     values(row_idx, band_idx) = v[0] + t * (v[1] - v[0]);
                 }
                 else if (v.size() == 1) {
@@ -773,10 +780,10 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
 #endif
             else {
                 // all pixel values in kernel
-                int x_off = static_cast<int>(
+                const int x_off = static_cast<int>(
                         std::floor(grid_x - ((krnl_dim / 2.0) - 0.5)));
 
-                int y_off = static_cast<int>(
+                const int y_off = static_cast<int>(
                         std::floor(grid_y - ((krnl_dim / 2.0) - 0.5)));
 
                 // is any portion of the kernel outside the raster extent?
@@ -804,6 +811,9 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
             if (!quiet) {
                 pfnProgress((row_idx + 1.0) / num_pts, nullptr, nullptr);
             }
+            if (row_idx % 1000 == 0) {
+                Rcpp::checkUserInterrupt();
+            }
         }
     }
 
@@ -820,15 +830,17 @@ Rcpp::NumericMatrix GDALRaster::pixel_extract(const Rcpp::RObject &xy,
 Rcpp::NumericMatrix GDALRaster::get_block_indexing(int band) const {
     checkAccess_(GA_ReadOnly);
 
-    double dfRasterXSize = getRasterXSize();
-    double dfRasterYSize = getRasterYSize();
+    const double dfRasterXSize = getRasterXSize();
+    const double dfRasterYSize = getRasterYSize();
     GDALRasterBandH hBand = getBand_(band);
     int nBlockXSize = -1;
     int nBlockYSize = -1;
     GDALGetBlockSize(hBand, &nBlockXSize, &nBlockYSize);
-    int num_blocks_x = static_cast<int>(std::ceil(dfRasterXSize / nBlockXSize));
-    int num_blocks_y = static_cast<int>(std::ceil(dfRasterYSize / nBlockYSize));
-    R_xlen_t num_blocks = num_blocks_x * num_blocks_y;
+    const int num_blocks_x = static_cast<int>(
+        std::ceil(dfRasterXSize / nBlockXSize));
+    const int num_blocks_y = static_cast<int>(
+        std::ceil(dfRasterYSize / nBlockYSize));
+    const R_xlen_t num_blocks = num_blocks_x * num_blocks_y;
     std::vector<double> gt = getGeoTransform();
 
     Rcpp::NumericMatrix blocks = Rcpp::no_init(num_blocks, 10);

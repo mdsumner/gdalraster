@@ -668,7 +668,7 @@ inv_geotransform <- function(gt) {
 #' buildVRT(vrt_file, band_files, cl_arg = "-separate")
 #' ds <- new(GDALRaster, vrt_file)
 #' ds$getRasterCount()
-#' plot_raster(ds, nbands=3, main="Landsat 6-5-4 (vegetative analysis)")
+#' plot_raster(ds, nbands = 3, main = "Landsat 6-5-4 (vegetative analysis)")
 #' ds$close()
 #' \dontshow{vsi_unlink(vrt_file)}
 buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL, quiet = FALSE) {
@@ -748,7 +748,7 @@ buildVRT <- function(vrt_filename, input_rasters, cl_arg = NULL, quiet = FALSE) 
 #' mod_file <- file.path(tempdir(), "storml_elev_fill.tif")
 #' file.copy(elev_file,  mod_file)
 #'
-#' fillNodata(mod_file, band=1)
+#' fillNodata(mod_file, band = 1)
 #'
 #' mod_tbl = buildRAT(mod_file)
 #' head(mod_tbl)
@@ -1131,14 +1131,14 @@ sieveFilter <- function(src_filename, src_band, dst_filename, dst_band, size_thr
 #'                           end_color = c(0, 100, 0))
 #'
 #' print(colors)
-#' ds_tcc$setColorTable(band=1, col_tbl=colors, palette_interp="RGB")
-#' ds_tcc$setRasterColorInterp(band=1, col_interp="Palette")
+#' ds_tcc$setColorTable(band=1, col_tbl=colors, palette_interp = "RGB")
+#' ds_tcc$setRasterColorInterp(band = 1, col_interp = "Palette")
 #'
 #' # close and re-open the dataset in read_only mode
 #' ds_tcc$open(read_only=TRUE)
 #'
-#' plot_raster(ds_tcc, interpolate=FALSE, legend=TRUE,
-#'             main="Storm Lake Tree Canopy Cover (%)")
+#' plot_raster(ds_tcc, interpolate = FALSE, legend = TRUE,
+#'             main = "Storm Lake Tree Canopy Cover (%)")
 #' ds_tcc$close()
 #' \dontshow{deleteDataset(tcc_file)}
 createColorRamp <- function(start_index, start_color, end_index, end_color, palette_interp = "RGB") {
@@ -1182,11 +1182,11 @@ createColorRamp <- function(start_index, start_color, end_index, end_color, pale
 #' ## copy Landsat data from a single-band file to a new multi-band image
 #' b5_file <- system.file("extdata/sr_b5_20200829.tif", package="gdalraster")
 #' dst_file <- file.path(tempdir(), "sr_multi.tif")
-#' rasterFromRaster(b5_file, dst_file, nbands=7, init=0)
+#' rasterFromRaster(b5_file, dst_file, nbands = 7, init = 0)
 #' opt <- c("COMPRESSED=YES", "SKIP_HOLES=YES")
-#' bandCopyWholeRaster(b5_file, 1, dst_file, 5, options=opt)
+#' bandCopyWholeRaster(b5_file, 1, dst_file, 5, options = opt)
 #' ds <- new(GDALRaster, dst_file)
-#' ds$getStatistics(band=5, approx_ok=FALSE, force=TRUE)
+#' ds$getStatistics(band = 5, approx_ok = FALSE, force = TRUE)
 #' ds$close()
 #' \dontshow{deleteDataset(dst_file)}
 bandCopyWholeRaster <- function(src_filename, src_band, dst_filename, dst_band, options = NULL, quiet = FALSE) {
@@ -2278,6 +2278,16 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_set_3D <- function(geom, is_3d, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_set_3D`, geom, is_3d, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_set_measured <- function(geom, is_measured, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_set_measured`, geom, is_measured, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_swap_xy <- function(geom, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_swap_xy`, geom, as_iso, byte_order, quiet)
 }
@@ -2298,6 +2308,11 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_is_ring <- function(geom, quiet = FALSE) {
+    .Call(`_gdalraster_g_is_ring`, geom, quiet)
+}
+
+#' @noRd
 .g_name <- function(geom, quiet = FALSE) {
     .Call(`_gdalraster_g_name`, geom, quiet)
 }
@@ -2308,8 +2323,8 @@ has_geos <- function() {
 }
 
 #' @noRd
-.g_envelope <- function(geom, quiet = FALSE) {
-    .Call(`_gdalraster_g_envelope`, geom, quiet)
+.g_envelope <- function(geom, as_3d = FALSE, quiet = FALSE) {
+    .Call(`_gdalraster_g_envelope`, geom, as_3d, quiet)
 }
 
 #' @noRd
@@ -2353,8 +2368,23 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_boundary <- function(geom, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_boundary`, geom, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_buffer <- function(geom, dist, quad_segs = 30L, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_buffer`, geom, dist, quad_segs, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_convex_hull <- function(geom, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_convex_hull`, geom, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_delaunay_triangulation <- function(geom, tolerance = 0.0, only_edges = FALSE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_delaunay_triangulation`, geom, tolerance, only_edges, as_iso, byte_order, quiet)
 }
 
 #' @noRd
@@ -2507,6 +2537,27 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
     .Call(`_gdalraster_ogr_ds_layer_names`, dsn)
 }
 
+#' Return a list of the names of all field domains stored in the dataset
+#'
+#' @noRd
+.ogr_ds_field_domain_names <- function(dsn) {
+    .Call(`_gdalraster_ogr_ds_field_domain_names`, dsn)
+}
+
+#' Add a field domain to a dataset
+#'
+#' @noRd
+.ogr_ds_add_field_domain <- function(dsn, fld_dom_defn) {
+    .Call(`_gdalraster_ogr_ds_add_field_domain`, dsn, fld_dom_defn)
+}
+
+#' Delete a field domain from a dataset
+#'
+#' @noRd
+.ogr_ds_delete_field_domain <- function(dsn, domain_name) {
+    .Call(`_gdalraster_ogr_ds_delete_field_domain`, dsn, domain_name)
+}
+
 #' Does layer exist
 #'
 #' @noRd
@@ -2552,8 +2603,8 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' Create a new field on layer
 #'
 #' @noRd
-.ogr_field_create <- function(dsn, layer, fld_name, fld_type, fld_subtype = "OFSTNone", fld_width = 0L, fld_precision = 0L, is_nullable = TRUE, is_unique = FALSE, default_value = "") {
-    .Call(`_gdalraster_ogr_field_create`, dsn, layer, fld_name, fld_type, fld_subtype, fld_width, fld_precision, is_nullable, is_unique, default_value)
+.ogr_field_create <- function(dsn, layer, fld_name, fld_type, fld_subtype = "OFSTNone", fld_width = 0L, fld_precision = 0L, is_nullable = TRUE, is_unique = FALSE, default_value = "", domain_name = "") {
+    .Call(`_gdalraster_ogr_field_create`, dsn, layer, fld_name, fld_type, fld_subtype, fld_width, fld_precision, is_nullable, is_unique, default_value, domain_name)
 }
 
 #' Create a new geom field on layer
@@ -2570,6 +2621,13 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
     .Call(`_gdalraster_ogr_field_rename`, dsn, layer, fld_name, new_name)
 }
 
+#' Set the field domain of an existing attribute field on a vector layer
+#'
+#' @noRd
+.ogr_field_set_domain_name <- function(dsn, layer, fld_name, domain_name) {
+    .Call(`_gdalraster_ogr_field_set_domain_name`, dsn, layer, fld_name, domain_name)
+}
+
 #' Delete an attribute field on a vector layer
 #'
 #' @noRd
@@ -2584,10 +2642,13 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
     invisible(.Call(`_gdalraster_ogr_execute_sql`, dsn, sql, spatial_filter, dialect))
 }
 
-#' Convert spatial reference definitions to OGC Well Known Text
+#' @noRd
+NULL
+
+#' Convert spatial reference definitions to OGC WKT or PROJJSON
 #'
 #' These functions convert various spatial reference formats to Well Known
-#' Text (WKT).
+#' Text (WKT) or PROJJSON.
 #'
 #' @name srs_convert
 #'
@@ -2602,6 +2663,11 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' try to deduce the format, and then export it to WKT.
 #' Wrapper for `OSRSetFromUserInput()` in the GDAL Spatial Reference System
 #' API with output to WKT.
+#'
+#' `srs_to_projjson()` accepts a spatial reference system (SRS) definition in
+#' any of the formats supported by `srs_to_wkt()`, and converts into PROJJSON
+#' format. Wrapper for `OSRExportToPROJJSON()` in the GDAL Spatial Reference
+#' System API.
 #'
 #' The input SRS may take the following forms:
 #'   * WKT - to convert WKT versions (see below)
@@ -2633,29 +2699,51 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' @param epsg Integer EPSG code.
 #' @param srs Character string containing an SRS definition in various
 #' formats (see Details).
-#' @param pretty Logical. `TRUE` to return a nicely formatted WKT string
+#' @param pretty Logical value. `TRUE` to return a nicely formatted WKT string
 #' for display to a person. `FALSE` for a regular WKT string (the default).
 #' @return Character string containing OGC WKT.
+#' @param gcs_only Logical value. `TRUE` to return only the definition of the
+#' GEOGCS node of the input `srs`. Defaults to `FALSE` (see Note).
+#' @param multiline Logical value. `TRUE` for PROJJSON multiline output (the
+#' default).
+#' @param indent_width Integer value. Defaults to `2`. Only used if
+#' `multiline = TRUE` for PROJJSON output.
+#' @param schema Character string containing URL to PROJJSON schema. Can be
+#' set to empty string to disable it.
+#'
+#' @note
+#' Setting `gcs_only = TRUE` in `srs_to_wkt()` is a wrapper of
+#' `OSRCloneGeogCS()` in the GDAL API. The returned WKT will be for the GEOGCS
+#' node of the input `srs`.
 #'
 #' @seealso
 #' [srs_query]
 #'
 #' @examples
 #' epsg_to_wkt(5070)
-#' writeLines(epsg_to_wkt(5070, pretty=TRUE))
+#' writeLines(epsg_to_wkt(5070, pretty = TRUE))
 #'
 #' srs_to_wkt("NAD83")
-#' writeLines(srs_to_wkt("NAD83", pretty=TRUE))
+#' writeLines(srs_to_wkt("NAD83", pretty = TRUE))
 #' set_config_option("OSR_WKT_FORMAT", "WKT2")
-#' writeLines(srs_to_wkt("NAD83", pretty=TRUE))
+#' writeLines(srs_to_wkt("NAD83", pretty = TRUE))
 #' set_config_option("OSR_WKT_FORMAT", "")
+#'
+#' srs_to_wkt("EPSG:5070", gcs_only = TRUE)
+#'
+#' srs_to_projjson("NAD83") |> writeLines()
 epsg_to_wkt <- function(epsg, pretty = FALSE) {
     .Call(`_gdalraster_epsg_to_wkt`, epsg, pretty)
 }
 
 #' @rdname srs_convert
-srs_to_wkt <- function(srs, pretty = FALSE) {
-    .Call(`_gdalraster_srs_to_wkt`, srs, pretty)
+srs_to_wkt <- function(srs, pretty = FALSE, gcs_only = FALSE) {
+    .Call(`_gdalraster_srs_to_wkt`, srs, pretty, gcs_only)
+}
+
+#' @rdname srs_convert
+srs_to_projjson <- function(srs, multiline = TRUE, indent_width = 2L, schema = NA_character_) {
+    .Call(`_gdalraster_srs_to_projjson`, srs, multiline, indent_width, schema)
 }
 
 #' Obtain information about a spatial reference system
@@ -2961,8 +3049,9 @@ srs_get_axis_mapping_strategy <- function(srs) {
 #'
 #' `transform_bounds()` transforms a bounding box, densifying the edges to
 #' account for nonlinear transformations along these edges and extracting
-#' the outermost bounds. Wrapper of `OCTTransformBounds()` in the GDAL Spatial
-#' Reference System API. Requires GDAL >= 3.4.
+#' the outermost bounds. Multiple bounding boxes may be given as rows of a
+#' numeric matrix or data frame. Wrapper of `OCTTransformBounds()` in the GDAL
+#' Spatial Reference System API. Requires GDAL >= 3.4.
 #'
 #' @details
 #' The following refer to the *output* values `xmin`, `ymin`, `xmax`, `ymax`:
@@ -2979,8 +3068,10 @@ srs_get_axis_mapping_strategy <- function(srs) {
 #' polygon should be constructed with `(ymin, xmin, ymax, 180)` and the second
 #' with `(ymin, -180, ymax, xmax)`.
 #'
-#' @param bbox Numeric vector of length four containing the input bounding
-#' box (xmin, ymin, xmax, ymax).
+#' @param bbox Either a numeric vector of length four containing the input
+#' bounding box (xmin, ymin, xmax, ymax), or a four-column numeric matrix
+#' of bounding boxes (or data frame that can be coerced to a four-column
+#' numeric matrix).
 #' @param srs_from Character string specifying the spatial reference system
 #' for `pts`. May be in WKT format or any of the formats supported by
 #' [srs_to_wkt()].
@@ -2993,11 +3084,13 @@ srs_get_axis_mapping_strategy <- function(srs) {
 #' @param traditional_gis_order Logical value, `TRUE` to use traditional GIS
 #' order of axis mapping (the default) or `FALSE` to use authority compliant
 #' axis order (see Note).
-#' @returns Numeric vector of length four containing the bounding box in the
-#' output spatial reference system (xmin, ymin, xmax, ymax).
 #'
-#' @seealso
-#' [srs_to_wkt()]
+#' @returns
+#' For a single input bounding box, a numeric vector of length four containing
+#' the transformed bounding box in the output spatial reference system
+#' (xmin, ymin, xmax, ymax). For input of multiple bounding boxes,
+#' a four-column numeric matrix with each row containing the corresponding
+#' transformed bounding box (xmin, ymin, xmax, ymax).
 #'
 #' @note
 #' `traditional_gis_order = TRUE` (the default) means that for geographic CRS

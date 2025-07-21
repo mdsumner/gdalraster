@@ -72,6 +72,7 @@ Several of the stand-alone `ogr_*()` functions are grouped under the documentati
 * delete layers
 * create new attribute and geometry fields on an existing layer
 * rename and delete fields
+* read and write field domains
 * edit data with SQL statements
 
 `ogr_define` provides documentation and helper functions for defining feature classes. An OGR feature class definition (a.k.a. layer definition) is modeled in R as a named list containing zero or more attribute field definitions, along with one or more geometry field definitions. Specifications of the the list structures for these definitions are given in `?ogr_define`. The associated helper functions make it easy to create new layer definitions from scratch or modify an existing definition. A layer definition is convenient but not required for creating a new vector dataset, or a new layer within an existing dataset, using `ogr_ds_create()` / `ogr_layer_create()`.
@@ -97,9 +98,9 @@ The factory functions `g_create()` and `g_add_geom()` support creating basic geo
 * inspection (see `?g_query`)
 * binary predicates (see `?g_binary_pred`)
 * binary operations (see `?g_binary_op`)
-* unary operations (e.g., `g_buffer()`, `g_simplify()`)
+* unary operations (see `g_unary_op`)
 * measurements (see `?g_measures`)
-* miscellaneous utilities (e.g., `g_coords()`, `g_make_valid()`, `g_swap_xy()`, `g_transform()`)
+* miscellaneous utilities (e.g., `g_coords()`, `g_make_valid()`, `g_transform()`)
 
 Convenience functions for working with bounding boxes are also provided (e.g., convert to/from WKT, intersection/union, and `bbox_transform()`).
 
@@ -134,7 +135,7 @@ Currently, **gdalraster** implements only minimal S3 class interfaces for R obje
 
 ### Interoperability 
 
-The `$fetch()` method of a `GDALVector` object returns geometries in a list column of WKB raw vectors by default. The Geometry API functions (`g_*()`) also operate by default on lists of WKB raw vectors. Representation of geometries as WKB is compact and performant, and seamlessly integrates with the parsing, conversion, manipulation and plotting functions in [package **wk**](https://paleolimbot.github.io/wk/) (a **gdalraster** dependency for vector plotting, and currently used for `g_coords()`).
+The `$fetch()` method of a `GDALVector` object returns geometries in a list column of WKB raw vectors by default. The Geometry API functions (`g_*()`) also operate by default on lists of WKB raw vectors. Representation of geometries as WKB is compact and performant, and seamlessly integrates with the parsing, conversion, manipulation and plotting functions in [package **wk**](https://paleolimbot.github.io/wk/) (a **gdalraster** dependency for vector plotting).
 
 The `$getArrowStream()` method of a `GDALVector` object allows retrieving data in a column-oriented memory format. It exposes an ArrowArrayStream on a layer as a `nanoarrow_array_stream` object. The [**nanoarrow** package](https://arrow.apache.org/nanoarrow/latest/getting-started/r.html) provides functionality to consume the array stream and import to R data structures (which are generally column oriented). **nanoarrow** provides helpers to facilitate zero-copy data transfer among R bindings to libraries implementing the Arrow C data interface. It is possible to pass **nanoarrow** objects to many functions in the **arrow** package. **nanoarrow** objects also integrate with the extension types implemented in the **geoarrow** package.
 
@@ -212,7 +213,7 @@ if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
 inspectDataset(zf_gpkg)
 ```
 
-OGR functions can be also be used to inspect a vector data source.
+OGR functions can also be used to inspect a vector data source.
 
 ```{r}
 # test for existence of a vector data source with at least read access

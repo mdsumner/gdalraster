@@ -9,6 +9,7 @@ test_that("class constructors work", {
     expect_equal(lyr$getName(), "mtbs_perims")
     expect_type(lyr$getFeature(1), "list")
     lyr$close()
+    expect_false(lyr$isOpen())
 
     expect_no_error(lyr <- new(GDALVector, dsn, "mtbs_perims"))
     expect_equal(lyr$bbox(), c(469685.73, -12917.76, 573531.72, 96577.34))
@@ -33,6 +34,9 @@ test_that("class constructors work", {
                                open_options = NULL,
                                spatial_filter = bbox_to_wkt(bb)))
     expect_equal(lyr$getFeatureCount(), 40)
+    # re-open a SQL layer (implicit close/open)
+    lyr$open(read_only = TRUE)
+    expect_equal(lyr$getFeatureCount(), 40)
     lyr$close()
 
     # add dialect
@@ -41,6 +45,10 @@ test_that("class constructors work", {
                                spatial_filter = bbox_to_wkt(bb),
                                dialect = ""))
     expect_equal(lyr$getFeatureCount(), 40)
+    lyr$close()
+
+    # invalid layer name
+    expect_error(lyr <- new(GDALVector, dsn, "invalid_layer_name"))
 
     # spatial filter error
     expect_error(lyr <- new(GDALVector, dsn, sql, read_only = TRUE,
@@ -48,7 +56,7 @@ test_that("class constructors work", {
                             spatial_filter = "invalid WKT",
                             dialect = ""))
 
-    lyr$close()
+
     unlink(dsn)
 
     # default construstrctor with no arguments should not error
@@ -125,6 +133,10 @@ test_that("class basic interface works", {
     lyr$setAttributeFilter("")
     expect_no_error(lyr$setSpatialFilterRect(bbox))
     expect_equal(lyr$getFeatureCount(), 40)
+    # test spatial filter errors
+    expect_error(lyr$setSpatialFilterRect(NULL))
+    expect_error(lyr$setSpatialFilterRect(rep(NA_real_, 4)))
+    expect_true(lyr$getSpatialFilter() != "")
 
     # fetch in chunks and return as data frame
     expect_no_error(d <- lyr$fetch(20))
@@ -143,8 +155,32 @@ test_that("class basic interface works", {
     expect_no_error(d <- lyr$fetch(-1))
     expect_equal(nrow(d), 40)
 
+    # request more features than are available
+    lyr$resetReading()
+    expect_no_error(d2 <- lyr$fetch(100))
+    expect_true(is.data.frame(d2))
+    expect_equal(nrow(d2), 40)
+    expect_equal(d, d2)
+    # further fetch should return 0-row data frame
+    expect_no_error(d2 <- lyr$fetch(20))
+    expect_equal(nrow(d2), 0)
+
     expect_no_error(lyr$clearSpatialFilter())
     expect_equal(lyr$getFeatureCount(), 61)
+
+    # fetch all remaining features from current position
+    lyr$resetReading()
+    expect_no_error(f <- lyr$getNextFeature())
+    expect_no_error(d <- lyr$fetch(NA))
+    expect_equal(nrow(d), 60)
+
+    # fetch errors
+    lyr$resetReading()
+    expect_error(lyr$fetch(9007199254740992))
+    lyr$returnGeomAs <- "invalid"
+    expect_error(lyr$fetch(-1))
+    lyr$wkbByteOrder <- "invalid"
+    expect_error(lyr$fetch(-1))
 
     lyr$close()
 
@@ -156,6 +192,23 @@ test_that("class basic interface works", {
     sql_lyr$close()
 
     unlink(dsn)
+
+    # test certain errors on a GeoJSON file with NULL geometries
+    f <- system.file("extdata/test_ogr_geojson_mixed_timezone.geojson",
+                     package = "gdalraster")
+    lyr <- new(GDALVector, f, "test")
+    expect_error(lyr$bbox(), "extent of the layer cannot be determined")
+    expect_error(lyr$setAttributeFilter("invalid_field = 1"),
+                 "error setting attribute filter")
+    expect_true(is.null(lyr$getFeature(NA)))
+    expect_error(lyr$getFeature(c(1,2)), "must be a length-1")
+    expect_false(lyr$startTransaction())
+    expect_output(lyr$startTransaction(), "dataset does not have")
+    lyr$transactionsForce <- TRUE
+    expect_false(lyr$startTransaction())
+    expect_output(lyr$startTransaction(), "dataset does not have")
+
+    lyr$close()
 })
 
 test_that("set ignored/selected fields works", {
@@ -252,13 +305,40 @@ test_that("set ignored/selected fields works", {
     expect_s3_class(lyr$getNextFeature(), "OGRFeature")
     expect_true(is.null(lyr$getNextFeature()))
 
+    # field names not resolved
+    expect_no_error(lyr$setIgnoredFields(""))
+    expect_error(lyr$setIgnoredFields(c("event_id", "invalid_field")),
+                 "not all field names could be resolved")
+    expect_no_error(lyr$setIgnoredFields(""))
+    expect_output(lyr$setSelectedFields(c("event_id", "invalid_field")),
+                  "some input field names could not be resolved")
+    expect_false("event_id" %in% lyr$getIgnoredFields())
+    expect_no_error(lyr$setSelectedFields(""))
+    expect_error(lyr$setSelectedFields("invalid_field"),
+                 "none of the input field names could be resolved")
+
+    # errors if input is not a character vector
+    expect_error(lyr$setIgnoredFields(NULL))
+    expect_error(lyr$setSelectedFields(NULL))
+
     lyr$close()
     unlink(dsn)
+
+    # layer does not support ignored fields
+    dsn_json <- system.file("extdata/test.geojson", package="gdalraster")
+    lyr <- new(GDALVector, dsn_json)
+    expect_true(("int2" %in% lyr$getFieldNames()))
+    expect_output(lyr$setIgnoredFields("int2"),
+                  "layer does not have IgnoreFields capability")
+    expect_length(lyr$getIgnoredFields(), 0)
+    expect_output(lyr$setSelectedFields("int2"),
+                  "layer does not have IgnoreFields capability")
+    expect_length(lyr$getIgnoredFields(), 0)
+    lyr$close()
+
 })
 
 test_that("read methods work correctly", {
-    # TODO: complete these tests
-
     f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
     dsn <- file.path(tempdir(), basename(f))
     file.copy(f, dsn, overwrite = TRUE)
@@ -283,24 +363,30 @@ test_that("read methods work correctly", {
     expect_no_error(lyr$setSpatialFilter(bbox_to_wkt(bbox)))
     expect_equal(lyr$getFeatureCount(), 40)
     expect_true(g_equals(lyr$getSpatialFilter(), bbox_to_wkt(bbox)))
+    # test getFeature() with spatial filter in effect
+    expect_equal(lyr$getFeature(10)$FID, as.integer64(10))
+    expect_equal(lyr$getFeatureCount(), 40)
+    expect_true(g_equals(lyr$getSpatialFilter(), bbox_to_wkt(bbox)))
     # clear
     expect_no_error(lyr$clearSpatialFilter())
     expect_equal(lyr$getFeatureCount(), 61)
+    # invalid WKT geom
+    expect_error(lyr$setSpatialFilter("POLYGON invalid"))
 
     # cursor positioning
     expect_equal(lyr$getFeatureCount(), 61)
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(1))
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(2))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(1))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(2))
     lyr$resetReading()
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(1))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(1))
     lyr$setNextByIndex(3)
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(4))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(4))
     lyr$setNextByIndex(3.5)
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(4))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(4))
     lyr$setNextByIndex(0)
-    expect_equal(lyr$getNextFeature()$FID, bit64::as.integer64(1))
+    expect_equal(lyr$getNextFeature()$FID, as.integer64(1))
 
-    expect_equal(lyr$getFeature(10)$FID, bit64::as.integer64(10))
+    expect_equal(lyr$getFeature(10)$FID, as.integer64(10))
 
     expect_error(lyr$setNextByIndex(NA))
     expect_error(lyr$setNextByIndex(-1))
@@ -380,6 +466,19 @@ test_that("read methods work correctly", {
     diff <- g_difference(g1$geom, g2$geom)
     expect_true(all(g_is_empty(diff)))
     lyr$close()
+
+    # GeoJSON DateTime field with mixed time zones
+    # adapted from:
+    # https://github.com/OSGeo/gdal/blob/master/autotest/ogr/ogr_geojson.py
+    # "test_ogr_geojson_arrow_stream_pyarrow_mixed_timezone"
+    f <- system.file("extdata/test_ogr_geojson_mixed_timezone.geojson",
+                     package = "gdalraster")
+    lyr <- new(GDALVector, f, "test")
+    d <- lyr$fetch(-1)
+    res <- as.numeric(d$datetime)
+    expected_values <- c(NA, 1654000496.789, NA, 1653996896.789, 1654004096.789)
+    expect_equal(res, expected_values, tolerance = 0.001)
+    lyr$close()
 })
 
 test_that("delete feature works", {
@@ -390,11 +489,15 @@ test_that("delete feature works", {
     lyr <- new(GDALVector, dsn, "mtbs_perims", read_only = FALSE)
     num_feat <- lyr$getFeatureCount()
     expect_true(lyr$deleteFeature(1))
+    expect_true(lyr$deleteFeature(bit64::as.integer64(2)))
+
+    expect_error(lyr$deleteFeature(NULL))
+    expect_error(lyr$deleteFeature(c(10, 11)))
 
     lyr$open(read_only = TRUE)
-    expect_equal(lyr$getFeatureCount(), num_feat - 1)
+    expect_equal(lyr$getFeatureCount(), num_feat - 2)
     expect_false(lyr$deleteFeature(2))
-    expect_equal(lyr$getFeatureCount(), num_feat - 1)
+    expect_equal(lyr$getFeatureCount(), num_feat - 2)
 
     # transaction
     lyr$open(read_only = FALSE)
@@ -466,7 +569,7 @@ test_that("feature write methods work", {
         feat <- NULL
         feat <- lyr$getNextFeature()
         test4_orig_fid <- feat$FID
-        feat$FID <- bit64::as.integer64(9999999999999994)
+        feat$FID <- as.integer64(9999999999999994)
         feat$event_id <- "ZZ04"
         feat$incid_name <- "TEST 4"
         feat$map_id <- 999994
@@ -484,7 +587,7 @@ test_that("feature write methods work", {
     test1_feat <- lyr$getNextFeature()
     expect_false(is.null(test1_feat))
     expect_equal(test1_feat$incid_name, "TEST 1")
-    expect_equal(test1_feat$map_id, bit64::as.integer64(999991))
+    expect_equal(test1_feat$map_id, as.integer64(999991))
     expect_equal(test1_feat$ig_date, as.Date("9999-01-01"))
     test1_orig_feat <- lyr$getFeature(test1_orig_fid)
     geom_fld <- lyr$getGeometryColumn()
@@ -495,7 +598,7 @@ test_that("feature write methods work", {
     test2_feat <- lyr$getNextFeature()
     expect_false(is.null(test2_feat))
     expect_equal(test2_feat$incid_name, "TEST 2")
-    expect_equal(test2_feat$map_id, bit64::as.integer64(999992))
+    expect_equal(test2_feat$map_id, as.integer64(999992))
     expect_equal(test2_feat$ig_date, as.Date("9999-01-02"))
     expect_equal(test2_feat$ig_year, 9999)
     test2_feat <- NULL
@@ -505,7 +608,7 @@ test_that("feature write methods work", {
         test3_feat <- lyr$getNextFeature()
         expect_false(is.null(test3_feat))
         expect_equal(test3_feat$incid_name, "TEST 3")
-        expect_equal(test3_feat$map_id, bit64::as.integer64(999993))
+        expect_equal(test3_feat$map_id, as.integer64(999993))
         expect_equal(test3_feat$ig_date, as.Date("9999-01-03"))
         expect_equal(test3_feat$ig_year, 9999)
         test3_feat <- NULL
@@ -514,7 +617,7 @@ test_that("feature write methods work", {
         test4_feat <- lyr$getNextFeature()
         expect_false(is.null(test4_feat))
         expect_equal(test4_feat$incid_name, "TEST 4")
-        expect_equal(test4_feat$map_id, bit64::as.integer64(999994))
+        expect_equal(test4_feat$map_id, as.integer64(999994))
         expect_equal(test4_feat$ig_date, as.Date("9999-01-04"))
         test4_orig_feat <- lyr$getFeature(test4_orig_fid)
         geom_fld <- lyr$getGeometryColumn()
@@ -553,7 +656,7 @@ test_that("feature write methods work", {
     feat1 <- list()
     feat1$int_fld <- 1
     feat1$bool_fld <- TRUE
-    feat1$int64_fld <- bit64::as.integer64(11)
+    feat1$int64_fld <- as.integer64(11)
     feat1$real_fld <- 1.1
     feat1$str_fld <- "string 1"
     feat1$date_fld <- as.Date("2000-01-01")
@@ -580,7 +683,7 @@ test_that("feature write methods work", {
     feat2$FID <- test2_fid
     feat2$int_fld <- 2
     feat2$bool_fld <- FALSE
-    feat2$int64_fld <- bit64::as.integer64(22)
+    feat2$int64_fld <- as.integer64(22)
     feat2$real_fld <- 2.2
     feat2$str_fld <- "string 2"
     feat2$date_fld <- as.Date("2000-01-02")
@@ -616,7 +719,7 @@ test_that("feature write methods work", {
     feat3 <- list()
     feat3$int_fld <- 3
     feat3$bool_fld <- TRUE
-    feat3$int64_fld <- bit64::as.integer64(33)
+    feat3$int64_fld <- as.integer64(33)
     feat3$real_fld <- 3.3
     feat3$str_fld <- "string 3"
     feat3$date_fld <- as.Date("2000-01-03")
@@ -633,7 +736,7 @@ test_that("feature write methods work", {
     feat4 <- list()
     feat4$int_fld <- 4
     feat4$bool_fld <- TRUE
-    feat4$int64_fld <- bit64::as.integer64(44)
+    feat4$int64_fld <- as.integer64(44)
     feat4$real_fld <- 4.4
     feat4$str_fld <- "string 4"
     feat4$date_fld <- as.Date("2000-01-04")
@@ -678,11 +781,12 @@ test_that("feature write methods work", {
     test5_fid <- lyr$getLastWriteFID()
     expect_false(is.null(test5_fid))
 
-    # as typed NA
+    # as typed NA and with NA FID
     feat6 <- list()
+    feat5$FID <- NA_real_
     feat6$int_fld <- NA_integer_
     feat6$bool_fld <- NA
-    feat6$int64_fld <- bit64::NA_integer64_
+    feat6$int64_fld <- NA_integer64_
     feat6$real_fld <- NA_real_
     feat6$str_fld <- NA_character_
     feat6$date_fld <- as.Date(NA_real_)
@@ -771,7 +875,7 @@ test_that("feature write methods work", {
     feat <- lyr$getFeature(1)
     feat$nonexistent_fld <- 1
     expect_error(lyr$setFeature(feat))
-5
+
     feat <- lyr$getFeature(1)
 
     # character for OFTInteger
@@ -875,6 +979,7 @@ test_that("feature write methods work", {
     defn$real_fld <- ogr_def_field("OFTReal")
     defn$str_fld <- ogr_def_field("OFTString")
     defn$int_list_fld <- ogr_def_field("OFTIntegerList", "JSonIntegerList")
+    defn$int64_list_fld <- ogr_def_field("OFTInteger64List", "JSonInteger64List")
     defn$real_list_fld <- ogr_def_field("OFTRealList", "JSonRealList")
     defn$str_list_fld <- ogr_def_field("OFTStringList", "JSonStringList")
 
@@ -891,6 +996,7 @@ test_that("feature write methods work", {
     feat1$real_fld <- 1.1
     feat1$str_fld <- "string 1"
     feat1$int_list_fld <- c(1, 1, 1)
+    feat1$int64_list_fld <- as.integer64(c(9999999999999991, 9999999999999991, 9999999999999991))
     feat1$real_list_fld <- c(1.1, 1.1, 1.1)
     feat1$str_list_fld <- c("str 1", "str 1", "str 1")
     feat1[[geom_fld]] <- "POINT (1 1)"
@@ -908,6 +1014,7 @@ test_that("feature write methods work", {
     expect_equal(f$real_fld, feat1$real_fld)
     expect_equal(f$str_fld, feat1$str_fld)
     expect_equal(f$int_list_fld, feat1$int_list_fld)
+    expect_equal(f$int64_list_fld, feat1$int64_list_fld)
     expect_equal(f$real_list_fld, feat1$real_list_fld)
     expect_equal(f$str_list_fld, feat1$str_list_fld)
     # this fails with GDAL < 3.5 due to change in geom column naming?
@@ -949,9 +1056,7 @@ test_that("feature write methods work", {
     # close and re-open
     lyr$open(read_only = TRUE)
     lyr$returnGeomAs <- "WKT"
-
     f <- lyr$getNextFeature()
-
     expect_equal(f$FID, test1_fid)
     expect_equal(f$id, feat1$id)
     expect_equal(f$real_fld, feat1$real_fld)
@@ -960,16 +1065,32 @@ test_that("feature write methods work", {
     expect_true(g_equals(f$geom, feat1$geom))
 
     lyr$close()
+
+    # read as SQL layer with SQLITE dialect
+    layer_name <- tools::file_path_sans_ext(basename(dsn4))
+    sql <- paste0("SELECT id, GEOMETRY as geom FROM ", layer_name)
+    expect_no_error(lyr <- new(GDALVector, dsn4, sql, read_only = TRUE,
+                               open_options = NULL, spatial_filter = "",
+                               dialect = "SQLITE"))
+    lyr$returnGeomAs <- "WKT"
+    expect_no_error(f <- lyr$getFeature(test1_fid))
+    expect_equal(f$id, feat1$id)
+    expect_true(g_equals(f$geom, feat1$geom))
+
+    lyr$close()
+
     deleteDataset(dsn4)
     rm(lyr)
     rm(dsn4)
 
     ## test GeoJSON write, Point with SRS
+    # include test of OFTTime field type here
     dsn5 <- tempfile(fileext = ".geojson")
 
     defn <- ogr_def_layer("Point", srs = epsg_to_wkt(4322))
     defn$real_field <- ogr_def_field("OFTReal")
     defn$str_field <- ogr_def_field("OFTString")
+    defn$time_field <- ogr_def_field("OFTTime")
 
     expect_no_error(lyr <- ogr_ds_create("GeoJSON", dsn5, "test_layer",
                                          layer_defn = defn,
@@ -980,15 +1101,23 @@ test_that("feature write methods work", {
     feat1 <- list()
     feat1$real_field <- 0.123
     feat1$str_field <- "test string 1"
+    feat1$time_field <- "12:00:00"
     feat1$geom <- "POINT (1 10)"
     expect_true(lyr$createFeature(feat1))
-
 
     feat2 <- list()
     feat2$real_field <- 0.234
     feat2$str_field <- "test string 2"
+    feat2$time_field <- "13:00:00"
     feat2$geom <- "POINT (2 20)"
     expect_true(lyr$createFeature(feat2))
+
+    feat3 <- list()
+    feat3$real_field <- 0.345
+    feat3$str_field <- "test string 3"
+    feat3$time_field <- Sys.time()
+    feat3$geom <- "POINT (3 20)"
+    expect_error(lyr$createFeature(feat3))
 
     # close and re-open
     lyr$open(read_only = TRUE)
@@ -996,6 +1125,11 @@ test_that("feature write methods work", {
     expect_equal(lyr$getFeatureCount(), 2)
     expect_equal(lyr$bbox(), c(1, 10, 2, 20))
     expect_true(srs_is_same(lyr$getSpatialRef(), epsg_to_wkt(4322)))
+
+    f <- lyr$getNextFeature()
+    expect_equal(f$real_field, feat1$real_field, tolerance = .001)
+    expect_equal(f$str_field, feat1$str_field)
+    expect_equal(f$time_field, feat1$time_field)
 
     lyr$close()
     unlink(dsn5)
@@ -1020,6 +1154,33 @@ test_that("feature write methods work", {
     unlink(dsn6)
     rm(lyr)
     rm(dsn6)
+})
+
+test_that("OGRFeatureFromList_dumpReadble runs without error", {
+    # undocumented internal method GDALVector::OGRFeatureFromList_dumpReadble()
+    skip_if(gdal_version_num() < gdal_compute_version(3, 8, 0))
+
+    dsn <- tempfile(fileext = ".geojson")
+
+    defn <- ogr_def_layer("Point", srs = epsg_to_wkt(4322))
+    defn$real_field <- ogr_def_field("OFTReal")
+    defn$str_field <- ogr_def_field("OFTString")
+
+    lyr <- ogr_ds_create("GeoJSON", dsn, "test_layer",
+                         layer_defn = defn,
+                         lco = "WRITE_BBOX=YES",
+                         overwrite = TRUE,
+                         return_obj = TRUE)
+
+    feat1 <- list()
+    feat1$real_field <- 0.123
+    feat1$str_field <- "test string 1"
+    feat1$geom <- "POINT (1 10)"
+
+    expect_no_error(lyr$OGRFeatureFromList_dumpReadble(feat1))
+
+    lyr$close()
+    unlink(dsn)
 })
 
 test_that("feature batch writing works", {
@@ -1102,7 +1263,7 @@ test_that("get/set metadata works", {
 })
 
 test_that("field domain specifications are returned correctly", {
-    skip_if(gdal_version_num() < 3030000)
+    skip_if(gdal_version_num() < gdal_compute_version(3, 3, 0))
 
     f <- system.file("extdata/domains.gpkg", package="gdalraster")
     dsn <- file.path(tempdir(), basename(f))
@@ -1113,77 +1274,577 @@ test_that("field domain specifications are returned correctly", {
     # integer range domain
     fld_dom <- lyr$getFieldDomain("range_domain_int")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "range")
-    expect_equal(fld_dom$field_type, "Integer")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$field_type, "OFTInteger")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
     expect_equal(fld_dom$min_value, 1)
-    expect_true(fld_dom$min_value_included)
+    expect_true(fld_dom$min_is_inclusive)
     expect_equal(fld_dom$max_value, 2)
-    expect_false(fld_dom$max_value_included)
+    expect_false(fld_dom$max_is_inclusive)
     rm(fld_dom)
 
     # integer64 range domain
     fld_dom <- lyr$getFieldDomain("range_domain_int64")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "range")
-    expect_equal(fld_dom$field_type, "Integer64")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
-    expect_equal(fld_dom$min_value, bit64::as.integer64(-1234567890123))
-    expect_false(fld_dom$min_value_included)
-    expect_equal(fld_dom$max_value, bit64::as.integer64(1234567890123))
-    expect_true(fld_dom$max_value_included)
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$field_type, "OFTInteger64")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$min_value, as.integer64(-1234567890123))
+    expect_false(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, as.integer64(1234567890123))
+    expect_true(fld_dom$max_is_inclusive)
     rm(fld_dom)
 
     # real range domain
     fld_dom <- lyr$getFieldDomain("range_domain_real")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "range")
-    expect_equal(fld_dom$field_type, "Real")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$field_type, "OFTReal")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
     expect_equal(fld_dom$min_value, 1.5)
-    expect_true(fld_dom$min_value_included)
+    expect_true(fld_dom$min_is_inclusive)
     expect_equal(fld_dom$max_value, 2.5)
-    expect_true(fld_dom$max_value_included)
+    expect_true(fld_dom$max_is_inclusive)
     rm(fld_dom)
 
     # real range domain inf
     fld_dom <- lyr$getFieldDomain("range_domain_real_inf")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "range")
-    expect_equal(fld_dom$field_type, "Real")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$field_type, "OFTReal")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
     expect_true(is.null(fld_dom$min_value))
-    expect_true(is.null(fld_dom$mxn_value))
+    expect_true(is.null(fld_dom$max_value))
     rm(fld_dom)
 
     # coded values domain
     fld_dom <- lyr$getFieldDomain("enum_domain")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "coded")
-    expect_equal(fld_dom$field_type, "Integer")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
-    expect_vector(fld_dom$coded_values, character(), size = 2)
-    expect_equal(fld_dom$coded_values[["1"]], "one")
-    expect_equal(fld_dom$coded_values[["2"]], "")
+    expect_equal(fld_dom$type, "Coded")
+    expect_equal(fld_dom$field_type, "OFTInteger")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$coded_values$codes, c(1, 2))
+    expect_equal(fld_dom$coded_values$values, c("one", NA))
     rm(fld_dom)
 
     # glob domain
     fld_dom <- lyr$getFieldDomain("glob_domain")
     expect_true(!is.null(fld_dom))
-    expect_equal(fld_dom$domain_type, "glob")
-    expect_equal(fld_dom$field_type, "String")
-    expect_equal(fld_dom$split_policy, "default value")
-    expect_equal(fld_dom$merge_policy, "default value")
+    expect_equal(fld_dom$type, "GLOB")
+    expect_equal(fld_dom$field_type, "OFTString")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
     expect_equal(fld_dom$glob, "*")
     rm(fld_dom)
 
     lyr$close()
     deleteDataset(dsn)
+
+
+    # get a list of field domain names defined in a dataset
+    # GDALDatasetGetFieldDomainNames() was added at GDAL >= 3.5
+    skip_if(gdal_version_num() < gdal_compute_version(3, 5, 0))
+
+    f <- system.file("extdata/domains.gpkg", package="gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+
+    fld_dom_names <- ogr_ds_field_domain_names(dsn)
+    expected_names <- c("enum_domain", "glob_domain", "range_domain_int",
+                        "range_domain_int64", "range_domain_real",
+                        "range_domain_real_inf")
+    expect_equal(fld_dom_names, expected_names)
+    deleteDataset(dsn)
+
+    # format supports field domains but none are present
+    f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package="gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+    expect_equal(ogr_ds_field_domain_names(dsn), character(0))
+    deleteDataset(dsn)
+
+    # format does not support field domains
+    f <- system.file("extdata/poly_multipoly.shp", package="gdalraster")
+    expect_warning(fld_dom_names <- ogr_ds_field_domain_names(f))
+    expect_true(is.null(fld_dom_names))
+
+
+    # OpenFileGDB with DateTime range domain
+    # support for DateTime field domains in OpenFileGDB was added at GDAL 3.8.0
+    skip_if(gdal_version_num() < gdal_compute_version(3, 8, 0))
+
+    f <- system.file("extdata/domains.gdb.zip", package="gdalraster")
+    lyr <- new(GDALVector, f, "test")
+
+    fld_dom <- lyr$getFieldDomain("datetime_range")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$description, "datetime_range_desc")
+    expect_equal(fld_dom$type, "RangeDateTime")
+    expect_equal(fld_dom$field_type, "OFTDateTime")
+    expect_equal(fld_dom$split_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$merge_policy, "DEFAULT_VALUE")
+    expect_equal(fld_dom$min_value, as.POSIXct("2000-01-01T00:00:00",
+                                               tz = "UTC"))
+    expect_true(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, as.POSIXct("2100-01-01T00:00:00",
+                                               tz = "UTC"))
+    expect_true(fld_dom$max_is_inclusive)
+
+    lyr$close()
+})
+
+test_that("field domain write functions work", {
+    skip_if(gdal_version_num() < gdal_compute_version(3, 3, 0))
+
+    ## test Range, Coded and GLOB with GPKG
+    f <- system.file("extdata/domains.gpkg", package="gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+
+
+    # Range field domain for OFTInteger
+    defn <- ogr_def_field_domain("Range", "range1", "range domain test 1",
+                                 fld_type = "OFTInteger", range_min = 0,
+                                 range_max = 100)
+    expect_true(is.list(defn))
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # add a field using the "range1" domain
+    field1_defn <- ogr_def_field("OFTInteger", domain_name = "range1")
+    expect_true(ogr_field_create(dsn, "test", "range_field1",
+                                 fld_defn = field1_defn))
+
+    # Range field domain for OFTInteger64
+    defn <- ogr_def_field_domain("Range", "range2", "range domain test 2",
+                                 fld_type = "OFTInteger64", range_min = 0,
+                                 range_max = as.integer64("9007199254740992"),
+                                 max_is_inclusive = FALSE)
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # add a field using the "range2" domain
+    field2_defn <- ogr_def_field("OFTInteger64", domain_name = "range2")
+    expect_true(ogr_field_create(dsn, "test", "range_field2",
+                                 fld_defn = field2_defn))
+
+    # Range field domain for Real
+    defn <- ogr_def_field_domain("Range", "range3", "range domain test 3",
+                                 fld_type = "OFTReal", range_min = 0.0,
+                                 min_is_inclusive = FALSE,
+                                 range_max = 1.0)
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # Range field domain for Real (inf)
+    defn <- ogr_def_field_domain("Range", "range4", "range domain test 4",
+                                 fld_type = "OFTReal")
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+
+    # Range domain input errors
+    # min/max must be a single numeric value if not NULL
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = "A",
+                                      range_max = 100))
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = 0,
+                                      range_max = "Z"))
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = c(0, 1),
+                                      range_max = 100))
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = 0,
+                                      range_max = c(0, 100)))
+    # min/max as NA is okay, treated the same as NULL
+    expect_no_error(ogr_def_field_domain("Range", "range_no_err",
+                                         description = "desc: no error",
+                                         fld_type = "OFTInteger",
+                                         range_min = NA,
+                                         range_max = 100))
+    expect_no_error(ogr_def_field_domain("Range", "range_no_err",
+                                         description = "desc: no error",
+                                         fld_type = "OFTInteger",
+                                         range_min = 0,
+                                         range_max = NA))
+    # min_is_inclusive/max_is_inclusive must be a single logical value
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = 0,
+                                      min_is_inclusive = NULL,
+                                      range_max = 100))
+    expect_error(ogr_def_field_domain("Range", "range_err", "desc: error",
+                                      fld_type = "OFTInteger",
+                                      range_min = 0,
+                                      range_max = 100,
+                                      max_is_inclusive = NULL))
+
+    # test the internal C++ function .ogr_ds_add_field_domain(),
+    # which should also handle the above input errors.
+    # construct a valid field domain definition and then alter it for each
+    # invalid input.
+    expect_no_error(defn <- ogr_def_field_domain("Range", "range_err",
+                                                 fld_type = "OFTInteger",
+                                                 range_min = NULL,
+                                                 range_max = NULL))
+
+    # min/max must be a single numeric value if not NULL
+    defn$min_value <- "A"
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$min_value <- 0
+    defn$max_value <- "Z"
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$min_value <- c(0, 1)
+    defn$max_value <- 100
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$min_value <- 0
+    defn$max_value <- c(0, 100)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    # min/max as NA is okay, treated the same as NULL
+    defn$min_value <- NA
+    defn$max_value <- 100
+    expect_no_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    # same with OFTInteger64
+    expect_no_error(defn <- ogr_def_field_domain("Range", "range_err_int64",
+                                                 fld_type = "OFTInteger64",
+                                                 range_min = NULL,
+                                                 range_max = NULL))
+
+    # min/max must be a single numeric value if not NULL
+    defn$min_value <- "A"
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$min_value <- bit64::as.integer64(0)
+    defn$max_value <- "Z"
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    # min/max as NA is okay, treated the same as NULL
+    defn$min_value <- NA_integer64_
+    defn$max_value <- 100
+    expect_no_error(.ogr_ds_add_field_domain(dsn, defn))
+
+
+    # Coded values domain
+    defn <- ogr_def_field_domain("Coded", "coded1", "coded values domain test",
+                                 fld_type = "OFTInteger",
+                                 coded_values = c("1=one", "2=two", "3"))
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # add a field using the "coded1" domain
+    expect_true(ogr_field_create(dsn, "test", "coded_field1",
+                                 fld_type = "OFTInteger", default_value = 1,
+                                 domain_name = "coded1"))
+
+    # Coded values domain, input as data frame
+    codes <- c(1, 2, 3)
+    values <- c("one", "two", NA)
+    codes_values_df <- data.frame(codes = codes, values = values)
+    defn <- ogr_def_field_domain("Coded", "coded2",
+                                 description = "coded values domain test 2",
+                                 fld_type = "OFTInteger",
+                                 coded_values = codes_values_df)
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # add a field using the "coded2" domain
+    expect_true(ogr_field_create(dsn, "test", "coded_field2",
+                                 fld_type = "OFTInteger",
+                                 domain_name = "coded2"))
+
+    # Coded values domain, input as data frame with integer64 codes
+    codes <- bit64::as.integer64(c(1, 2, "9007199254740992"))
+    values <- c("one", "two", "large value")
+    codes_values_df <- data.frame(codes = codes, values = values)
+    defn <- ogr_def_field_domain("Coded", "coded3",
+                                 description = "coded values domain test 3",
+                                 fld_type = "OFTInteger64",
+                                 coded_values = codes_values_df)
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # add a field using the "coded3" domain
+    expect_true(ogr_field_create(dsn, "test", "coded_field3",
+                                 fld_type = "OFTInteger64",
+                                 domain_name = "coded3"))
+
+
+    # Coded values input errors
+    # cannot have NA codes (values can be NA)
+    codes <- c(1, 2, NA)
+    values <- c("one", "two", NA)
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = codes))
+
+    codes_values_df <- data.frame(codes = codes, values = values)
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = codes_values_df))
+    # cannot be empty
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = character(0)))
+
+    codes_values_df <- data.frame(codes = character(0), values = character(0))
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = codes_values_df))
+    # data frame input must have two columns
+    codes <- c(1, 2, 3)
+    values <- c("one", "two", "")
+
+    codes_values_df <- data.frame(codes = codes)
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = codes_values_df))
+
+    codes_values_df <- data.frame(codes = codes, values = values,
+                                  v3 = c(1, 1, 1))
+    expect_error(ogr_def_field_domain("Coded", "coded_err",
+                                      fld_type = "OFTInteger",
+                                      coded_values = codes_values_df))
+
+    # test the internal C++ function .ogr_ds_add_field_domain(),
+    # which should also handle the above input errors.
+    # construct a valid field domain definition and then alter it for each
+    # invalid input.
+    # cannot have NA codes
+    codes <- c(1, 2, 3)
+    values <- c("one", "two", "three")
+
+    expect_no_error(defn <- ogr_def_field_domain("Coded", "coded_err",
+                                                 fld_type = "OFTInteger",
+                                                 coded_values = codes))
+
+    defn$coded_values <- c(1, 2, NA)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$coded_values <- data.frame(codes = c(1, 2, NA), values = values)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    # cannot be empty
+    defn$coded_values <- character(0)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$coded_values <- data.frame(codes = character(0), values = character(0))
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    # data frame input must have two columns
+    defn$coded_values <- data.frame(codes = codes)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$coded_values <- data.frame(codes = codes, values = values,
+                                    v3 = c(1, 1, 1))
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+
+    # GLOB domain
+    defn <- ogr_def_field_domain("GLOB", "glob1", "glob domain test",
+                                 fld_type = "OFTString", glob = "*")
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    # GLOB input errors
+    expect_error(ogr_def_field_domain("GLOB", "glob_err", "desc: error",
+                                      fld_type = "OFTString", glob = NULL))
+    expect_error(ogr_def_field_domain("GLOB", "glob1", "glob domain test",
+                                      fld_type = "OFTString", glob = NA))
+    expect_error(ogr_def_field_domain("GLOB", "glob1", "glob domain test",
+                                      fld_type = "OFTString", glob = ""))
+    expect_error(ogr_def_field_domain("GLOB", "glob1", "glob domain test",
+                                      fld_type = "OFTString",
+                                      glob = c("*", "?")))
+    # test the internal C++ function .ogr_ds_add_field_domain(),
+    # which should also handle the above input errors.
+    # construct a valid field domain definition and then alter it for each
+    # invalid input.
+    expect_no_error(defn <- ogr_def_field_domain("GLOB", "glob_err",
+                                                 fld_type = "OFTString",
+                                                 glob = "*"))
+
+    defn$field_type <- "OFTInteger"
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$field_type <- "OFTString"
+    defn$glob <- list(NULL)
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+    defn$glob <- 1.0
+    expect_error(.ogr_ds_add_field_domain(dsn, defn))
+
+
+    # test setting a domain name on an existing field
+    ogr_field_create(dsn, "test", "range_field3", fld_type = "OFTReal")
+    expect_true(ogr_field_set_domain_name(dsn, "test",
+                                          fld_name = "range_field3",
+                                          domain_name = "range3"))
+
+
+    # read back
+    lyr <- new(GDALVector, dsn, "test")
+
+    # range1 read back
+    fld_dom <- lyr$getFieldDomain("range1")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$description, "range domain test 1")
+    expect_equal(fld_dom$field_type, "OFTInteger")
+    expect_equal(fld_dom$min_value, 0)
+    expect_true(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, 100)
+    expect_true(fld_dom$max_is_inclusive)
+    rm(fld_dom)
+
+    lyr_defn <- lyr$getLayerDefn()
+    expect_equal(lyr_defn$range_field1$domain, "range1")
+
+    # range2 read back
+    fld_dom <- lyr$getFieldDomain("range2")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$description, "range domain test 2")
+    expect_equal(fld_dom$field_type, "OFTInteger64")
+    expect_equal(fld_dom$min_value, as.integer64(0))
+    expect_true(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, as.integer64("9007199254740992"))
+    expect_false(fld_dom$max_is_inclusive)
+    rm(fld_dom)
+
+    expect_equal(lyr_defn$range_field2$domain, "range2")
+
+    # range3 read back
+    fld_dom <- lyr$getFieldDomain("range3")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$description, "range domain test 3")
+    expect_equal(fld_dom$field_type, "OFTReal")
+    expect_equal(fld_dom$min_value, 0.0)
+    expect_false(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, 1.0)
+    expect_true(fld_dom$max_is_inclusive)
+    rm(fld_dom)
+
+    # range4 read back
+    fld_dom <- lyr$getFieldDomain("range4")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "Range")
+    expect_equal(fld_dom$description, "range domain test 4")
+    expect_equal(fld_dom$field_type, "OFTReal")
+    expect_true(is.null(fld_dom$min_value))
+    expect_true(is.null(fld_dom$max_value))
+    rm(fld_dom)
+
+    # coded1 read back
+    fld_dom <- lyr$getFieldDomain("coded1")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "Coded")
+    expect_equal(fld_dom$description, "coded values domain test")
+    expect_equal(fld_dom$field_type, "OFTInteger")
+    expect_equal(fld_dom$coded_values$codes, c(1, 2, 3))
+    expect_equal(fld_dom$coded_values$values, c("one", "two", NA))
+    rm(fld_dom)
+
+    expect_equal(lyr_defn$coded_field1$domain, "coded1")
+
+    # coded2 read back
+    fld_dom <- lyr$getFieldDomain("coded2")
+    expect_equal(fld_dom$coded_values$codes, c(1, 2, 3))
+    expect_equal(fld_dom$coded_values$values, c("one", "two", NA))
+    rm(fld_dom)
+
+    expect_equal(lyr_defn$coded_field2$domain, "coded2")
+
+    # coded3 read back
+    fld_dom <- lyr$getFieldDomain("coded3")
+    expect_equal(fld_dom$coded_values$codes,
+                 bit64::as.integer64(c(1, 2, "9007199254740992")))
+    expect_equal(fld_dom$coded_values$values, c("one", "two", "large value"))
+    rm(fld_dom)
+
+    expect_equal(lyr_defn$coded_field3$domain, "coded3")
+
+    # glob1 read back
+    fld_dom <- lyr$getFieldDomain("glob1")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$type, "GLOB")
+    expect_equal(fld_dom$description, "glob domain test")
+    expect_equal(fld_dom$field_type, "OFTString")
+    expect_equal(fld_dom$glob, "*")
+    rm(fld_dom)
+
+    # domain name was set on existing field with ogr_field_set_domain_name()
+    expect_equal(lyr_defn$range_field3$domain, "range3")
+
+    lyr$close()
+    deleteDataset(dsn)
+
+
+    # test RangeDateTime with ESRI File Geodatabase
+    # support for DateTime field domains in OpenFileGDB was added at GDAL 3.8.0
+    skip_if(gdal_version_num() < gdal_compute_version(3, 8, 0))
+
+    # create a test dataset
+    dsn <- file.path(tempdir(), "domains.gdb")
+    ogr_ds_create("OpenFileGDB", dsn, overwrite = TRUE)
+    ogr_layer_create(dsn, layer = "test", geom_type = "POINT",
+                     srs = "WGS84")
+    ogr_field_create(dsn, "test", "dt_fld1", fld_type = "OFTDateTime")
+
+    # create and add a field domain
+    defn <- ogr_def_field_domain("RangeDateTime", "dt_range1",
+                                 description = "rangedatetime domain test 1",
+                                 fld_type = "OFTDateTime",
+                                 range_min = as.POSIXct("2000-01-01T00:00:00",
+                                                        tz = "UTC"),
+                                 range_max = as.POSIXct("2100-01-01T00:00:00",
+                                                        tz = "UTC"))
+
+    expect_true(ogr_ds_add_field_domain(dsn, defn))
+
+    expect_true(ogr_field_set_domain_name(dsn, "test",
+                                          fld_name = "dt_fld1",
+                                          domain_name = "dt_range1"))
+
+    # read back
+    lyr <- new(GDALVector, dsn, "test")
+
+    fld_dom <- lyr$getFieldDomain("dt_range1")
+    expect_true(!is.null(fld_dom))
+    expect_equal(fld_dom$description, "rangedatetime domain test 1")
+    expect_equal(fld_dom$type, "RangeDateTime")
+    expect_equal(fld_dom$field_type, "OFTDateTime")
+    expect_equal(fld_dom$min_value, as.POSIXct("2000-01-01T00:00:00",
+                                               tz = "UTC"))
+    expect_true(fld_dom$min_is_inclusive)
+    expect_equal(fld_dom$max_value, as.POSIXct("2100-01-01T00:00:00",
+                                               tz = "UTC"))
+    expect_true(fld_dom$max_is_inclusive)
+    rm(fld_dom)
+
+    lyr$close()
+    vsi_rmdir(dsn, recursive = TRUE)
+})
+
+test_that("delete field domain works", {
+    skip_if(gdal_version_num() < gdal_compute_version(3, 5, 0))
+
+    f <- system.file("extdata/domains.gpkg", package="gdalraster")
+    dsn <- file.path(tempdir(), basename(f))
+    file.copy(f, dsn, overwrite = TRUE)
+
+    # delete field domains not supported for GPKG
+    expect_false(ogr_ds_test_cap(dsn)$DeleteFieldDomain)
+    expect_false(ogr_ds_delete_field_domain(dsn, "glob_domain"))
+
+    # TODO: test on OpenFileGDB
 })
 
 test_that("info() prints output to the console", {

@@ -1,7 +1,7 @@
 /* class VSIFile
     Bindings to the GDAL VSIVirtualHandle API. Encapsulates a VSIVirtualHandle.
     Chris Toney <chris.toney at usda.gov>
-    Copyright (c) 2023-2024 gdalraster authors
+    Copyright (c) 2023-2025 gdalraster authors
 
     Requires {bit64} on the R side for its integer64 S3 type, since R does not
     have a native int64 type. Uses RcppInt64 for conversion between R double
@@ -31,8 +31,6 @@
 #include "RcppInt64"
 
 #include "cpl_vsi.h"
-
-const uint64_t VSI_L_OFFSET_MAX_R = 9223372036854775807;
 
 class VSIFile {
  public:

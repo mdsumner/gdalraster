@@ -1,6 +1,6 @@
 /* Misc. utility functions for internal use
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #ifndef SRC_RCPP_UTIL_H_
@@ -16,7 +16,7 @@
 #include <cstdint>
 #include <string>
 
-const int64_t MAX_INT_AS_R_NUMERIC = 9007199254740991;
+constexpr int64_t MAX_INT_AS_R_NUMERIC = 9007199254740991;
 
 // as defined in the bit64 package src/integer64.h
 #define NA_INTEGER64 LLONG_MIN

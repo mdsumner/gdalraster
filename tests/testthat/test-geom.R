@@ -54,16 +54,17 @@ test_that("geom functions work on wkb/wkt geometries", {
     line <- g_create("LINESTRING", line_xy, as_wkb = FALSE)
 
     # set up vector of WKT, WKB raw vector, and list of WKB raw vectors
-    wkt_vec_1 <- c(bb, bnd)
-    wkt_vec_2 <- c(pt, pt)
+    wkt_vec_1 <- c(bb, bnd, NA_character_)
+    wkt_vec_2 <- c(pt, pt, pt)
 
     bb_wkb <- g_wk2wk(bb)
     expect_true(is.raw(bb_wkb))
     pt_wkb <- g_wk2wk(pt)
     expect_true(is.raw(pt_wkb))
 
-    wkb_list_1 <- g_wk2wk(wkt_vec_1)
-    expect_true(is.list(wkb_list_1) && is.raw(wkb_list_1[[1]]))
+    expect_warning(wkb_list_1 <- g_wk2wk(wkt_vec_1))
+    expect_true(is.list(wkb_list_1) && is.raw(wkb_list_1[[1]]) &&
+                is.null(wkb_list_1[[3]]))
     wkb_list_2 <- g_wk2wk(wkt_vec_2)
     expect_true(is.list(wkb_list_2) && is.raw(wkb_list_2[[1]]))
 
@@ -73,111 +74,183 @@ test_that("geom functions work on wkb/wkt geometries", {
     expect_false(g_intersects(bnd, pt))
     expect_error(g_intersects("invalid WKT", pt))
     expect_error(g_intersects(bnd, "invalid WKT"))
+    expect_error(g_intersects(0, pt))
+    expect_error(g_intersects(bb, 0))
     # vector of WKT
-    expected_value <- c(TRUE, FALSE)
-    expect_equal(g_intersects(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(TRUE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_intersects(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_true(g_intersects(bb_wkb, pt_wkb))
     # list of WKB
+    expect_true(g_intersects(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_intersects(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_intersects(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_intersects(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_false(g_equals(bb, bnd))
     expect_error(g_equals("invalid WKT", bnd))
     expect_error(g_equals(bb, "invalid WKT"))
+    expect_error(g_equals(0, bnd))
+    expect_error(g_equals(bb, 0))
     # vector of WKT
-    expected_value <- c(FALSE, FALSE)
-    expect_equal(g_equals(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(FALSE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_equals(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_false(g_equals(bb_wkb, pt_wkb))
     # list of WKB
+    expect_false(g_equals(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_equals(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_equals(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_equals(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_false(g_disjoint(bb, bnd))
     expect_error(g_disjoint("invalid WKT", bnd))
     expect_error(g_disjoint(bb, "invalid WKT"))
+    expect_error(g_disjoint(0, bnd))
+    expect_error(g_disjoint(bb, 0))
     # vector of WKT
-    expected_value <- c(FALSE, TRUE)
-    expect_equal(g_disjoint(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(FALSE, TRUE, NA)
+    expect_warning(
+        expect_equal(g_disjoint(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_false(g_disjoint(bb_wkb, pt_wkb))
     # list of WKB
+    expect_false(g_disjoint(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_disjoint(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_disjoint(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_disjoint(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_false(g_touches(bb, bnd))
     expect_error(g_touches("invalid WKT", bnd))
     expect_error(g_touches(bb, "invalid WKT"))
+    expect_error(g_touches(0, bnd))
+    expect_error(g_touches(bb, 0))
     # vector of WKT
-    expected_value <- c(FALSE, FALSE)
-    expect_equal(g_touches(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(FALSE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_touches(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_false(g_touches(bb_wkb, pt_wkb))
     # list of WKB
+    expect_false(g_touches(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_touches(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_touches(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_touches(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_true(g_contains(bb, bnd))
     expect_error(g_contains("invalid WKT", bnd))
     expect_error(g_contains(bb, "invalid WKT"))
+    expect_error(g_contains(0, bnd))
+    expect_error(g_contains(bb, 0))
     # vector of WKT
-    expected_value <- c(TRUE, FALSE)
-    expect_equal(g_contains(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(TRUE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_contains(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_true(g_contains(bb_wkb, pt_wkb))
     # list of WKB
+    expect_true(g_contains(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_contains(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_contains(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_contains(bnd, wkb_list_2), c(FALSE, FALSE, FALSE))
 
     # WKT
     expect_false(g_within(bb, bnd))
     expect_error(g_within("invalid WKT", bnd))
     expect_error(g_within(bb, "invalid WKT"))
+    expect_error(g_within(0, bnd))
+    expect_error(g_within(bb, 0))
     # vector of WKT
-    expected_value <- c(FALSE, FALSE)
-    expect_equal(g_within(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(TRUE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_within(wkt_vec_2, wkt_vec_1), expected_value)
+    )
     # WKB
     expect_false(g_within(bb_wkb, pt_wkb))
     # list of WKB
-    expect_equal(g_within(wkb_list_1, wkb_list_2), expected_value)
+    expect_false(g_within(list(bb_wkb), list(pt_wkb)))
+    expect_equal(g_within(wkb_list_2, wkb_list_1), expected_value)
+    # unequal length
+    expect_error(g_within(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_within(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_true(g_crosses(line, bnd))
     expect_error(g_crosses("invalid WKT", bnd))
     expect_error(g_crosses(line, "invalid WKT"))
     expect_false(g_crosses(line, bb))
+    expect_error(g_crosses(0, bnd))
+    expect_error(g_crosses(line, 0))
     # vector of WKT
-    expected_value <- c(FALSE, FALSE)
-    expect_equal(g_crosses(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(FALSE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_crosses(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_false(g_crosses(bb_wkb, pt_wkb))
     # list of WKB
+    expect_false(g_crosses(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_crosses(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_crosses(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_crosses(pt, wkb_list_1), expected_value)
 
     # WKT
     expect_false(g_overlaps(bb, bnd))
     expect_error(g_overlaps("invalid WKT", bnd))
     expect_error(g_overlaps(bb, "invalid WKT"))
+    expect_error(g_overlaps(0, bnd))
+    expect_error(g_overlaps(bb, 0))
     # vector of WKT
-    expected_value <- c(FALSE, FALSE)
-    expect_equal(g_overlaps(wkt_vec_1, wkt_vec_2), expected_value)
+    expected_value <- c(FALSE, FALSE, NA)
+    expect_warning(
+        expect_equal(g_overlaps(wkt_vec_1, wkt_vec_2), expected_value)
+    )
     # WKB
     expect_false(g_overlaps(bb_wkb, pt_wkb))
     # list of WKB
+    expect_false(g_overlaps(list(bb_wkb), list(pt_wkb)))
     expect_equal(g_overlaps(wkb_list_1, wkb_list_2), expected_value)
+    # unequal length
+    expect_error(g_overlaps(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_overlaps(pt, wkb_list_1), expected_value)
 
     # buffer
     expect_equal(round(bbox_from_wkt(g_buffer(bnd, 100, as_wkb = FALSE))),
                  round(c(323694.2, 5102785.8, 326520.0, 5105029.4)))
     expect_error(g_buffer("invalid WKT", 100))
     # vector of WKT
-    res <- g_buffer(wkt_vec_1, 100)
-    expect_true(is.list(res) && length(res) == 2 && is.raw(res[[1]]))
+    expect_warning(res <- g_buffer(wkt_vec_1, 100))
+    expect_true(is.list(res) && length(res) == 3 && is.raw(res[[1]]))
     # WKB
     expect_true(is.raw(g_buffer(pt_wkb, 10)))
     # list of WKB
     res <- g_buffer(wkb_list_1, 100)
-    expect_true(is.list(res) && length(res) == 2 && is.raw(res[[1]]))
+    expect_true(is.list(res) && length(res) == 3 && is.raw(res[[1]]))
 
     # area
     expect_equal(round(g_area(bnd)), 4039645)
@@ -188,35 +261,54 @@ test_that("geom functions work on wkb/wkt geometries", {
     expect_equal(round(g_area(g_sym_difference(bb, bnd, as_wkb = FALSE))),
                  9731255)
     expect_error(g_area("invalid WKT"))
+    expect_error(g_area(NA))
+    expect_true(is.na(g_area(raw(0))))
     # vector of WKT
-    res <- g_area(wkt_vec_1)
-    expect_vector(res, numeric(), size = 2)
+    expect_warning(res <- g_area(wkt_vec_1))
+    expect_vector(res, numeric(), size = 3)
     expect_equal(round(res[2]), 4039645)
     # WKB
     expect_equal(g_area(pt_wkb), 0)
     # list of WKB
     res <- g_area(wkb_list_1)
-    expect_vector(res, numeric(), size = 2)
+    expect_vector(res, numeric(), size = 3)
     expect_equal(round(res[2]), 4039645)
 
     # distance
     expect_equal(g_distance(pt, bnd), 215.0365, tolerance = 1e-4)
-    expect_error(g_distance("invalid WKT"))
+    expect_error(g_distance("invalid WKT", bnd))
+    expect_error(g_distance(pt, "invalid WKT"))
+    expect_error(g_distance(NA, bnd))
+    expect_error(g_distance(pt, NA))
+    expect_true(is.na(g_distance(raw(0), bnd)))
+    expect_true(is.na(g_distance(pt, raw(0))))
     # vector of WKT
-    res <- g_distance(wkt_vec_1, wkt_vec_2)
+    expect_warning(res <- g_distance(wkt_vec_1, wkt_vec_2))
     expect_equal(res[2], 215.0365, tolerance = 1e-4)
     # WKB
     expect_equal(g_distance(pt_wkb, bb_wkb), 0)
     # list of WKB
     res <- g_distance(wkb_list_1, wkb_list_2)
     expect_equal(res[2], 215.0365, tolerance = 1e-4)
+    # unequal length
+    expect_error(g_distance(wkb_list_1, wkb_list_2[1:2]))
+    # one-to-many
+    expect_equal(g_distance(pt_wkb, wkb_list_1), c(0, 215.0365, NA_real_),
+                 tolerance = 1e-4)
+    expect_equal(g_distance(list(pt_wkb), wkb_list_1), c(0, 215.0365, NA_real_),
+                 tolerance = 1e-4)
 
     # length
     expect_equal(g_length(line), 3822.927, tolerance = 1e-2)
     expect_error(g_length("invalid WKT"))
-    # vector of WKT
-    res <- g_length(wkt_vec_2)
+    expect_error(g_length(NA))
+    expect_true(is.na(g_length(raw(0))))
+    # vector of WKT with missing value
+    expect_warning(
+        res <- g_length(c(wkt_vec_2, NA_character_))
+    )
     expect_equal(res[1], 0)
+    expect_true(is.na(res[4]))
     # WKB
     expect_equal(g_length(pt_wkb), 0)
     # list of WKB
@@ -229,9 +321,13 @@ test_that("geom functions work on wkb/wkt geometries", {
     names(res) <- NULL
     expect_equal(res, c(325134.9, 5103985.4), tolerance = 0.1)
     expect_error(g_centroid("invalid WKT"))
+    expect_error(g_centroid(NA))
+    res <- g_centroid(raw(0))
+    names(res) <- NULL
+    expect_equal(res, c(NA_real_, NA_real_))
     # vector of WKT
-    res <- g_centroid(wkt_vec_1)
-    expect_true(is.matrix(res) && ncol(res) == 2 && nrow(res) == 2)
+    expect_warning(res <- g_centroid(wkt_vec_1))
+    expect_true(is.matrix(res) && ncol(res) == 2 && nrow(res) == 3)
     expect_equal(colnames(res), c("x", "y"))
     colnames(res) <- NULL
     expect_equal(res[2, ], c(325134.9, 5103985.4), tolerance = 0.1)
@@ -239,7 +335,7 @@ test_that("geom functions work on wkb/wkt geometries", {
     expect_equal(g_centroid(bb_wkb), g_centroid(bb))
     # list of WKB
     res <- g_centroid(wkb_list_1)
-    expect_true(is.matrix(res) && ncol(res) == 2 && nrow(res) == 2)
+    expect_true(is.matrix(res) && ncol(res) == 2 && nrow(res) == 3)
     expect_equal(colnames(res), c("x", "y"))
     colnames(res) <- NULL
     expect_equal(res[2, ], c(325134.9, 5103985.4), tolerance = 0.1)
@@ -253,6 +349,16 @@ test_that("geom functions work on wkb/wkt geometries", {
     expect_error(g_difference(bb, "invalid WKT", as_wkb = FALSE))
     expect_error(g_sym_difference("invalid WKT", bnd, as_wkb = FALSE))
     expect_error(g_sym_difference(bb, "invalid WKT", as_wkb = FALSE))
+
+    # binary ops with empty raw vector input
+    expect_true(is.null(g_intersection(raw(0), bnd)))
+    expect_true(is.null(g_intersection(bb, raw(0))))
+    expect_true(is.null(g_union(raw(0), bnd)))
+    expect_true(is.null(g_union(bb, raw(0))))
+    expect_true(is.null(g_difference(raw(0), bnd)))
+    expect_true(is.null(g_difference(bb, raw(0))))
+    expect_true(is.null(g_sym_difference(raw(0), bnd)))
+    expect_true(is.null(g_sym_difference(bb, raw(0))))
 })
 
 test_that("g_factory functions work", {
@@ -344,6 +450,17 @@ test_that("g_factory functions work", {
     g_coll <- g_create("GEOMETRYCOLLECTION")
     expect_equal(g_wk2wk(g_coll), "GEOMETRYCOLLECTION EMPTY")
 
+    # errors/input validation
+    expect_error(g_create(c("POLYGON", "POLYGON"), pts1))
+    expect_error(g_create(1, pts1))
+    expect_error(g_create("POLYGON", "invalid_xy_data"))
+    expect_no_error(g_create("POLYGON", pts1, as_wkb = NULL))
+    expect_error(g_create("POLYGON", pts1, as_wkb = "WKB"))
+    expect_no_error(g_create("POLYGON", pts1, as_iso = NULL))
+    expect_error(g_create("POLYGON", pts1, as_iso = "ISO"))
+    expect_no_error(g_create("POLYGON", pts1, byte_order = NULL))
+    expect_error(g_create("POLYGON", pts1, byte_order = TRUE))
+
     ## add subgeometry to container
     # create empty multipoint and add geoms
     mult_pt2 <- g_create("MULTIPOINT")
@@ -377,6 +494,16 @@ test_that("g_factory functions work", {
     # multilinestring with an empty linestring inside
     geom <- "MULTILINESTRING((0 1,2 3,4 5,0 1), (0 1,2 3,4 5,0 1))"
     expect_no_error(g_add_geom(g_create("LINESTRING"), geom))
+    expect_no_error(g_add_geom(g_create("LINESTRING"), geom, as_wkb = FALSE))
+
+    # errors/input validation
+    expect_error(g_add_geom(g_create("LINESTRING"), 1))
+    expect_no_error(g_add_geom(g_create("LINESTRING"), geom, as_wkb = NULL))
+    expect_error(g_add_geom(g_create("LINESTRING"), geom, as_wkb = "WKB"))
+    expect_no_error(g_add_geom(g_create("LINESTRING"), geom, as_iso = NULL))
+    expect_error(g_add_geom(g_create("LINESTRING"), geom, as_iso = "ISO"))
+    expect_no_error(g_add_geom(g_create("LINESTRING"), geom, byte_order = NULL))
+    expect_error(g_add_geom(g_create("LINESTRING"), geom, byte_order = TRUE))
 })
 
 test_that("WKB/WKT conversion functions work", {
@@ -405,7 +532,7 @@ test_that("WKB/WKT conversion functions work", {
     rm(wkt_vec)
     expect_warning(wkt_vec <- g_wk2wk(wkb_list))
     expect_length(wkt_vec, 2)
-    expect_equal(wkt_vec[1], "")
+    expect_true(is.na(wkt_vec[1]))
     expect_true(g_equals(wkt_vec[2], g2))
 
     # test with first element not a raw vector
@@ -420,12 +547,24 @@ test_that("WKB/WKT conversion functions work", {
     rm(wkb_list)
     expect_warning(wkb_list <- g_wk2wk(wkt_vec))
     expect_length(wkb_list, 2)
-    expect_true(is.na(wkb_list[[1]]))
+    expect_true(is.null(wkb_list[[1]]))
     expect_true(g_equals(wkb_list[[2]] |> g_wk2wk(), g2))
 
     # POINT EMPTY special case
     wkt <- "POINT EMPTY"
     expect_warning(wkb <- g_wk2wk(wkt))
+
+    expect_true(is.null(g_wk2wk(NA)))
+    expect_true(is.na(g_wk2wk(NULL)))
+    expect_error(g_wk2wk(1))
+
+    # 0-length raw vector / empty string
+    expect_true(is.na(g_wk2wk(raw(0))))
+    expect_true(is.null(g_wk2wk("")))
+
+    # empty list / vector
+    expect_error(g_wk2wk(list()))
+    expect_error(g_wk2wk(character()))
 })
 
 test_that("bbox functions work", {
@@ -480,12 +619,6 @@ test_that("g_transform / bbox_transform return correct values", {
 
     bbox_wgs84 <- c(-113.28289, 46.04764, -113.22629, 46.07760)
 
-    expect_error(g_transform("invalid WKT", ds_srs, epsg_to_wkt(4326)))
-    expect_error(g_transform(bbox_to_wkt(ds_bbox), "invalid WKT",
-                             epsg_to_wkt(4326)))
-    expect_error(g_transform(bbox_to_wkt(ds_bbox), ds_srs,
-                             "invalid WKT"))
-
     bbox_test <- bbox_to_wkt(ds_bbox) |>
                    g_transform(srs_from = ds_srs,
                                srs_to = epsg_to_wkt(4326),
@@ -494,7 +627,7 @@ test_that("g_transform / bbox_transform return correct values", {
 
     expect_equal(bbox_test, bbox_wgs84, tolerance = 1e-4)
 
-    pt_xy <- matrix(c(324171, 5103034.3), nrow=1, ncol=2)
+    pt_xy <- c(324171, 5103034.3)
     pt <- g_create("POINT", pt_xy, as_wkb = FALSE)
     wkt_vec <- c(bbox_to_wkt(ds_bbox), pt)
     wkb_list <- g_wk2wk(wkt_vec)
@@ -505,15 +638,46 @@ test_that("g_transform / bbox_transform return correct values", {
     expect_vector(res, character(), size = 2)
     expect_equal(bbox_from_wkt(res[1]), bbox_wgs84, tolerance = 1e-4)
 
-    # input list of WKB raw vectors
-    res <- g_transform(wkb_list, ds_srs, epsg_to_wkt(4326))
+    # input list of WKB raw vectors with a NULL geometry
+    res <- g_transform(append(wkb_list, list(NULL)),
+                       srs_from = ds_srs,
+                       srs_to = epsg_to_wkt(4326))
     expect_true(is.list(res) &&
-                length(res) == 2 &&
+                length(res) == 3 &&
                 is.raw(res[[1]]) &&
-                is.raw(res[[2]]))
+                is.raw(res[[2]]) &&
+                is.null(res[[3]]))
     expect_equal(g_wk2wk(res[[1]]) |> bbox_from_wkt(),
                  bbox_wgs84,
                  tolerance = 1e-4)
+    # input as a single raw vector
+    res <- g_transform(wkb_list[[1]],
+                       srs_from = ds_srs,
+                       srs_to = epsg_to_wkt(4326),
+                       as_wkb = FALSE)
+    expect_equal(bbox_from_wkt(res), bbox_wgs84, tolerance = 1e-4)
+    # input of empty raw vector
+    res <- g_transform(raw(0),
+                       srs_from = ds_srs,
+                       srs_to = epsg_to_wkt(4326))
+    expect_true(is.null(res))
+    # input errors
+    expect_error(g_transform("invalid WKT", ds_srs, epsg_to_wkt(4326)))
+    expect_error(g_transform(NA, ds_srs, epsg_to_wkt(4326)))
+    expect_error(g_transform(bbox_to_wkt(ds_bbox), "invalid WKT",
+                             epsg_to_wkt(4326)))
+    expect_error(g_transform(bbox_to_wkt(ds_bbox), NULL,
+                             epsg_to_wkt(4326)))
+    expect_error(g_transform(bbox_to_wkt(ds_bbox), ds_srs,
+                             "invalid WKT"))
+    expect_error(g_transform(bbox_to_wkt(ds_bbox), ds_srs, NULL))
+    # test defaults in case arguments are nulled out
+    expect_no_error(g_transform(pt, ds_srs, epsg_to_wkt(4326),
+                                wrap_date_line = NULL, date_line_offset = NULL,
+                                traditional_gis_order = NULL, as_wkb = NULL,
+                                as_iso = NULL, byte_order = NULL,
+                                quiet = NULL))
+
 
     # bbox_transform
     skip_if(gdal_version_num() < 3040000)
@@ -530,74 +694,139 @@ test_that("geometry properties are correct", {
     expect_true(g_is_valid(g1))
     g2 <- "POLYGON ((0 0, 10 10, 10 0, 0 1))"
     expect_false(g_is_valid(g2))
+    expect_true(is.na(g_is_valid(raw(0))))
+    expect_no_error(g_is_valid(g2, quiet = NA))
+    expect_error(g_is_valid(g2, quiet = "YES"))
+    expect_error(g_is_valid(0))
 
     expect_false(g_is_empty(g1))
     g3 <- "POLYGON EMPTY"
     expect_true(g_is_empty(g3))
+    expect_true(is.na(g_is_empty(raw(0))))
+    expect_no_error(g_is_empty(g3, quiet = NULL))
+    expect_error(g_is_empty(g3, quiet = "YES"))
+    expect_error(g_is_valid(NA))
+
+    wkt_vec <- c(g1, g2, g3, NA_character_)
+    expect_warning(wkb_list <- g_wk2wk(wkt_vec))
+
+    expected_value <- c(TRUE, FALSE, TRUE, NA)
+    expect_warning(
+        expect_equal(g_is_valid(wkt_vec), expected_value)
+    )
+    expect_equal(g_is_valid(wkb_list), expected_value)
+
+    expected_value <- c(FALSE, FALSE, TRUE, NA)
+    expect_warning(
+        expect_equal(g_is_empty(wkt_vec), expected_value)
+    )
+    expect_equal(g_is_empty(wkb_list), expected_value)
 
     bb <- c(323476.1, 5101872.0,  327766.1, 5105082.0)
-    expect_equal(bbox_to_wkt(bb) |> g_name(), "POLYGON")
+    bb_wkt <- bbox_to_wkt(bb)
+    expect_equal(g_name(bb_wkt), "POLYGON")
+    expect_true(is.na(g_name(raw(0))))
+    expect_no_error(g_name(bb_wkt, quiet = NULL))
+    expect_error(g_name(bb_wkt, quiet = "YES"))
+    expect_equal(g_name(c(bb_wkt, "POLYGON EMPTY")), c("POLYGON", "POLYGON"))
     res <- bbox_to_wkt(bb) |> g_envelope()
     expect_equal(names(res), c("xmin", "xmax", "ymin", "ymax"))
     names(res) <- NULL
-    expect_equal(res, bb)
-
-    # input as vector of WKT / list of WKB
-    wkt_vec <- c(g1, g2, g3)
-    wkb_list <- g_wk2wk(wkt_vec)
-
-    expected_value <- c(TRUE, FALSE, TRUE)
-    expect_equal(g_is_valid(wkt_vec), expected_value)
-    expect_equal(g_is_valid(wkb_list), expected_value)
-
-    expected_value <- c(FALSE, FALSE, TRUE)
-    expect_equal(g_is_empty(wkt_vec), expected_value)
-    expect_equal(g_is_empty(wkb_list), expected_value)
+    expect_equal(res, c(bb[1], bb[3], bb[2], bb[4]))
+    # as WKB input
+    res <- bbox_to_wkt(bb) |> g_wk2wk() |> g_envelope()
+    expect_equal(names(res), c("xmin", "xmax", "ymin", "ymax"))
+    names(res) <- NULL
+    expect_equal(res, c(bb[1], bb[3], bb[2], bb[4]))
 
     # 3D/measured
     # 2D
     pt1 <- g_create("POINT", c(1, 9))
     expect_false(g_is_3D(pt1))
+    expect_false(g_is_3D(g_wk2wk(pt1)))
+    expect_equal(g_is_3D(list(pt1, pt1)), c(FALSE, FALSE))
+    expect_equal(g_is_3D(list(pt1, pt1) |> g_wk2wk()), c(FALSE, FALSE))
+    expect_true(is.na(g_is_3D(raw(0))))
     expect_false(g_is_measured(pt1))
+    expect_false(g_is_measured(g_wk2wk(pt1)))
+    expect_equal(g_is_measured(list(pt1, pt1)), c(FALSE, FALSE))
+    expect_equal(g_is_measured(list(pt1, pt1) |> g_wk2wk()), c(FALSE, FALSE))
+    expect_true(is.na(g_is_measured(raw(0))))
     # xyz
     pt2 <- g_create("POINT", c(1, 9, 0))
     expect_true(g_is_3D(pt2))
+    expect_true(g_is_3D(g_wk2wk(pt2)))
+    expect_equal(g_is_3D(list(pt2, pt2)), c(TRUE, TRUE))
+    expect_equal(g_is_3D(list(pt2, pt2) |> g_wk2wk()), c(TRUE, TRUE))
     expect_false(g_is_measured(pt2))
+    expect_false(g_is_measured(g_wk2wk(pt2)))
+    expect_equal(g_is_measured(list(pt2, pt2)), c(FALSE, FALSE))
+    expect_equal(g_is_measured(list(pt2, pt2) |> g_wk2wk()), c(FALSE, FALSE))
     # xyzm
     pt3 <- g_create("POINT", c(1, 9, 0, 2000))
     expect_true(g_is_3D(pt3))
+    expect_true(g_is_3D(g_wk2wk(pt3)))
+    expect_equal(g_is_3D(list(pt3, pt3)), c(TRUE, TRUE))
+    expect_equal(g_is_3D(list(pt3, pt3) |> g_wk2wk()), c(TRUE, TRUE))
     expect_true(g_is_measured(pt3))
+    # Note: as_iso for POINT ZM WKT
+    expect_true(g_is_measured(g_wk2wk(pt3, as_iso = TRUE)))
+    expect_equal(g_is_measured(list(pt3, pt3)), c(TRUE, TRUE))
+    # Note: as_iso for POINT ZM WKT
+    expect_equal(g_is_measured(list(pt3, pt3) |> g_wk2wk(as_iso = TRUE)),
+                 c(TRUE, TRUE))
+
+    # g_is_ring
+    ring <- "LINESTRING(0 0,0 1,1 1,0 0)"
+    expect_true(g_is_ring(ring))
+    expect_true(g_is_ring(g_wk2wk(ring)))
+    expect_equal(g_is_ring(c(ring, ring)), c(TRUE, TRUE))
+    expect_equal(g_is_ring(c(ring, ring) |> g_wk2wk()), c(TRUE, TRUE))
+    expect_true(is.na(g_is_ring(raw(0))))
 
     # g_envelope
-    bb1_2 <- c(0, 0, 10, 10)
-    bb3 <- c(0, 0, 0, 0)
-    bb_mat <- rbind(bb1_2, bb1_2, bb3)
-    colnames(bb_mat) <- c("xmin", "xmax", "ymin", "ymax")
-    dimnames(bb_mat) <- NULL
-    names(bb1_2) <- c("xmin", "xmax", "ymin", "ymax")
-    names(bb3) <- c("xmin", "xmax", "ymin", "ymax")
-    expect_equal(g_envelope(g1), bb1_2)
-    expect_equal(g_envelope(g2), bb1_2)  # same as g1 but g2 is invalid geom
-    expect_equal(g_envelope(g3), bb3)
+    env1_2 <- c(0, 10, 0, 10)
+    env3 <- c(0, 0, 0, 0)
+    env_mat <- rbind(env1_2, env1_2, env3)
+    colnames(env_mat) <- c("xmin", "xmax", "ymin", "ymax")
+    dimnames(env_mat) <- NULL
+    names(env1_2) <- c("xmin", "xmax", "ymin", "ymax")
+    names(env3) <- c("xmin", "xmax", "ymin", "ymax")
+    expect_equal(g_envelope(g1), env1_2)
+    expect_equal(g_envelope(g2), env1_2)  # same as g1 but g2 is invalid geom
+    expect_equal(g_envelope(g3), env3)
     wkt_vec <- c(g1, g2, g3)
     res <- g_envelope(wkt_vec)
     dimnames(res) <- NULL
-    expect_equal(res, bb_mat)
+    expect_equal(res, env_mat)
     wkb_list <- g_wk2wk(wkt_vec)
     res <- g_envelope(wkb_list)
     dimnames(res) <- NULL
-    expect_equal(res, bb_mat)
+    expect_equal(res, env_mat)
+    # 3D envelope
+    wkt_3d <- "MULTIPOLYGON(((1 2 3,-1 2 3,-1 -2 3,-1 2 3,1 2 3),(0.1 0.2 0.3,-0.1 0.2 0.3,-0.1 -0.2 0.3,-0.1 0.2 0.3,0.1 0.2 0.3)),((10 20 -30,-10 20 -30,-10 -20 -30,-10 20 -30,10 20 -30)))"
+    env3d <- c(-10, 10, -20, 20, -30, 3.0)
+    names(env3d) <- c("xmin", "xmax", "ymin", "ymax", "zmin", "zmax")
+    res <- g_envelope(wkt_3d, as_3d = TRUE)
+    expect_equal(res, env3d)
+    # as_3d = TRUE on 2D geom
+    res <- g_envelope(g1, as_3d = TRUE)
+    names(res) <- NULL
+    expect_equal(res, c(0, 10, 0, 10, 0, 0))
 
-
+    # g_summary requires GDAL >= 3.7
     skip_if(gdal_version_num() < 3070000 )
 
     g <- "MULTIPOLYGON (((10 0,0 0,5 5,10 0)),((10 10,5 5,0 10,10 10)))"
     expected_value <-
         "MULTIPOLYGON : 2 geometries: POLYGON : 4 points POLYGON : 4 points"
     expect_equal(g_summary(g), expected_value)
+    expect_equal(g_summary(g_wk2wk(g)), expected_value)
 
     expect_vector(g_summary(wkt_vec), character(), size = 3)
     expect_vector(g_summary(wkb_list), character(), size = 3)
+
+    expect_true(is.na(g_summary(raw(0))))
 })
 
 test_that("geometry binary predicates/ops return correct values", {
@@ -631,6 +860,20 @@ test_that("geometry binary predicates/ops return correct values", {
     expect_false(g_overlaps(bb, bnd_disjoint))
     expect_false(g_overlaps(bb, bnd))
 
+    # test NA return if either input is an empty raw vector
+    expect_true(is.na(g_intersects(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_intersects(bb, raw(0))))
+    expect_true(is.na(g_equals(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_equals(bb, raw(0))))
+    expect_true(is.na(g_disjoint(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_disjoint(bb, raw(0))))
+    expect_true(is.na(g_contains(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_contains(bb, raw(0))))
+    expect_true(is.na(g_within(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_within(bb, raw(0))))
+    expect_true(is.na(g_overlaps(raw(0), bnd_overlaps)))
+    expect_true(is.na(g_overlaps(bb, raw(0))))
+
     linestr <- "LINESTRING (324467.3 5104814.2, 323909.4 5104365.4)"
     expect_true(g_touches(bnd, linestr))
     expect_false(g_touches(bb, linestr))
@@ -654,28 +897,152 @@ test_that("geometry binary predicates/ops return correct values", {
     res <- g_intersection(g_list1, g_list2)
     expect_true(g_equals(res[[1]], "POLYGON ((5 5,5 0,0 0,5 5))"))
     expect_true(g_is_empty(res[[2]]))
+    # same but testing defaults in case any arguments are nulled out
+    res <- g_intersection(g_list1, g_list2,
+                          as_wkb = NULL, as_iso = NULL,
+                          byte_order = NULL, quiet = NULL)
+    expect_true(g_equals(res[[1]], "POLYGON ((5 5,5 0,0 0,5 5))"))
+    expect_true(g_is_empty(res[[2]]))
 
     res <- g_union(g_list1, g_list2)
+    expect_true(g_equals(res[[1]], "POLYGON ((5 5,10 10,10 0,5 0,0 0,5 5))"))
+    expect_false(g_is_empty(res[[2]]))
+    # same but testing defaults in case any arguments are nulled out
+    res <- g_union(g_list1, g_list2,
+                   as_wkb = NULL, as_iso = NULL,
+                   byte_order = NULL, quiet = NULL)
     expect_true(g_equals(res[[1]], "POLYGON ((5 5,10 10,10 0,5 0,0 0,5 5))"))
     expect_false(g_is_empty(res[[2]]))
 
     res <- g_difference(g_list1, g_list2)
     expect_true(g_equals(res[[1]], "POLYGON ((10 10,10 0,5 0,5 5,10 10))"))
     expect_false(g_is_empty(res[[2]]))
+    # same but testing defaults in case any arguments are nulled out
+    res <- g_difference(g_list1, g_list2,
+                        as_wkb = NULL, as_iso = NULL,
+                        byte_order = NULL, quiet = NULL)
+    expect_true(g_equals(res[[1]], "POLYGON ((10 10,10 0,5 0,5 5,10 10))"))
+    expect_false(g_is_empty(res[[2]]))
 
     res <- g_sym_difference(g_list1, g_list2)
     expect_true(g_equals(res[[1]], "POLYGON ((10 10,10 0,5 0,5 5,10 10))"))
     expect_equal(g_name(res[[2]]), "MULTIPOLYGON")
+    # same but testing defaults in case any arguments are nulled out
+    res <- g_sym_difference(g_list1, g_list2,
+                            as_wkb = NULL, as_iso = NULL,
+                            byte_order = NULL, quiet = NULL)
+    expect_true(g_equals(res[[1]], "POLYGON ((10 10,10 0,5 0,5 5,10 10))"))
+    expect_equal(g_name(res[[2]]), "MULTIPOLYGON")
 })
 
-test_that("g_buffer returns correct values", {
+test_that("unary ops return correct values", {
+    # g_buffer
     pt <- "POINT (0 0)"
-    expect_error(g_buffer(wkt = "invalid WKT", dist = 10))
+    expect_error(g_buffer(geom = "invalid WKT", dist = 10))
     bb <- bbox_from_wkt(g_buffer(pt, dist = 10, as_wkb = FALSE))
     expect_equal(bb, c(-10, -10,  10,  10))
-})
+    # same but testing defaults in case any arguments are nulled out
+    bb <- bbox_from_wkt(g_buffer(pt, dist = 10, as_wkb = FALSE,
+                                 as_iso = NULL, byte_order = NULL,
+                                 quiet = NULL))
+    expect_equal(bb, c(-10, -10,  10,  10))
+    expect_error(g_buffer(pt, dist = NULL))
+    # test defaults in case any arguments are nulled out
+    expect_no_error(g_buffer(pt, dist = 10, quad_segs = NULL, as_wkb = NULL,
+                             as_iso = NULL, byte_order = NULL, quiet = NULL))
+    # empty raw vector
+    expect_true(is.null(g_buffer(raw(0), dist = 10)))
 
-test_that("g_simplify returns correct values", {
+    # g_boundary
+    g1 <- "POINT(1 1)"
+    expect_equal(g_boundary(g1, as_wkb = FALSE), "GEOMETRYCOLLECTION EMPTY")
+    g2 <- "MULTIPOINT((0 0),(1 1))"
+    expect_equal(g_boundary(g2, as_wkb = FALSE), "GEOMETRYCOLLECTION EMPTY")
+    g3 <- "LINESTRING(0 0, 1 1, 2 2, 3 2, 4 2)"
+    g_bnd <- g_boundary(g3)
+    expect_equal(g_name(g_bnd), "MULTIPOINT")
+    expect_equal(nrow(g_coords(g_bnd)), 2)
+    g4 <- "POLYGON((0 0,1 1,1 0,0 0))"
+    g_bnd <- g_boundary(g4)
+    expect_equal(g_name(g_bnd), "LINESTRING")
+    expect_true(nrow(g_coords(g_bnd)) > 1)
+    # same but testing defaults in case any arguments are nulled out
+    g_bnd <- g_boundary(g4, as_wkb = NULL, as_iso = NULL, byte_order = NULL,
+                        quiet = NULL)
+    expect_equal(g_name(g_bnd), "LINESTRING")
+    expect_true(nrow(g_coords(g_bnd)) > 1)
+    # empty raw vector
+    expect_true(is.null(g_boundary(raw(0))))
+    # vector/list input
+    # character vector of wkt input
+    expect_warning(
+        g_bnd <- g_boundary(c(g1, g2, g3, g4, NA))
+    )
+    expected_names <- c("GEOMETRYCOLLECTION", "GEOMETRYCOLLECTION",
+                        "MULTIPOINT", "LINESTRING", NA)
+    expect_equal(g_name(g_bnd), expected_names)
+    # list of wkb input
+    expect_warning(
+        g_bnd <- g_boundary(g_wk2wk(c(g1, g2, g3, g4, NA)))
+    )
+    expect_equal(g_name(g_bnd), expected_names)
+
+    # g_convex_hull
+    g1 <- "GEOMETRYCOLLECTION(POINT(0 1), POINT(0 0), POINT(1 0), POINT(1 1))"
+    g_conv_hull <- g_convex_hull(g1, as_wkb = FALSE)
+    g_expect <- "POLYGON ((0 0,0 1,1 1,1 0,0 0))"
+    expect_equal(g_conv_hull, g_expect)
+    # wkb input
+    g_conv_hull <- g_convex_hull(g_wk2wk(g1), as_wkb = FALSE)
+    expect_equal(g_conv_hull, g_expect)
+    # same but testing defaults in case any arguments are nulled out
+    g_conv_hull <- g_convex_hull(g_wk2wk(g1), as_wkb = FALSE, as_iso = NULL,
+                                 byte_order = NULL, quiet = NULL)
+    expect_equal(g_conv_hull, g_expect)
+    # empty raw vector
+    expect_true(is.null(g_convex_hull(raw(0))))
+    # vector/list input
+    # character vector of wkt input
+    wkt_vec <- c(g1, g1, NA)
+    expect_warning(g_conv_hull <- g_convex_hull(wkt_vec, as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FASLE
+    expect_equal(g_conv_hull, c(g_expect, g_expect, NA))
+    # list of wkb input
+    expect_warning(wkb_list <- g_wk2wk(wkt_vec))
+    expect_warning(g_conv_hull <- g_convex_hull(wkb_list, as_wkb = FALSE))
+    expect_equal(g_conv_hull, c(g_expect, g_expect, NA))
+
+    # g_delaunay_triangulation
+    g1 <- "MULTIPOINT(0 0,0 1,1 1,1 0)"
+    g_dt <- g_delaunay_triangulation(g1, as_wkb = FALSE)
+    g_expect <- "GEOMETRYCOLLECTION (POLYGON ((0 1,0 0,1 0,0 1)),POLYGON ((0 1,1 0,1 1,0 1)))"
+    expect_equal(g_dt, g_expect)
+    # wkb input
+    g_dt <- g_delaunay_triangulation(g_wk2wk(g1), as_wkb = FALSE)
+    expect_equal(g_dt, g_expect)
+    # same but testing defaults in case any arguments are nulled out
+    g_dt <- g_delaunay_triangulation(g_wk2wk(g1), tolerance = NULL,
+                                     only_edges = NULL, as_wkb = FALSE,
+                                     as_iso = NULL, byte_order = NULL,
+                                     quiet = NULL)
+    expect_equal(g_dt, g_expect)
+    # empty raw vector
+    expect_true(is.null(g_delaunay_triangulation(raw(0))))
+    # vector/list input
+    g_expect <- c(g_expect, g_expect, NA)
+    g2 <- "LINESTRING(0 0,1 1,10 0)"
+    # character vector of wkt input
+    expect_warning(g_dt <- g_delaunay_triangulation(c(g1, g1, NA),
+                                                    as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FASLE
+    expect_equal(g_dt, g_expect)
+    # list of wkb input
+    expect_warning(g_dt <- g_delaunay_triangulation(g_wk2wk(c(g1, g1, NA)),
+                                                    as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FALSE
+    expect_equal(g_dt, g_expect)
+
+    # g_simplify
     g1 <- "LINESTRING(0 0,1 0,10 0)"
     g_simp <- g_simplify(g1, tolerance = 5, as_wkb = FALSE)
     g_expect <- "LINESTRING (0 0,10 0)"
@@ -683,18 +1050,29 @@ test_that("g_simplify returns correct values", {
     # wkb input
     g_simp <- g_simplify(g_wk2wk(g1), tolerance = 5, as_wkb = FALSE)
     expect_equal(g_simp, g_expect)
+    # same but testing defaults in case optional arguments are nulled out
+    g_simp <- g_simplify(g_wk2wk(g1), tolerance = 5, preserve_topology = NULL,
+                         as_wkb = FALSE, as_iso = NULL, byte_order = NULL,
+                         quiet = NULL)
+    expect_equal(g_simp, g_expect)
     # preserve_topology = FALSE
     g_simp <- g_simplify(g1, tolerance = 5, preserve_topology = FALSE,
                          as_wkb = FALSE)
     expect_equal(g_simp, g_expect)
+    # empty raw vector
+    expect_true(is.null(g_simplify(raw(0), tolerance = 5)))
     # vector/list input
-    g_expect <- rep(g_expect, 2)
+    g_expect <- c(g_expect, g_expect, NA)
     g2 <- "LINESTRING(0 0,1 1,10 0)"
     # character vector of wkt input
-    g_simp <- g_simplify(c(g1, g2), tolerance = 5, as_wkb = FALSE)
+    expect_warning(g_simp <- g_simplify(c(g1, g2, NA), tolerance = 5,
+                                        as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FALSE
     expect_equal(g_simp, g_expect)
     # list of wkb input
-    g_simp <- g_simplify(g_wk2wk(c(g1, g2)), tolerance = 5, as_wkb = FALSE)
+    expect_warning(g_simp <- g_simplify(g_wk2wk(c(g1, g2, NA)), tolerance = 5,
+                                        as_wkb = FALSE)) |>
+        expect_warning()  # for as_wkb = FALSE
     expect_equal(g_simp, g_expect)
 })
 
@@ -748,6 +1126,8 @@ test_that("geodesic measures are correct", {
     a <- g_geodesic_area(g2, "EPSG:32631")
     expect_equal(a, 4068384291.8911743, tolerance = 1e4)
 
+    expect_true(is.na(g_geodesic_area(raw(0), "EPSG:4326")))
+
 
     skip_if(gdal_version_num() < 3100000)
 
@@ -780,6 +1160,8 @@ test_that("geodesic measures are correct", {
                       traditional_gis_order = FALSE)
     l <- g_geodesic_length(g2, "EPSG:32631")
     expect_equal(l, 317885.78639964823, tolerance = 1e4)
+
+    expect_true(is.na(g_geodesic_length(raw(0), "EPSG:4326")))
 })
 
 test_that("make_valid works", {
@@ -793,12 +1175,21 @@ test_that("make_valid works", {
     # valid to valid
     wkt1 <- "POINT (0 0)"
     expect_no_error(wkb1 <- g_make_valid(wkt1))
+    expect_no_error(wkb1 <- g_make_valid(wkt1, as_wkb = FALSE))
+    expect_no_error(wkb1 <- g_make_valid(g_wk2wk(wkt1)))
+    expect_no_error(wkb1 <- g_make_valid(wkt1,
+                                         method = NULL,
+                                         keep_collapsed = NULL,
+                                         as_wkb = NULL,
+                                         as_iso = NULL,
+                                         byte_order = NULL,
+                                         quiet = NULL))
     expect_true(g_equals(g_wk2wk(wkb1), wkt1))
 
     # invalid - error
     wkt2 <- "LINESTRING (0 0)"
     expect_warning(wkb2 <- g_make_valid(wkt2))
-    expect_true(is.na(wkb2))
+    expect_true(is.null(wkb2))
 
     # invalid to valid
     wkt3 <- "POLYGON ((0 0,10 10,0 10,10 0,0 0))"
@@ -815,23 +1206,99 @@ test_that("make_valid works", {
     expect_true(g_equals(g_wk2wk(wkb4), expected_wkt4))
 
     # vector of WKT input
-    wkt_vec <- c(wkt1, wkt2, wkt3, wkt4)
-    expect_warning(wkb_list <- g_make_valid(wkt_vec, method = "STRUCTURE"))
+    wkt_vec <- c(wkt1, wkt2, wkt3, wkt4, NA)
+    expect_warning(wkb_list <- g_make_valid(wkt_vec, method = "STRUCTURE",
+                                            quiet = TRUE))
     expect_equal(length(wkb_list), length(wkt_vec))
-    expect_true(is.na(wkb_list[[2]]))
+    expect_true(is.null(wkb_list[[2]]))
+    expect_true(is.null(wkb_list[[5]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
 
     # list of WKB input
     rm(wkb_list)
     expect_warning(wkb_list <- g_make_valid(g_wk2wk(wkt_vec),
-                                            method = "STRUCTURE"))
+                                            method = "STRUCTURE",
+                                            quiet = TRUE))
     expect_equal(length(wkb_list), length(wkt_vec))
-    expect_true(is.na(wkb_list[[2]]))
+    expect_true(is.null(wkb_list[[2]]))
+    expect_true(is.null(wkb_list[[5]]))
     expect_true(g_equals(g_wk2wk(wkb_list[[4]]), expected_wkt4))
+})
+
+test_that("g_set_3D / g_set_measured work", {
+    pt_xyzm <- g_create("POINT", c(1, 9, 100, 2000))
+    expect_true(g_is_3D(pt_xyzm))
+    expect_true(g_is_measured(pt_xyzm))
+
+    # WKB input
+    expect_false(g_set_3D(pt_xyzm, is_3d = FALSE) |> g_is_3D())
+    expect_false(g_set_measured(pt_xyzm, is_measured = FALSE) |>
+                     g_is_measured())
+    # input should be unchanged if is_3d / is_measured = TRUE
+    pt_out <- g_set_3D(pt_xyzm, is_3d = TRUE)
+    expect_true(g_is_3D(pt_out))
+    expect_true(g_equals(pt_xyzm, pt_out))
+    pt_out <- g_set_measured(pt_xyzm, is_measured = TRUE)
+    expect_true(g_is_measured(pt_out))
+    expect_true(g_equals(pt_xyzm, pt_out))
+    # as ISO
+    expect_false(g_set_3D(pt_xyzm, is_3d = FALSE, as_iso = TRUE) |> g_is_3D())
+    expect_false(g_set_measured(pt_xyzm, is_measured = FALSE, as_iso = TRUE) |>
+                     g_is_measured())
+    # list of WKB
+    wkb <- list(pt_xyzm, pt_xyzm)
+    res <- g_set_3D(wkb, is_3d = FALSE) |> g_is_3D()
+    expect_equal(res, c(FALSE, FALSE))
+    res <- g_set_measured(wkb, is_measured = FALSE) |> g_is_measured()
+    expect_equal(res, c(FALSE, FALSE))
+    # WKT input
+    expect_false(g_set_3D(g_wk2wk(pt_xyzm), is_3d = FALSE) |> g_is_3D())
+    expect_false(g_set_measured(g_wk2wk(pt_xyzm), is_measured = FALSE) |>
+                     g_is_measured())
+    # as ISO
+    expect_false(g_set_3D(g_wk2wk(pt_xyzm), is_3d = FALSE, as_iso = TRUE) |>
+                     g_is_3D())
+    expect_false(g_set_measured(g_wk2wk(pt_xyzm), is_measured = FALSE,
+                                as_iso =  TRUE) |>
+                     g_is_measured())
+    # vector of WKT
+    wkt <- c(g_wk2wk(pt_xyzm), g_wk2wk(pt_xyzm))
+    res <- g_set_3D(wkt, is_3d = FALSE) |> g_is_3D()
+    expect_equal(res, c(FALSE, FALSE))
+    res <- g_set_measured(wkt, is_measured = FALSE) |> g_is_measured()
+    expect_equal(res, c(FALSE, FALSE))
+
+    # input validation
+    expect_error(g_set_3D(pt_xyzm))
+    expect_error(g_set_measured(pt_xyzm))
+    expect_no_error(g_set_3D(pt_xyzm, is_3d = FALSE, as_wkb = NULL))
+    expect_no_error(g_set_measured(pt_xyzm, is_measured = FALSE, as_wkb = NULL))
+    expect_error(g_set_3D(pt_xyzm, is_3d = FALSE, as_wkb = c(TRUE, FALSE)))
+    expect_error(g_set_measured(pt_xyzm, is_measured = FALSE,
+                 as_wkb = c(TRUE, FALSE)))
+    expect_no_error(g_set_3D(pt_xyzm, is_3d = FALSE, as_iso = NULL))
+    expect_no_error(g_set_measured(pt_xyzm, is_measured = FALSE, as_iso = NULL))
+    expect_error(g_set_3D(pt_xyzm, is_3d = FALSE, as_iso = c(TRUE, FALSE)))
+    expect_error(g_set_measured(pt_xyzm, is_measured = FALSE,
+                 as_iso = c(TRUE, FALSE)))
+    expect_no_error(g_set_3D(pt_xyzm, is_3d = FALSE, byte_order = NULL))
+    expect_no_error(g_set_measured(pt_xyzm, is_measured = FALSE,
+                                   byte_order = NULL))
+    expect_error(g_set_3D(pt_xyzm, is_3d = FALSE, byte_order = "invalid"))
+    expect_error(g_set_measured(pt_xyzm, is_measured = FALSE,
+                                byte_order = "invalid"))
+    expect_no_error(g_set_3D(pt_xyzm, is_3d = FALSE, quiet = NULL))
+    expect_no_error(g_set_measured(pt_xyzm, is_measured = FALSE, quiet = NULL))
+    expect_error(g_set_3D(pt_xyzm, is_3d = FALSE, quiet = "invalid"))
+    expect_error(g_set_measured(pt_xyzm, is_measured = FALSE,
+                                quiet = "invalid"))
 })
 
 test_that("swap xy works", {
     g <- "GEOMETRYCOLLECTION(POINT(1 2),LINESTRING(1 2,2 3),POLYGON((0 0,0 1,1 1,0 0)))"
+    expect_no_error(g_swap_xy(g))
+    expect_no_error(g_swap_xy(g, as_wkb = NULL, as_iso = NULL,
+                              byte_order = NULL, quiet = NULL))
     g_swapped <- g_swap_xy(g, as_wkb = FALSE)
     g_expect <- "GEOMETRYCOLLECTION (POINT (2 1),LINESTRING (2 1,3 2),POLYGON ((0 0,1 0,1 1,0 0)))"
     expect_equal(g_swapped, g_expect)
@@ -841,12 +1308,16 @@ test_that("swap xy works", {
     # vector/list input
     g1 <- "POINT(1 2)"
     g2 <- "POINT(2 3)"
-    g_expect <- c("POINT (2 1)", "POINT (3 2)")
+    g_expect <- c("POINT (2 1)", "POINT (3 2)", NA)
     # character vector of wkt input
-    g_swapped <- g_swap_xy(c(g1, g2), as_wkb = FALSE)
+    expect_warning(g_swapped <- g_swap_xy(c(g1, g2, NA), as_wkb = FALSE,
+                                          quiet = TRUE)) |>
+        expect_warning()  # for as_wkb = FALSE
     expect_equal(g_swapped, g_expect)
     # list of wkb input
-    g_swapped <- g_swap_xy(g_wk2wk(c(g1, g2)), as_wkb = FALSE)
+    expect_warning(g_swapped <- g_swap_xy(g_wk2wk(c(g1, g2, NA)), as_wkb = FALSE,
+                                          quiet = TRUE)) |>
+        expect_warning()  # for as_wkb = FALSE
     expect_equal(g_swapped, g_expect)
 })
 

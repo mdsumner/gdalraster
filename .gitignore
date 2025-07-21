@@ -9,8 +9,12 @@ errors.txt
 TODO.txt
 docs
 inst/doc
+inst/gdal
+inst/proj
 *.gcda
 *.gcno
 *.gcov
 cran-comments.md
+CRAN-SUBMISSION
 .vscode
+.devcontainer

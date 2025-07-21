@@ -9,12 +9,18 @@
 #' `GDALVector` provides an interface for accessing a vector layer in a GDAL
 #' dataset and calling methods on the underlying `OGRLayer` object.
 #' An object of class `GDALVector` persists an open connection to the dataset,
-#' and exposes methods to: retrieve layer information, set attribute and
-#' spatial filters, traverse and read feature data by traditional row-based
-#' cursor (including an analog of `DBI::dbFetch()`), read via column-oriented
-#' Arrow Array stream, write new features in a layer, edit/overwrite existing
-#' features, upsert, and delete features, and perform data manipulation within
-#' transactions.
+#' and exposes methods to:
+#' * retrieve layer information
+#' * set attribute and spatial filters
+#' * set a list of ignored or selected columns
+#' * traverse and read feature data by traditional row-based cursor, including
+#' an analog of `DBI::dbFetch()`
+#' * read via column-oriented Arrow Array stream
+#' * write new features in a layer
+#' * edit/overwrite existing features
+#' * upsert
+#' * delete features
+#' * perform data manipulation within transactions.
 #'
 #' `GDALVector` is a C++ class exposed directly to R (via `RCPP_EXPOSED_CLASS`).
 #' Fields and methods of the class are accessed using the `$` operator. **Note
@@ -329,9 +335,11 @@
 #' See [ogr_define] for details of the field and feature class definitions.
 #'
 #' \code{$getFieldDomain(domain_name)}\cr
-#' Returns a list containing specifications of the OGR field domain with the
+#' Returns a list containing the definition of the OGR field domain with the
 #' passed `domain_name`, or `NULL` if `domain_name` is not found.
-#' Some formats support the use of field domains that describe the valid values
+#' See [ogr_define] for specification of the list containing a field domain
+#' definition.
+#' Some formats support the use of field domains which describe the valid values
 #' that can be stored in a given attribute field, e.g., coded values that are
 #' present in a specified enumeration, values constrained to a specified
 #' range, or values that must match a specified pattern.
@@ -941,19 +949,16 @@
 #'   lyr <- new(GDALVector, dsn, sql)
 #'
 #'   stream <- lyr$getArrowStream()
-#'   batch <- stream$get_next()
 #'
 #'   # disable a warning for the example that can be safely ignored here
 #'   options(nanoarrow.warn_unregistered_extension = FALSE)
 #'
-#'   d <- as.data.frame(batch)
-#'   head(d) |> print()
+#'   # pull all the batches into a data frame
+#'   d <- as.data.frame(stream)
 #'
-#'   # the geometry column is a list column of WKB raw vectors
+#'   # the geometry column is a list column of WKB raw vectors, which can be
+#'   # passed to the Geometry API g_*() functions, e.g.,
 #'   g_centroid(d$geom) |> print()
-#'
-#'   # the last batch is NULL
-#'   stream$get_next() |> print()
 #'
 #'   # release the stream when finished
 #'   stream$release()

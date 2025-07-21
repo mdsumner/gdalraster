@@ -1,6 +1,6 @@
 /* Functions for coordinate transformation using PROJ via GDAL headers
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #ifndef SRC_TRANSFORM_H_
@@ -25,11 +25,10 @@ Rcpp::NumericMatrix transform_xy(const Rcpp::RObject &pts,
                                  const std::string &srs_from,
                                  const std::string &srs_to);
 
-Rcpp::NumericVector transform_bounds(const Rcpp::NumericVector &bbox,
-                                     const std::string &srs_from,
-                                     const std::string &srs_to,
-                                     int densify_pts,
-                                     bool traditional_gis_order);
+SEXP transform_bounds(const Rcpp::RObject &bbox,
+                      const std::string &srs_from,
+                      const std::string &srs_to,
+                      int densify_pts,
+                      bool traditional_gis_order);
 
 #endif  // SRC_TRANSFORM_H_
-

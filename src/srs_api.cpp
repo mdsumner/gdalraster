@@ -2,12 +2,14 @@
    Wraps a subset of the GDAL Spatial Reference System C API (ogr_srs_api.h)
 
    Chris Toney <chris.toney at usda.gov>
-   Copyright (c) 2023-2024 gdalraster authors
+   Copyright (c) 2023-2025 gdalraster authors
 */
 
 #include "srs_api.h"
 
 #include <vector>
+
+#include "transform.h"
 
 #include "cpl_port.h"
 #include "cpl_conv.h"
@@ -16,10 +18,10 @@
 #include "ogrsf_frmts.h"
 
 
-//' Convert spatial reference definitions to OGC Well Known Text
+//' Convert spatial reference definitions to OGC WKT or PROJJSON
 //'
 //' These functions convert various spatial reference formats to Well Known
-//' Text (WKT).
+//' Text (WKT) or PROJJSON.
 //'
 //' @name srs_convert
 //'
@@ -34,6 +36,11 @@
 //' try to deduce the format, and then export it to WKT.
 //' Wrapper for `OSRSetFromUserInput()` in the GDAL Spatial Reference System
 //' API with output to WKT.
+//'
+//' `srs_to_projjson()` accepts a spatial reference system (SRS) definition in
+//' any of the formats supported by `srs_to_wkt()`, and converts into PROJJSON
+//' format. Wrapper for `OSRExportToPROJJSON()` in the GDAL Spatial Reference
+//' System API.
 //'
 //' The input SRS may take the following forms:
 //'   * WKT - to convert WKT versions (see below)
@@ -65,22 +72,39 @@
 //' @param epsg Integer EPSG code.
 //' @param srs Character string containing an SRS definition in various
 //' formats (see Details).
-//' @param pretty Logical. `TRUE` to return a nicely formatted WKT string
+//' @param pretty Logical value. `TRUE` to return a nicely formatted WKT string
 //' for display to a person. `FALSE` for a regular WKT string (the default).
 //' @return Character string containing OGC WKT.
+//' @param gcs_only Logical value. `TRUE` to return only the definition of the
+//' GEOGCS node of the input `srs`. Defaults to `FALSE` (see Note).
+//' @param multiline Logical value. `TRUE` for PROJJSON multiline output (the
+//' default).
+//' @param indent_width Integer value. Defaults to `2`. Only used if
+//' `multiline = TRUE` for PROJJSON output.
+//' @param schema Character string containing URL to PROJJSON schema. Can be
+//' set to empty string to disable it.
+//'
+//' @note
+//' Setting `gcs_only = TRUE` in `srs_to_wkt()` is a wrapper of
+//' `OSRCloneGeogCS()` in the GDAL API. The returned WKT will be for the GEOGCS
+//' node of the input `srs`.
 //'
 //' @seealso
 //' [srs_query]
 //'
 //' @examples
 //' epsg_to_wkt(5070)
-//' writeLines(epsg_to_wkt(5070, pretty=TRUE))
+//' writeLines(epsg_to_wkt(5070, pretty = TRUE))
 //'
 //' srs_to_wkt("NAD83")
-//' writeLines(srs_to_wkt("NAD83", pretty=TRUE))
+//' writeLines(srs_to_wkt("NAD83", pretty = TRUE))
 //' set_config_option("OSR_WKT_FORMAT", "WKT2")
-//' writeLines(srs_to_wkt("NAD83", pretty=TRUE))
+//' writeLines(srs_to_wkt("NAD83", pretty = TRUE))
 //' set_config_option("OSR_WKT_FORMAT", "")
+//'
+//' srs_to_wkt("EPSG:5070", gcs_only = TRUE)
+//'
+//' srs_to_projjson("NAD83") |> writeLines()
 // [[Rcpp::export]]
 std::string epsg_to_wkt(int epsg, bool pretty = false) {
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
@@ -112,13 +136,20 @@ std::string epsg_to_wkt(int epsg, bool pretty = false) {
     return wkt;
 }
 
+//' @noRd
+std::string srs_to_wkt(const std::string &srs, bool pretty) {
+    return srs_to_wkt(srs, pretty, false);
+}
+
 //' @rdname srs_convert
 // [[Rcpp::export]]
-std::string srs_to_wkt(const std::string &srs, bool pretty = false) {
+std::string srs_to_wkt(const std::string &srs, bool pretty = false,
+                       bool gcs_only = false) {
     if (srs == "")
         return "";
 
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+    OGRSpatialReferenceH hSRS_out = nullptr;
     char *pszSRS_WKT = nullptr;
 
     if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
@@ -127,24 +158,91 @@ std::string srs_to_wkt(const std::string &srs, bool pretty = false) {
         Rcpp::stop("error importing SRS from user input");
     }
 
+    if (gcs_only)
+        hSRS_out = OSRCloneGeogCS(hSRS);
+    else
+        hSRS_out = hSRS;
+
     if (pretty) {
-        if (OSRExportToPrettyWkt(hSRS, &pszSRS_WKT, false) != OGRERR_NONE) {
+        if (OSRExportToPrettyWkt(hSRS_out, &pszSRS_WKT, false) != OGRERR_NONE) {
+            if (gcs_only && hSRS_out)
+                OSRDestroySpatialReference(hSRS_out);
+
             OSRDestroySpatialReference(hSRS);
             Rcpp::stop("error exporting to pretty WKT");
         }
     }
     else {
-        if (OSRExportToWkt(hSRS, &pszSRS_WKT) != OGRERR_NONE) {
+        if (OSRExportToWkt(hSRS_out, &pszSRS_WKT) != OGRERR_NONE) {
+            if (gcs_only && hSRS_out)
+                OSRDestroySpatialReference(hSRS_out);
+
             OSRDestroySpatialReference(hSRS);
             Rcpp::stop("error exporting to WKT");
         }
     }
 
     std::string wkt(pszSRS_WKT);
+    if (gcs_only)
+        OSRDestroySpatialReference(hSRS_out);
     OSRDestroySpatialReference(hSRS);
     CPLFree(pszSRS_WKT);
 
     return wkt;
+}
+
+//' @rdname srs_convert
+// [[Rcpp::export]]
+std::string srs_to_projjson(const std::string &srs,
+                            bool multiline = true,
+                            int indent_width = 2,
+                            const Rcpp::String &schema = NA_STRING) {
+    if (srs == "")
+        return "";
+
+    std::vector<int> proj_ver = getPROJVersion();
+    if (!(proj_ver[0] > 6 || proj_ver[1] >= 2))
+        Rcpp::stop("srs_to_projjson() requires PROJ >= 6.2");
+
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(nullptr);
+    char *pszSRS_PROJJSON = nullptr;
+
+    if (OSRSetFromUserInput(hSRS, srs.c_str()) != OGRERR_NONE) {
+        if (hSRS != nullptr)
+            OSRDestroySpatialReference(hSRS);
+        Rcpp::stop("error importing SRS from user input");
+    }
+
+    std::vector<const char *> opt_list;
+    if (!multiline) {
+        opt_list.push_back("MULTILINE=NO");
+    }
+    std::string str_indent = "INDENTATION_WIDTH=2";
+    if (indent_width != 2)
+        str_indent = "INDENTATION_WIDTH=" + std::to_string(indent_width);
+    if (multiline)
+        opt_list.push_back(str_indent.c_str());
+    std::string str_schema = "SCHEMA=";
+    if (schema != NA_STRING) {
+        str_schema += schema.get_cstring();
+        opt_list.push_back(str_schema.c_str());
+    }
+    opt_list.push_back(nullptr);
+
+    if (OSRExportToPROJJSON(hSRS, &pszSRS_PROJJSON, opt_list.data())
+            != OGRERR_NONE) {
+
+        OSRDestroySpatialReference(hSRS);
+        CPLFree(pszSRS_PROJJSON);
+        Rcpp::Rcout << CPLGetLastErrorMsg() << std::endl;
+        Rcpp::stop("error exporting to PROJJSON");
+    }
+
+    std::string json(pszSRS_PROJJSON);
+    OSRDestroySpatialReference(hSRS);
+    CPLFree(pszSRS_PROJJSON);
+
+    return json;
 }
 
 //' Obtain information about a spatial reference system

@@ -4,7 +4,7 @@
 #include "gdal_priv.h"
 
 #include "rcpp_util.h"
-
+#include "gdalraster.h"
 class GDALMultiDimRaster {
 public:
 
@@ -16,23 +16,23 @@ public:
   GDALMultiDimRaster(Rcpp::CharacterVector filename, bool read_only,
              Rcpp::Nullable<Rcpp::CharacterVector> open_options,
              bool shared);
-  
+
   // read/write fields exposed to R
   Rcpp::CharacterVector infoOptions = Rcpp::CharacterVector::create();
-  
+
   // Open/close dataset
   void open(bool read_only);
   void close();
-  
-  std::string getDescription() const; 
+
+  std::string getDescription() const;
   void setDescription(std::string desc);
   // Basic dataset information
   bool isOpen() const;  /// const{ return m_hDataset; != nullptr; }
   std::string getFilename() const;  //const { return filename; }
-  void setFilename(std::string filename); 
-  
+  void setFilename(std::string filename);
+
   std::string infoAsJSON() const;
-  
+
   std::string getDriverShortName() const;
   std::string getDriverLongName() const;
   Rcpp::CharacterVector getFileList() const;
@@ -43,9 +43,9 @@ public:
 
   std::vector<std::string> getDimensionNames(std::string variable) const;
   std::vector<size_t> getDimensionSizes(std::string variable) const;
-  
+
   std::vector<double> getViewValues(std::string variable, std::string view) const;
-  
+
   // methods for internal use not exported to R
   void checkAccess_(GDALAccess access_needed) const;
 //GDALGroupH getRootGroup() const;
@@ -54,19 +54,21 @@ public:
   GDALGroupH hRootGroup;
 
 
-  std::vector<double> getCoordinateValues(std::string variable) const; 
-  
+  std::vector<double> getCoordinateValues(std::string variable) const;
+
+  GDALRaster *AsClassicDataset(std::string fullname, size_t idim, size_t jdim) const;
+
 private:
  // GDALDataset* dataset;
   GDALDatasetH m_hDataset;
   std::string m_fname;
   Rcpp::CharacterVector m_open_options;
   bool m_shared;
-  
+
 
   GDALAccess m_eAccess;
 };
 
 RCPP_EXPOSED_CLASS(GDALMultiDimRaster)
-  
+
 #endif // SRC_GDALMULTIDIMRASTER_H

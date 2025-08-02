@@ -3,13 +3,14 @@
    Copyright (c) 2023-2025 gdalraster authors
 */
 
+#include "gdalalg.h"
+
 #include <cpl_port.h>
 #include <cpl_string.h>
 
 #include <cctype>
 #include <sstream>
 
-#include "gdalalg.h"
 #include "gdalraster.h"
 #include "gdalvector.h"
 

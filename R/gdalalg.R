@@ -12,15 +12,30 @@
 #' methods to obtain algorithm information and argument information, run the
 #' algorithm, and access its output. **Requires GDAL >= 3.11**.
 #'
+#' **Experimental**\cr
+#' The GDAL Command Line Interface Modernization was first introduced in the
+#' \href{https://github.com/OSGeo/gdal/releases/tag/v3.11.0}{GDAL 3.11.0 release}
+#' (2025-05-09). The GDAL project states that the new CLI \dQuote{is
+#' provisionally provided as an alternative interface to GDAL and OGR command
+#' line utilities. The project reserves the right to modify, rename,
+#' reorganize, and change the behavior until it is officially frozen via PSC
+#' vote in a future major GDAL release.... Your usage of it should have no
+#' expectation of compatibility until that time.}
+#' Initial bindings to enable programmatic use of the new CLI algorithms from R
+#' were added in \pkg{gdalraster} 2.2.0, and will evolve over future releases.
+#' The bindings are considered experimental until the upstream API is declared
+#' stable. Breaking changes in minor version releases are possible until then.
+#'
 #' `GDALALg` is a C++ class exposed directly to R (via `RCPP_EXPOSED_CLASS`).
 #' Fields and methods of the class are accessed using the `$` operator. **Note
 #' that all arguments to class methods are required and must be given in the
 #' order documented.**
 #'
 #' @param cmd A character string or character vector containing the path to the
-#' algorithm, e.g., `"raster info"` or `c("raster", "info")`.
+#' algorithm, e.g., `"raster reproject"` or `c("raster", "reproject")`.
 #' @param args Either a character vector or a named list containing input
-#' arguments of the algorithm (see Details).
+#' arguments of the algorithm. Details of the argument syntax are given in the
+#' [gdal_cli] help topic.
 #' @returns An object of class `GDALAlg`, which contains a pointer to the
 #' algorithm instance. Class methods are described in Details, along with a set
 #' of writable fields for per-object settings. Values may be assigned to the
@@ -58,7 +73,8 @@
 #'
 #' \code{new(GDALAlg, cmd, args)}\cr
 #' Instantiate an algorithm giving input arguments as a character vector or
-#' named list. *** TODO: add syntax info ***
+#' named list. See the \code{\link{gdal_cli}} help topic for details of the
+#' argument syntax.
 #'
 #' ## Read/write fields (per-object settings)
 #'
@@ -75,7 +91,7 @@
 #' ## Methods
 #'
 #' \code{$info()}\cr
-#' Returns a named list of algorithm information with the following elements:
+#' Returns a named list of algorithm properties with the following elements:
 #' * `name`: character string, the algorithm name
 #' * `description`: character string, the algorithm (short) description
 #' * `long_description`: character string, the algorithm longer description
@@ -86,7 +102,7 @@
 #' * `arg_names`: character vector of available argument names
 #'
 #' \code{$argInfo(arg_name)}\cr
-#' Returns a named list of information for an algorithm argument given as a
+#' Returns a named list of properties for an algorithm argument given as a
 #' character string, with the following elements:
 #' * `name`: character string, the name of the argument
 #' * `type`: character string, the argument type as one of `"BOOLEAN"`,
@@ -191,8 +207,97 @@
 #' to finalize. No return value, called for side-effects.
 #'
 #' @seealso
+#' [gdal_commands()], [gdal_run()], [gdal_alg()]
 #'
-#' @examples
+#' @examplesIf gdal_version_num() >= gdal_compute_version(3, 11, 0)
+#' f <- system.file("extdata/storml_elev.tif", package="gdalraster")
+#'
+#' ## raster info
+#' # arguments as character vector
+#' args <- c("--format=text", "--no-md", "--checksum", f)
+#' (alg <- new(GDALAlg, "raster info", args))
+#'
+#' alg$run()
+#'
+#' alg$output() |> writeLines()
+#'
+#' alg$release()
+#'
+#' ## raster clip
+#' # arguments in list format
+#' args <- list()
+#' args$input <- f
+#' args$output_format <- "GTiff"
+#' f_clip <- file.path(tempdir(), "elev_clip.tif")
+#' args$output <- f_clip
+#' args$overwrite <- TRUE
+#' args$bbox <- c(323776.1, 5102172.0,  327466.1, 5104782.0)
+#'
+#' (alg <- new(GDALAlg, "raster clip", args))
+#'
+#' alg$run()
+#'
+#' (ds_clip <- alg$output())
+#'
+#' alg$release()
+#'
+#' ds_clip$dim()
+#' ds_clip$bbox()
+#' ds_clip$close()
+#'
+#' ## raster hillshade
+#' # input as a GDALRaster object and output to an in-memory raster
+#' (ds_elev <- new(GDALRaster, f))
+#'
+#' args <- list()
+#' args$input <- ds_elev
+#' args$output_format <- "MEM"
+#' args$output <- ""
+#'
+#' (alg <- new(GDALAlg, "raster hillshade", args))
+#'
+#' alg$run()
+#'
+#' (ds_hillshade <- alg$output())
+#'
+#' alg$release()
+#'
+#' ### TODO ####
+#' # plot_raster(ds_hillshade)
+#'
+#' ds_hillshade$close()
+#'
+#' # vector convert shapefile to GeoPackage
+#' f_shp <- system.file("extdata/poly_multipoly.shp", package="gdalraster")
+#' f_gpkg <- file.path(tempdir(), "polygons_test.gpkg")
+#' args <- c("--input", f_shp, "--output", f_gpkg, "--overwrite")
+#'
+#' (alg <- new(GDALAlg, "vector convert", args))
+#'
+#' alg$run()
+#'
+#' (lyr <- alg$output())
+#'
+#' alg$release()
+#'
+#' lyr$info()
+#'
+#' lyr$close()
+#'
+#' ## raster reproject (usage and info)
+#' # no arguments, for obtaining usage and information
+#' (alg <- new(GDALAlg, "raster reproject"))
+#'
+#' # usage
+#' alg$usageAsJSON() |> writeLines()
+#'
+#' # algorithm properties
+#' alg$info()
+#'
+#' # algorithm argument properties
+#' alg$argInfo("src-nodata")
+#'
+#' alg$release()
 #'
 
 NULL

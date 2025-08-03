@@ -67,7 +67,8 @@ void append_subalg_names_desc_(const GDALAlgorithmH alg,
 }
 #endif  // GDAL >= 3.11
 
-// [[Rcpp::export(invisible = true)]]
+//' @noRd
+// [[Rcpp::export(name = ".gdal_commands")]]
 Rcpp::DataFrame gdal_commands(const std::string &starts_with = "",
                               bool cout = true) {
 

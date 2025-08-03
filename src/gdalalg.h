@@ -55,7 +55,7 @@ class GDALAlg {
     void show() const;
 
     // methods for internal use not exposed to R
-    Rcpp::CharacterVector listArgsToVector_(const Rcpp::List &list_args);
+    Rcpp::CharacterVector parseListArgs_(const Rcpp::List &list_args);
     void instantiateAlg_();
     std::vector<std::string> getOutputArgNames_() const;
 #if __has_include(<gdalalgorithm.h>)

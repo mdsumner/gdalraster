@@ -202,7 +202,7 @@ GDALAlg::GDALAlg(const Rcpp::CharacterVector &cmd, const Rcpp::RObject &args) {
             m_args = Rcpp::clone(args);
         }
         else if (Rcpp::is<Rcpp::List>(args)) {
-            m_args = listArgsToVector_(Rcpp::as<Rcpp::List>(args));
+            m_args = parseListArgs_(Rcpp::as<Rcpp::List>(args));
         }
         else {
             Rcpp::stop("'args' must be a character vector or named list");
@@ -467,12 +467,21 @@ bool GDALAlg::parseCommandLineArgs() {
 
     bool res = true;
     if (!m_map_in_hDS.empty()) {
+        // set dataset object inputs directly
         for (auto it = m_map_in_hDS.begin(); it != m_map_in_hDS.end(); ++it) {
             GDALAlgorithmArgH hArg = GDALAlgorithmGetArg(m_hAlg,
                                                          it->first.c_str());
             if (hArg) {
                 if (GDALAlgorithmArgGetType(hArg) == GAAT_DATASET) {
-                    res = GDALAlgorithmArgSetDataset(hArg, it->second[0]);
+                    if (it->second.size() > 1) {
+                        Rcpp::Rcout << it->first.c_str() << ": " <<
+                            "dataset list given where single dataset expected"
+                            << std::endl;
+
+                        res = false;
+                    } else {
+                        res = GDALAlgorithmArgSetDataset(hArg, it->second[0]);
+                    }
                 }
                 else if (GDALAlgorithmArgGetType(hArg) == GAAT_DATASET_LIST) {
                     res = GDALAlgorithmArgSetDatasets(hArg, it->second.size(),
@@ -483,7 +492,8 @@ bool GDALAlg::parseCommandLineArgs() {
                 }
 
                 GDALAlgorithmArgRelease(hArg);
-                if (!res) break;
+                if (!res)
+                    break;
             }
         }
     }
@@ -685,11 +695,12 @@ void GDALAlg::show() const {
 // class methods for internal use not exposed in R
 // ****************************************************************************
 
-Rcpp::CharacterVector GDALAlg::listArgsToVector_(
+Rcpp::CharacterVector GDALAlg::parseListArgs_(
         const Rcpp::List &list_args) {
 
-    // convert arguments in a named list to a character vector
+    // convert arguments in a named list to character vector form and return it
     // arguments in list form must use arg long names
+    // dataset/dataset_list args are added to member variable m_map_in_hDS
 
     Rcpp::CharacterVector arg_vec = Rcpp::CharacterVector::create();
 
@@ -704,18 +715,29 @@ Rcpp::CharacterVector GDALAlg::listArgsToVector_(
         Rcpp::stop("arg list must have named elements");
 
     for (R_xlen_t i = 0; i < num_args; ++i) {
+        if (list_args[i] == R_NilValue)
+            continue;
+
         Rcpp::String nm = arg_names[i];
+        if (nm == NA_STRING || nm == "")
+            continue;
+
         nm.replace_all("_", "-");
         nm.push_front("--");
-        if (Rcpp::is<Rcpp::LogicalVector>(list_args[i]) &&
-                list_args[i] == TRUE) {
 
-            arg_vec.push_back(nm);
-            continue;
+        // boolean
+        if (Rcpp::is<Rcpp::LogicalVector>(list_args[i])) {
+            const Rcpp::LogicalVector &lv = list_args[i];
+            if (lv[0] == TRUE) {
+                arg_vec.push_back(nm);
+                continue;
+            }
         }
+
+        // potentially a single dataset
         const Rcpp::RObject &val = list_args[i];
-        if (!val.isNULL() && val.isObject()) {
-            Rcpp::String cls = val.attr("class");
+        if (val.isObject()) {
+            const Rcpp::String cls = val.attr("class");
             if (cls == "Rcpp_GDALRaster") {
                 const GDALRaster* const &ds = list_args[i];
                 std::vector<GDALDatasetH> ds_list = {};
@@ -730,11 +752,41 @@ Rcpp::CharacterVector GDALAlg::listArgsToVector_(
                 m_map_in_hDS[Rcpp::as<std::string>(arg_names[i])] = ds_list;
                 continue;
             }
-            // TODO: accept a list of datasets
         }
-        nm += "=";
-        nm += paste_collapse_(list_args[i], ",");
-        arg_vec.push_back(nm);
+
+        // potentially a list of datasets
+        if (Rcpp::is<Rcpp::List>(list_args[i])) {
+            const Rcpp::List &list_tmp = list_args[i];
+            std::vector<GDALDatasetH> ds_list = {};
+            for (R_xlen_t j = 0; j < list_tmp.size(); ++j) {
+                const Rcpp::RObject &val = list_tmp[j];
+                if (!val.isNULL() && val.isObject()) {
+                    const Rcpp::String cls = val.attr("class");
+                    if (cls == "Rcpp_GDALRaster") {
+                        const GDALRaster* const &ds = list_tmp[j];
+                        ds_list.push_back(ds->getGDALDatasetH_());
+                    }
+                    else if (cls == "Rcpp_GDALVector") {
+                        const GDALVector* const &ds = list_tmp[j];
+                        ds_list.push_back(ds->getGDALDatasetH_());
+                    }
+                }
+            }
+            if (!ds_list.empty()) {
+                m_map_in_hDS[Rcpp::as<std::string>(arg_names[i])] = ds_list;
+            }
+            continue;
+        }
+
+        // string, string list, integer, integer list, real, real list
+        if (Rcpp::is<Rcpp::CharacterVector>(list_args[i]) ||
+                Rcpp::is<Rcpp::IntegerVector>(list_args[i]) ||
+                Rcpp::is<Rcpp::NumericVector>(list_args[i])) {
+
+            nm += "=";
+            nm += paste_collapse_(list_args[i], ",");
+            arg_vec.push_back(nm);
+        }
     }
 
     return arg_vec;

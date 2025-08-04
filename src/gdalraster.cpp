@@ -2229,6 +2229,12 @@ RCPP_MODULE(mod_GDALRaster) {
              const std::string&, double, bool, bool, bool>
              (autoCreateWarpedVRT)
 
+    .factory<const Rcpp::CharacterVector&, const Rcpp::CharacterVector&,
+       const Rcpp::IntegerVector&,
+        const Rcpp::IntegerVector&,
+        const Rcpp::CharacterVector&>
+  (asClassicDataset)
+
     // exposed read/write fields
     .field("infoOptions", &GDALRaster::infoOptions)
     .field("quiet", &GDALRaster::quiet)

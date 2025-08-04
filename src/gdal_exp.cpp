@@ -3208,3 +3208,51 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
 
 #endif
 }
+
+
+GDALRaster *asClassicDataset(const Rcpp::CharacterVector &src_dsn,
+                             const Rcpp::CharacterVector &array_name,
+                             const Rcpp::IntegerVector &idim,
+                             const Rcpp::IntegerVector &jdim,
+                             const Rcpp::CharacterVector &view)
+{
+
+  std::string src_dsn_in;
+  src_dsn_in = Rcpp::as<std::string>(check_gdal_filename(src_dsn));
+  std::string array_name_in;
+  array_name_in = Rcpp::as<std::string>(array_name);
+
+
+  Rcpp::IntegerVector idim_in = Rcpp::clone(idim);
+  Rcpp::IntegerVector jdim_in = Rcpp::clone(jdim);
+
+
+  GDALDatasetH m_hDataset;
+
+  GDALRaster *classic_dataset = nullptr;
+  classic_dataset = new GDALRaster();
+  m_hDataset = GDALOpenEx(src_dsn_in.c_str(), GDAL_OF_MULTIDIM_RASTER,
+                      nullptr, nullptr, nullptr);
+  if (!m_hDataset) {
+    Rprintf("returning early no m_hDataset\n");
+    return classic_dataset;
+  }
+  GDALGroupH rgroup = GDALDatasetGetRootGroup(m_hDataset);
+  if (!rgroup) {
+    Rprintf("returning early no rgroup\n");
+
+    return classic_dataset;
+  }
+  GDALMDArrayH mdarray = GDALGroupOpenMDArrayFromFullname(rgroup, array_name_in.c_str(), nullptr);
+  if (!mdarray) {
+    Rprintf("returning early no mdarray\n");
+
+    return classic_dataset;
+  }
+  classic_dataset->setGDALDatasetH_(GDALMDArrayAsClassicDataset(mdarray,
+                                                                static_cast<size_t>(idim[0]),
+                                                                static_cast<size_t>(jdim[0])), true);
+  classic_dataset->setFilename(GDALGetDescription(m_hDataset));
+  return classic_dataset;
+}
+

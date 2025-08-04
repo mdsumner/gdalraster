@@ -333,6 +333,12 @@ GDALRaster *autoCreateWarpedVRT(const GDALRaster* const &src_ds,
                                 double max_err, bool alpha_band,
                                 bool reserved1, bool reserved2);
 
+GDALRaster *asClassicDataset(const Rcpp::CharacterVector &src_dsn,
+                             const Rcpp::CharacterVector &array_name,
+                             const Rcpp::IntegerVector &idim,
+                             const Rcpp::IntegerVector &jdim,
+                             const Rcpp::CharacterVector &view);
+
 bool buildVRT(const Rcpp::CharacterVector &vrt_filename,
               const Rcpp::CharacterVector &input_rasters,
               const Rcpp::Nullable<Rcpp::CharacterVector> &cl_arg,

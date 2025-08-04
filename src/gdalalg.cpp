@@ -8,6 +8,7 @@
 #include <cpl_port.h>
 #include <cpl_string.h>
 
+#include <algorithm>
 #include <cctype>
 #include <sstream>
 
@@ -274,6 +275,12 @@ Rcpp::List GDALAlg::info() const {
     nCount = CSLCount(papszArgNames);
     if (nCount > 0) {
         std::vector<std::string> names(papszArgNames, papszArgNames + nCount);
+
+        // --help-doc should be hidden here
+        // it is only used in generating documentation
+        names.erase(std::remove(names.begin(), names.end(), "help-doc"),
+                    names.end());
+
         alg_info.push_back(Rcpp::wrap(names), "arg_names");
     }
     else {
@@ -322,8 +329,7 @@ Rcpp::List GDALAlg::argInfo(const Rcpp::String &arg_name) const {
         arg_info.push_back(Rcpp::wrap(v), "aliases");
     }
     else {
-        Rcpp::CharacterVector v =
-            Rcpp::CharacterVector::create(NA_STRING);
+        Rcpp::CharacterVector v = Rcpp::CharacterVector::create();
         arg_info.push_back(v, "aliases");
     }
     CSLDestroy(papszAliases);
@@ -348,14 +354,12 @@ Rcpp::List GDALAlg::argInfo(const Rcpp::String &arg_name) const {
             arg_info.push_back(Rcpp::wrap(v), "choices");
         }
         else {
-            Rcpp::CharacterVector v =
-                Rcpp::CharacterVector::create(NA_STRING);
-            arg_info.push_back(v, "choices");
+            arg_info.push_back(Rcpp::CharacterVector::create(), "choices");
         }
         CSLDestroy(papszChoices);
     }
     else {
-        arg_info.push_back(R_NilValue, "choices");
+        arg_info.push_back(Rcpp::CharacterVector::create(), "choices");
     }
 
     arg_info.push_back(GDALAlgorithmArgIsExplicitlySet(hArg),
@@ -420,6 +424,12 @@ Rcpp::List GDALAlg::argInfo(const Rcpp::String &arg_name) const {
 
     return arg_info;
 #endif  // GDAL >= 3.11
+}
+
+void GDALAlg::usage() const {
+    Rcpp::Environment pkg = Rcpp::Environment::namespace_env("gdalraster");
+    Rcpp::Function fn = pkg[".print_alg_usage"];
+    fn(Rcpp::wrap(m_cmd_str));
 }
 
 Rcpp::String GDALAlg::usageAsJSON() const {
@@ -758,7 +768,9 @@ Rcpp::CharacterVector GDALAlg::parseListArgs_(
         // potentially a list of datasets
         if (Rcpp::is<Rcpp::List>(list_args[i])) {
             const Rcpp::List &list_tmp = list_args[i];
+
             std::vector<GDALDatasetH> ds_list = {};
+
             for (R_xlen_t j = 0; j < list_tmp.size(); ++j) {
                 const Rcpp::RObject &val = list_tmp[j];
                 if (!val.isNULL() && val.isObject()) {
@@ -773,6 +785,7 @@ Rcpp::CharacterVector GDALAlg::parseListArgs_(
                     }
                 }
             }
+
             if (!ds_list.empty()) {
                 m_map_in_hDS[Rcpp::as<std::string>(arg_names[i])] = ds_list;
             }
@@ -1108,6 +1121,8 @@ RCPP_MODULE(mod_GDALAlg) {
         "Return a list of algorithm information")
     .const_method("argInfo", &GDALAlg::argInfo,
         "Return a list of information for an algorithm argument")
+    .const_method("usage", &GDALAlg::usage,
+        "Print usage information to the console")
     .const_method("usageAsJSON", &GDALAlg::usageAsJSON,
         "Return a list of algorithm information")
     .method("parseCommandLineArgs", &GDALAlg::parseCommandLineArgs,

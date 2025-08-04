@@ -40,8 +40,10 @@ class GDALAlg {
     // exposed methods
     Rcpp::List info() const;
     Rcpp::List argInfo(const Rcpp::String &arg_name) const;
+    void usage() const;
     Rcpp::String usageAsJSON() const;
 
+    // TODO:
     // Rcpp::List getExplicitlySetArgs() const;
     // void setArg(const Rcpp::String &arg_name, const SEXP &arg_value);
 

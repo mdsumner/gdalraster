@@ -2205,6 +2205,11 @@ vsi_is_local <- function(filename) {
 }
 
 #' @noRd
+.gdal_commands <- function(starts_with = "", cout = TRUE) {
+    .Call(`_gdalraster_gdal_commands`, starts_with, cout)
+}
+
+#' @noRd
 NULL
 
 #' @noRd

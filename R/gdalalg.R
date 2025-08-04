@@ -26,7 +26,7 @@
 #' The bindings are considered experimental until the upstream API is declared
 #' stable. Breaking changes in minor version releases are possible until then.
 #'
-#' `GDALALg` is a C++ class exposed directly to R (via `RCPP_EXPOSED_CLASS`).
+#' `GDALAlg` is a C++ class exposed directly to R (via `RCPP_EXPOSED_CLASS`).
 #' Fields and methods of the class are accessed using the `$` operator. **Note
 #' that all arguments to class methods are required and must be given in the
 #' order documented.**
@@ -34,12 +34,13 @@
 #' @param cmd A character string or character vector containing the path to the
 #' algorithm, e.g., `"raster reproject"` or `c("raster", "reproject")`.
 #' @param args Either a character vector or a named list containing input
-#' arguments of the algorithm. Details of the argument syntax are given in the
-#' [gdal_cli] help topic.
+#' arguments of the algorithm (see section \dQuote{Argument syntax}).
 #' @returns An object of class `GDALAlg`, which contains a pointer to the
 #' algorithm instance. Class methods are described in Details, along with a set
 #' of writable fields for per-object settings. Values may be assigned to the
 #' class fields by regular \code{<-} or `=` assignment.
+#'
+#' @inheritSection gdal_cli Argument syntax
 #'
 #' @section Usage (see Details):
 #' \preformatted{
@@ -55,6 +56,7 @@
 #' ## Methods
 #' alg$info()
 #' alg$argInfo(arg_name)
+#' alg$usage()
 #' alg$usageAsJSON()
 #'
 #' alg$parseCommandLineArgs()
@@ -73,8 +75,7 @@
 #'
 #' \code{new(GDALAlg, cmd, args)}\cr
 #' Instantiate an algorithm giving input arguments as a character vector or
-#' named list. See the \code{\link{gdal_cli}} help topic for details of the
-#' argument syntax.
+#' named list. See section \dQuote{Argument syntax} for details.
 #'
 #' ## Read/write fields (per-object settings)
 #'
@@ -155,6 +156,9 @@
 #' * `mutual_exclusion_group`: character string, the name of the mutual
 #' exclusion group to which this argument belongs
 #'
+#' \code{$usage()}\cr
+#' Print a help message for the algorithm to the console. No return value.
+#'
 #' \code{$usageAsJSON()}\cr
 #' Returns the usage of the algorithm as a JSON-serialized string.
 #'
@@ -209,13 +213,20 @@
 #' @seealso
 #' [gdal_commands()], [gdal_run()], [gdal_alg()]
 #'
+#' GDAL RFC 104: Adding a \dQuote{gdal} front-end command line interface:\cr
+#' [Implementation details](https://gdal.org/en/stable/development/rfc/rfc104_gdal_cli.html#implementation-details)
+#'
 #' @examplesIf gdal_version_num() >= gdal_compute_version(3, 11, 0)
 #' f <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #'
 #' ## raster info
-#' # arguments as character vector
-#' args <- c("--format=text", "--no-md", "--checksum", f)
 #' (alg <- new(GDALAlg, "raster info", args))
+#'
+#' # first print a help message to the console
+#' alg$usage()
+#'
+#' # arguments given as character vector
+#' args <- c("--format=text", "--no-md", "--checksum", f)
 #'
 #' alg$run()
 #'
@@ -285,20 +296,23 @@
 #' lyr$close()
 #'
 #' ## raster reproject (usage and info)
-#' # no arguments, for obtaining usage and information
+#' # no arguments given, only for retrieving usage and properties
 #' (alg <- new(GDALAlg, "raster reproject"))
 #'
-#' # usage
-#' alg$usageAsJSON() |> writeLines()
+#' # print usage to the console, no return value
+#' alg$usage()
 #'
-#' # algorithm properties
+#' # or, get usage as a JSON string
+#' # json <- alg$usageAsJSON()
+#' # writeLines(json)
+#'
+#' # list of algorithm properties
 #' alg$info()
 #'
-#' # algorithm argument properties
+#' # list of algorithm argument properties
 #' alg$argInfo("src-nodata")
 #'
 #' alg$release()
-#'
 
 NULL
 

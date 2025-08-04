@@ -16,7 +16,7 @@
 #'
 #' **Experimental**\cr
 #' The GDAL Command Line Interface Modernization was first introduced in the
-#' \href{https://github.com/OSGeo/gdal/releases/tag/v3.11.0}{GDAL 3.11.0 release}
+#' [GDAL 3.11.0 release](https://github.com/OSGeo/gdal/releases/tag/v3.11.0)
 #' (2025-05-09). The GDAL project states that the new CLI \dQuote{is
 #' provisionally provided as an alternative interface to GDAL and OGR command
 #' line utilities. The project reserves the right to modify, rename,
@@ -34,7 +34,7 @@
 #' output, e.g., `gdal_commands("vector")` to return only commands for working
 #' with vector inputs.
 #'
-#' `gdal_run()` executes a GDAL algorithm and returns it as an object class
+#' `gdal_run()` executes a GDAL algorithm and returns it as an object of class
 #' `GDALAlg`. A list containing algorithm output(s) can be accessed by calling
 #' the \code{$outputs()} (plural) method on the returned object, or, more
 #' conveniently in most cases, by calling \code{$output()} (singular) to return
@@ -43,20 +43,20 @@
 #' \code{$release()} method can be called to close datasets and free resources.
 #'
 #' `gdal_alg()` instantiates and returns an object of class `GDALAlg` without
-#' running it. Passing argumengts to the requested CLI algorithm is optional.
+#' running it. Passing arguments to the requested CLI algorithm is optional.
 #' This may be useful for obtaining command usage (\code{$usageAsJSON()}),
-#' algorithm properties (\code{$info()}), or properties of algoritm arguments
+#' algorithm properties (\code{$info()}), or properties of algorithm arguments
 #' (\code{$argInfo(arg_name)}). By default, parsing arguments will be attempted
-#' if they are given, but this can be overriden by passing `parse = FALSE`.
+#' if they are given, but this can be overridden by passing `parse = FALSE`.
 #' The returned algorithm can then be executed (optionally) with its
 #' \code{$run()} method.
 #'
 #' @param starts_with Optional character string for filtering output to certain
-#' commands, e.g., `gdal_commnands("vsi")` to return only the Virtual System
-#' Interface (VSI) commands, or `gdal_commnands("raster overview")` to return
+#' commands, e.g., `gdal_commands("vsi")` to return only the Virtual System
+#' Interface (VSI) commands, or `gdal_commands("raster overview")` to return
 #' only commands for managing overviews of a raster dataset.
 #' @param cout Logical value, `TRUE` to print a list of commands along with
-#' their descriptions and help URLS to the console (the de be executedfault).
+#' their descriptions and help URLS to the console (the default).
 #' @param cmd A character string or character vector containing the path to the
 #' algorithm, e.g., `"raster reproject"` or `c("raster", "reproject")`.
 #' @param args Either a character vector or a named list containing input
@@ -72,8 +72,9 @@
 #' otherwise syntax basically matches the GDAL specification for arguments as
 #' they are given on the command line. Those specifications are listed here
 #' along with some amendments regarding the character vector and named list
-#' formats. Programmitc usage also allows passing and receiving datasets as
-#' objects (i.e., `GDALRaster` or `GDALVector`), in addition to dataset names.
+#' formats. Programmatic usage also allows passing and receiving datasets as
+#' objects (i.e., `GDALRaster` or `GDALVector`), in addition to dataset names
+#' (e.g., filename, URL, database connection string).
 #'
 #' * Commands accept one or several positional arguments, typically for dataset
 #' names (or, in R, as `GDALRaster` or `GDALVector` datasets). The order is
@@ -107,11 +108,6 @@
 #' character vector or numeric vector of values).
 #' * Named arguments can be placed before or after positional arguments.
 #'
-#' See the examples here, and also those for class \code{\link{GDALAlg}},
-#' for variations in argument specification.
-#'
-#' @note
-#'
 #' @seealso
 #' [`GDALAlg-class`][GDALAlg]
 #'
@@ -119,10 +115,12 @@
 #' \url{https://gdal.org/en/stable/programs/index.html}
 #'
 #' @examplesIf gdal_version_num() >= gdal_compute_version(3, 11, 0)
-#' # print Virtual System Interface (VSI) commands and return in a data frame
-#' vsi_df <- gdal_commands("vsi")
+#' # Virtual System Interface (VSI) commands for SOZip files
+#' gdal_commands("vsi sozip")
 #'
-#' head(vsi_df)
+#' # vsi sozip list
+#' f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
+#' gdal_run("vsi sozip list", f)$output() |> writeLines()
 #'
 #'
 #' @export
@@ -162,10 +160,10 @@ gdal_run <- function(cmd, args = NULL) {
 
     alg <- new(GDALAlg, cmd, args)
 
-    if (!alg$parseCommandLineArguments()) {
-        cat("parseCommandLineArguments() failed\n")
+    if (!alg$parseCommandLineArgs()) {
+        cat("parseCommandLineArgs() failed\n")
         alg$release()
-        stop("failed to parse argument and set their values", call. = FALSE)
+        stop("failed to parse arguments and set their values", call. = FALSE)
     }
 
     if (!alg$run()) {
@@ -206,8 +204,8 @@ gdal_alg <- function(cmd, args = NULL, parse = TRUE) {
     alg <- new(GDALAlg, cmd, args)
 
     if (has_args && parse) {
-        if (!alg$parseCommandLineArguments()) {
-            cat("parseCommandLineArguments() failed\n")
+        if (!alg$parseCommandLineArgs()) {
+            cat("parseCommandLineArgs() failed\n")
             alg$release()
             stop("failed to parse arguments and set their values",
                  call. = FALSE)
@@ -215,4 +213,221 @@ gdal_alg <- function(cmd, args = NULL, parse = TRUE) {
     }
 
     return(alg)
+}
+
+#' helper function to print usage to the console
+#' called from GDALAlg::usage()
+#' @noRd
+.print_alg_usage <- function(cmd) {
+    alg <- new(GDALAlg, cmd)
+    alginfo <- alg$info()
+
+    has_non_positionals <- FALSE
+    positional_args <- character()
+    for (nm in alginfo$arg_names) {
+        arginfo <- alg$argInfo(nm)
+        if (!arginfo$is_only_for_cli && !arginfo$is_positional) {
+            has_non_positionals <- TRUE
+        } else if (!arginfo$is_only_for_cli && arginfo$is_positional) {
+            positional_args <- append(positional_args, nm)
+        }
+    }
+
+    cat("Usage:", cmd)
+
+    if (alginfo$has_subalgorithms) {
+        cat(" <SUBCOMMAND>")
+        if (has_non_positionals) {
+            cat(" [OPTIONS]")
+        }
+        cat("\nwhere <SUBCOMMAND> is one of:\n")
+
+        max_name_len <- 0
+        for (nm in alginfo$subalgorithm_names) {
+            if (nchar(nm) > max_name_len)
+                max_name_len <- nchar(nm)
+        }
+        for (nm in alginfo$subalgorithm_names) {
+            num_add_spaces <- max_name_len - nchar(nm)
+            cat("  - ", nm, rep_len(" ", num_add_spaces + 1), sep = "")
+            cat(": ")
+            sub_alg <- new(GDALAlg, c(cmd, nm))
+            cat(sub_alg$info()$description)
+            cat("\n")
+            sub_alg$release()
+        }
+        cat("\n")
+    } else {
+        if (length(alginfo$arg_names) > 0) {
+            if (has_non_positionals) {
+                cat(" [OPTIONS]")
+            }
+            for (arg_nm in positional_args) {
+                arginfo <- alg$argInfo(arg_nm)
+                optional <- (!arginfo$is_required &&
+                                !(alginfo$name == "pipeline" &&
+                                  arginfo$name == "pipeline"))
+
+                cat(" ")
+                if (optional)
+                    cat("[")
+                if (arginfo$meta_var != "") {
+                    if (startsWith(arginfo$meta_var, "<")) {
+                        cat(arginfo$meta_var)
+                    } else {
+                        cat("<", arginfo$meta_var, ">", sep = "")
+                    }
+                }
+                if (arginfo$type == "DATASET_LIST" && arginfo$max_count > 1)
+                    cat("...")
+                if (optional)
+                    cat("]")
+            }
+        }
+
+        cat("\n\n")
+        cat(alginfo$description, "\n\n")
+    }
+
+    print_arg <- function(arg_name, if_positional = FALSE) {
+        this_arg <- alg$argInfo(arg_name)
+        if (this_arg$is_positional != if_positional)
+            return()
+
+        cat("  ")
+        if (this_arg$short_name != "")
+            cat("-", this_arg$short_name, ", ", sep = "")
+        if (length(this_arg$aliases) > 0) {
+            for (nm in this_arg$aliases) {
+                if (nchar(nm) == 1) {
+                    cat("-", nm, ", ", sep = "")
+                } else {
+                    cat("--", nm, ", ", sep = "")
+                }
+            }
+        }
+        if (this_arg$name != "")
+            cat("--", this_arg$name, sep = "")
+        if (this_arg$meta_var != "") {
+            cat(" ")
+            if (startsWith(this_arg$meta_var, "<")) {
+                cat(this_arg$meta_var)
+            } else {
+                cat("<", this_arg$meta_var, ">", sep = "")
+            }
+        }
+        cat("\n")
+
+        cat("    ")
+        cat(this_arg$description)
+        cat("\n")
+
+        if (length(this_arg$choices)) {
+            cat("    ")
+            cat("[", paste(this_arg$choices, collapse = "|"), "]", sep = "")
+            cat("\n")
+        }
+
+        if (this_arg$type == "DATASET" || this_arg$type == "DATASET_LIST") {
+            if (all(this_arg$dataset_input_flags == "NAME") &&
+                    all(this_arg$dataset_output_flags == "OBJECT")) {
+
+                cat("    [created by algorithm]\n")
+            }
+        }
+
+        if (endsWith(this_arg$type, "LIST")) {
+            if (this_arg$min_count > 0 &&
+                this_arg$min_count == this_arg$max_count) {
+
+                if (this_arg$min_count != 1)
+                    cat("    [", this_arg$max_count, " values]\n", sep = "")
+
+            } else if (this_arg$min_count > 0 &&
+                       this_arg$max_count < .Machine$integer.max) {
+
+                cat("    [", this_arg$min_count, "..", this_arg$max_count,
+                    " values]\n", sep = "")
+
+            } else if (this_arg$min_count > 0) {
+                cat("    [", this_arg$min_count, "..", " values]\n", sep = "")
+            } else if (this_arg$max_count > 1) {
+                cat("    [may be repeated]\n")
+            }
+        }
+
+        if (this_arg$is_required)
+            cat("    [required]\n")
+
+        # TODO: mutual exclusion group
+        # "Mutually exclusive with "
+
+    }
+
+    if (length(positional_args) > 0) {
+        cat("Positional arguments:\n")
+        for (arg_nm in positional_args) {
+            print_arg(arg_nm, if_positional = TRUE)
+        }
+        cat("\n")
+    }
+
+    # non-positional args by category
+    common_args <- character()
+    base_args <- character()
+    advanced_args <- character()
+    esoteric_args <- character()
+    for (nm in alginfo$arg_names) {
+        arginfo <- alg$argInfo(nm)
+        if (!arginfo$is_only_for_cli && !arginfo$is_positional) {
+            if (tolower(arginfo$category) == "common")
+                common_args <- append(common_args, nm)
+            else if (tolower(arginfo$category) == "base")
+                base_args <- append(base_args, nm)
+            else if (tolower(arginfo$category) == "advanced")
+                advanced_args <- append(advanced_args, nm)
+            else if (tolower(arginfo$category) == "esoteric")
+                esoteric_args <- append(esoteric_args, nm)
+        }
+    }
+
+    if (length(common_args) > 0) {
+        cat("Common options:\n")
+        for (arg_nm in common_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
+    }
+
+    if (length(base_args) > 0) {
+        cat("Options:\n")
+        for (arg_nm in base_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
+    }
+
+    if (length(advanced_args) > 0) {
+        cat("Advanced options:\n")
+        for (arg_nm in advanced_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
+    }
+
+    if (length(esoteric_args) > 0) {
+        cat("Esoteric options:\n")
+        for (arg_nm in esoteric_args) {
+            print_arg(arg_nm)
+        }
+        cat("\n")
+    }
+
+    if (alginfo$long_description != "")
+        cat("\n", alginfo$long_description, "\n", sep = "")
+
+    if (alginfo$URL != "")
+        cat("\nFor more details, consult ", alginfo$URL, "\n", sep = "")
+
+    alg$release()
 }

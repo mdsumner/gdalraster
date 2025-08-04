@@ -1,6 +1,7 @@
-# R interface to the GDAL CLI algorithms, convenience functions for using
-# exposed class GDALAlg (see R/gdalalg.R and src/gdalalg.h)
-# Chris Toney <chris.toney at gmail.com>
+# R interface to the GDAL CLI algorithms
+# convenience functions for using exposed class `GDALAlg`
+# see R/gdalalg.R and src/gdalalg.h
+# Chris Toney <jctoney at gmail.com>
 
 #' Convenience functions for using the \dQuote{gdal} CLI algorithms from R
 #'
@@ -12,7 +13,7 @@
 #' @details
 #' These functions are convenient for accessing and running GDAL CLI algorithms
 #' by way of the C++ exposed class \code{\link{GDALAlg}}. See the class
-#' documentation for additional information.
+#' documentation for additional information (`?GDALAlg`).
 #'
 #' **Experimental**\cr
 #' The GDAL Command Line Interface Modernization was first introduced in the
@@ -107,6 +108,13 @@
 #' list element names, and the packed format for the values (which can be a
 #' character vector or numeric vector of values).
 #' * Named arguments can be placed before or after positional arguments.
+#'
+#' @note
+#' When using argument names as the element names of a list, the underscore
+#' character can be optionally substituted for the dash characters that are
+#' used in some names. This avoids having to surround names in backticks when
+#' they are used to access list elements in the form `args$arg_name` (the form
+#' `args[["arg-name"]]` also works).
 #'
 #' @seealso
 #' [`GDALAlg-class`][GDALAlg]
@@ -325,10 +333,8 @@ gdal_alg <- function(cmd, args = NULL, parse = TRUE) {
         cat(alginfo$description, "\n\n")
     }
 
-    print_arg <- function(arg_name, if_positional = FALSE) {
+    print_arg <- function(arg_name) {
         this_arg <- alg$argInfo(arg_name)
-        if (this_arg$is_positional != if_positional)
-            return()
 
         cat("  ")
         if (this_arg$short_name != "")
@@ -420,7 +426,7 @@ gdal_alg <- function(cmd, args = NULL, parse = TRUE) {
     if (length(positional_args) > 0) {
         cat("Positional arguments:\n")
         for (arg_nm in positional_args) {
-            print_arg(arg_nm, if_positional = TRUE)
+            print_arg(arg_nm)
         }
         cat("\n")
     }

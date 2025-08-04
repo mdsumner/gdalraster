@@ -42,7 +42,7 @@ This set of functions can be used to access and run GDAL utilities as
 \details{
 These functions are convenient for accessing and running GDAL CLI algorithms
 by way of the C++ exposed class \code{\link{GDALAlg}}. See the class
-documentation for additional information.
+documentation for additional information (\code{?GDALAlg}).
 
 \strong{Experimental}\cr
 The GDAL Command Line Interface Modernization was first introduced in the
@@ -80,6 +80,13 @@ algorithm properties (\code{$info()}), or properties of algorithm arguments
 if they are given, but this can be overridden by passing \code{parse = FALSE}.
 The returned algorithm can then be executed (optionally) with its
 \code{$run()} method.
+}
+\note{
+When using argument names as the element names of a list, the underscore
+character can be optionally substituted for the dash characters that are
+used in some names. This avoids having to surround names in backticks when
+they are used to access list elements in the form \code{args$arg_name} (the form
+\code{args[["arg-name"]]} also works).
 }
 \section{Argument syntax}{
 

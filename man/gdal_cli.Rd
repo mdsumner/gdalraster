@@ -134,9 +134,46 @@ character vector or numeric vector of values).
 gdal_commands("vsi sozip")
 
 # vsi sozip list
+# print a help message to the console
+gdal_alg("vsi sozip list")$usage()
+
 f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
 gdal_run("vsi sozip list", f)$output() |> writeLines()
 
+# get help for vector commands
+gdal_alg("vector")$usage()
+
+gdal_alg("vector rasterize")$usage()
+
+# rasterize a vector layer and return output as a GDALRaster object
+f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+f_out = file.path(tempdir(), "ynp_fire_year.tif")
+
+args <- list()
+args$input = f
+args$sql <- "SELECT * FROM mtbs_perims ORDER BY mtbs_perims.ig_year"
+args$attribute_name <- "ig_year"
+args$output = f_out
+args$overwrite <- TRUE
+args$creation_option <- c("TILED=YES", "COMPRESS=DEFLATE")
+args$resolution <- c(90, 90)
+args$output_data_type <- "Int16"
+args$init <- -32767
+args$nodata <- -32767
+
+(alg <- gdal_run("vector rasterize", args))
+
+(ds <- alg$output())
+
+alg$release()
+
+pal <- scales::viridis_pal(end = 0.8, direction = -1)(6)
+ramp <- scales::colour_ramp(pal)
+plot_raster(ds, legend = TRUE, col_map_fn = ramp, na_col = "#d9d9d9",
+            main = "YNP Fires 1984-2022 - Most Recent Burn Year")
+
+ds$close()
+\dontshow{unlink(f_out)}
 \dontshow{\}) # examplesIf}
 }
 \seealso{

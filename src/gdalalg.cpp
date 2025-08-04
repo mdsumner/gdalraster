@@ -15,8 +15,6 @@
 #include "gdalraster.h"
 #include "gdalvector.h"
 
-constexpr R_xlen_t CMD_TOKENS_MAX = 5;
-
 #if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 11, 0)
 // internal helper to get subalgorithm names, descriptions and URLs,
 // potentially filtering on 'starts_with'
@@ -276,7 +274,7 @@ Rcpp::List GDALAlg::info() const {
     if (nCount > 0) {
         std::vector<std::string> names(papszArgNames, papszArgNames + nCount);
 
-        // --help-doc should be hidden here
+        // "help-doc" should be hidden here
         // it is only used in generating documentation
         names.erase(std::remove(names.begin(), names.end(), "help-doc"),
                     names.end());

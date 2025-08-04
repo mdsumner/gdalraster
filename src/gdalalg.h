@@ -18,6 +18,8 @@
 
 #include "rcpp_util.h"
 
+constexpr R_xlen_t CMD_TOKENS_MAX = 5;
+
 Rcpp::DataFrame gdal_commands(std::string starts_with, bool cout);
 
 class GDALAlg {

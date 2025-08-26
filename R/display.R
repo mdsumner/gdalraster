@@ -305,7 +305,7 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=NULL,
                         col_map_fn=NULL, pixel_fn=NULL, xlim=NULL, ylim=NULL,
                         interpolate=TRUE, asp=1, axes=TRUE, main="",
                         xlab="x", ylab="y", xaxs="i", yaxs="i",
-                        legend=FALSE, digits=2, na_col=rgb(0,0,0,0), ...) {
+                        legend=FALSE, digits=2, na_col=rgb(0,0,0,0), alpha = 1, ...) {
 
     if (isTRUE((grDevices::dev.capabilities()$rasterImage == "no"))) {
         message("device does not support 'rasterImage()'")
@@ -498,7 +498,15 @@ plot_raster <- function(data, xsize=NULL, ysize=NULL, nbands=NULL,
         graphics::layout(matrix(1:2, ncol=2), width=c(6,1), height=c(1,1))
         graphics::par(mar=c(5, 4, 4, 0.5) + 0.1)
     }
-
+    alpha <- alpha[1L]
+    if (!is.na(alpha) && !is.null(alpha) && alpha < 1) {
+      if (alpha > 0) {
+        dm <- dim(r)[1:2]
+        r <- sprintf("%s%s", r, as.character(as.hexmode(as.integer(round(alpha * 255)))))
+        dim(r) <- dm
+        class(r) <- "raster"
+      }
+    }
     graphics::plot.new()
     graphics::plot.window(xlim=xlim, ylim=ylim, asp=asp,
                           xaxs=xaxs, yaxs=yaxs, ...)

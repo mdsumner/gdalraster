@@ -2104,8 +2104,11 @@ bool GDALVector::rollbackTransaction() {
 Rcpp::CharacterVector GDALVector::getMetadata() const {
     checkAccess_(GA_ReadOnly);
 
-    char **papszMD = nullptr;
-    papszMD = GDALGetMetadata(m_hLayer, nullptr);
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+  CSLConstList papszMD = GDALGetMetadata(m_hLayer, nullptr);
+#else
+  char **papszMD = GDALGetMetadata(m_hLayer, nullptr);
+#endif
 
     int nItems = CSLCount(papszMD);
     if (nItems > 0) {

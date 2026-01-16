@@ -211,7 +211,13 @@ static bool CreateField_(GDALDatasetH hDS, OGRLayerH hLayer,
     OGRFieldType eFieldType = getOFT_(fld_type);
     OGRFieldSubType eFieldSubType = getOFTSubtype_(fld_subtype);
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
+    
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMD = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMD = GDALGetMetadata(hDriver, nullptr);
+#endif
+
     bool ret = false;
 
     hFieldDefn = OGR_Fld_Create(fld_name.c_str(), eFieldType);
@@ -290,7 +296,13 @@ static bool CreateGeomField_(GDALDatasetH hDS, OGRLayerH hLayer,
     }
 
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
+    
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMD = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMD = GDALGetMetadata(hDriver, nullptr);
+#endif
+    
     bool ret = false;
 
     OGRGeomFieldDefnH hGeomFieldDefn = nullptr;
@@ -631,7 +643,12 @@ GDALVector *create_ogr(const std::string &format,
     const std::string dsn_in =
         Rcpp::as<std::string>(check_gdal_filename(dst_filename));
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#endif
+
     if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE))
         Rcpp::stop("driver does not support create");
 
@@ -796,7 +813,13 @@ SEXP ogr_ds_field_domain_names(const std::string &dsn) {
     }
 
     GDALDriverH hDriver = GDALGetDatasetDriver(hDS);
+    
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMD = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMD = GDALGetMetadata(hDriver, nullptr);
+#endif   
+
     if (!CPLFetchBool(papszMD, GDAL_DCAP_FIELD_DOMAINS, false)) {
         Rcpp::warning("format does not support reading field domains");
         GDALReleaseDataset(hDS);

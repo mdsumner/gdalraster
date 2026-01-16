@@ -139,7 +139,12 @@ Rcpp::DataFrame gdal_formats(const std::string &format = "") {
 
     for (int i = 0; i < nDriverCount; ++i) {
         GDALDriverH hDriver = GDALGetDriver(i);
+      
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+        CSLConstList papszMD = GDALGetMetadata(hDriver, nullptr);
+#else       
         char **papszMD = GDALGetMetadata(hDriver, nullptr);
+#endif
         int out_idx = i;
         if (nRowsOut == 1)
             out_idx = 0;
@@ -805,7 +810,12 @@ GDALRaster *create(const std::string &format,
     if (hDriver == nullptr)
         Rcpp::stop("failed to get driver for the specified format");
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#endif
+
     if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE))
         Rcpp::stop("driver does not support create");
 
@@ -864,7 +874,12 @@ GDALRaster *createCopy(const std::string &format,
     if (hDriver == nullptr)
         Rcpp::stop("failed to get driver from format name");
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#else
     char **papszMetadata = GDALGetMetadata(hDriver, nullptr);
+#endif
+
     if (!CPLFetchBool(papszMetadata, GDAL_DCAP_CREATECOPY, FALSE) &&
         !CPLFetchBool(papszMetadata, GDAL_DCAP_CREATE, FALSE)) {
 
@@ -3473,8 +3488,13 @@ SEXP gdal_get_driver_md(const std::string &format,
         }
     }
     else {
-        char **papszMD = nullptr;
-        papszMD = GDALGetMetadata(hDriver, nullptr);
+  
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+        CSLConstList papszMD = GDALGetMetadata(hDriver, nullptr);
+#else
+        char **papszMD = GDALGetMetadata(hDriver, nullptr);
+#endif
+        
         int nItems = CSLCount(papszMD);
         if (nItems > 0) {
             Rcpp::List md = Rcpp::List::create();

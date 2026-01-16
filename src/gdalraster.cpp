@@ -1552,8 +1552,13 @@ Rcpp::CharacterVector GDALRaster::getMetadata(int band,
 
     checkAccess_(GA_ReadOnly);
 
+    
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 13, 0) 
+    CSLConstList papszMD;
+#else
     char **papszMD = nullptr;
-
+#endif
+    
     if (band == 0) {
         papszMD = GDALGetMetadata(m_hDataset,
                                   domain == "" ? nullptr : domain.c_str());

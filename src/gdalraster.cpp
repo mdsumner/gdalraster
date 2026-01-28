@@ -33,6 +33,7 @@
 #include "gdal_vsi.h"
 #include "rcpp_util.h"
 #include "transform.h"
+#include "vrtdataset.h"
 
 void gdal_error_handler_r(CPLErr err_class, int err_no, const char *msg) {
     switch (err_class) {
@@ -2822,6 +2823,214 @@ void GDALRaster::setGDALDatasetH_(GDALDatasetH hDs) {
     }
 }
 
+
+// -----------------------------------------------------------------------------
+// addSimpleSource()
+// -----------------------------------------------------------------------------
+// Add a simple source to a VRT raster band.
+// This is a thin wrapper around VRTSourcedRasterBand::AddSimpleSource()
+
+bool GDALRaster::addSimpleSource(int band,
+                                 Rcpp::String src_filename,
+                                 int src_band,
+                                 double src_xoff,
+                                 double src_yoff,
+                                 double src_xsize,
+                                 double src_ysize,
+                                 double dst_xoff,
+                                 double dst_yoff,
+                                 double dst_xsize,
+                                 double dst_ysize,
+                                 std::string resampling,
+                                 Rcpp::Nullable<double> nodata) {
+  
+  checkAccess_(GA_Update);
+  
+  // Check that this is a VRT dataset
+  GDALDriverH hDriver = GDALGetDatasetDriver(m_hDataset);
+  if (hDriver == nullptr || !EQUAL(GDALGetDriverShortName(hDriver), "VRT")) {
+    Rcpp::stop("addSimpleSource() is only supported for VRT datasets");
+  }
+  
+  if (band < 1 || band > getRasterCount()) {
+    Rcpp::stop("invalid band number");
+  }
+  
+  // Cast to VRTDataset via GDALDataset
+  GDALDataset* poDS = GDALDataset::FromHandle(m_hDataset);
+  VRTDataset* poVRTDS = dynamic_cast<VRTDataset*>(poDS);
+  if (poVRTDS == nullptr) {
+    Rcpp::stop("failed to cast dataset to VRTDataset");
+  }
+  
+  // Get the band and cast to VRTSourcedRasterBand
+  GDALRasterBand* poBand = poVRTDS->GetRasterBand(band);
+  VRTSourcedRasterBand* poVRTBand = dynamic_cast<VRTSourcedRasterBand*>(poBand);
+  if (poVRTBand == nullptr) {
+    Rcpp::stop("band is not a VRTSourcedRasterBand (cannot add sources to "
+                 "VRTDerivedRasterBand or VRTRawRasterBand)");
+  }
+  
+  // Handle nodata - VRT_NODATA_UNSET signals "no nodata"
+  double dfNoData = VRT_NODATA_UNSET;
+  if (nodata.isNotNull()) {
+    double nd = Rcpp::as<double>(nodata);
+    if (!ISNA(nd)) {
+      dfNoData = nd;
+    }
+  }
+  
+  // Use the overload that takes filename and band number.
+  // This lets GDAL handle opening the source dataset and managing its lifecycle.
+  // The -1 values are passed through - GDAL interprets them as "use full extent"
+  std::string src_fn = src_filename.get_cstring();
+  CPLErr eErr = poVRTBand->AddSimpleSource(
+    src_fn.c_str(),
+    src_band,
+    src_xoff, src_yoff, src_xsize, src_ysize,
+    dst_xoff, dst_yoff, dst_xsize, dst_ysize,
+    resampling.c_str(),
+    dfNoData
+  );
+  
+  if (eErr != CE_None) {
+    if (!quiet)
+      Rcpp::Rcout << "AddSimpleSource failed: " << CPLGetLastErrorMsg() << "\n";
+    return false;
+  }
+  
+  return true;
+}
+
+
+// -----------------------------------------------------------------------------
+// addComplexSource()
+// -----------------------------------------------------------------------------
+// Add a complex source to a VRT raster band with scaling options.
+
+bool GDALRaster::addComplexSource(int band,
+                                  Rcpp::String src_filename,
+                                  int src_band,
+                                  double src_xoff,
+                                  double src_yoff,
+                                  double src_xsize,
+                                  double src_ysize,
+                                  double dst_xoff,
+                                  double dst_yoff,
+                                  double dst_xsize,
+                                  double dst_ysize,
+                                  double scale_offset,
+                                  double scale_ratio,
+                                  Rcpp::Nullable<double> nodata,
+                                  int color_table_component) {
+  
+  checkAccess_(GA_Update);
+  
+  // Check that this is a VRT dataset
+  GDALDriverH hDriver = GDALGetDatasetDriver(m_hDataset);
+  if (hDriver == nullptr || !EQUAL(GDALGetDriverShortName(hDriver), "VRT")) {
+    Rcpp::stop("addComplexSource() is only supported for VRT datasets");
+  }
+  
+  if (band < 1 || band > getRasterCount()) {
+    Rcpp::stop("invalid band number");
+  }
+  
+  // Cast to VRTDataset
+  GDALDataset* poDS = GDALDataset::FromHandle(m_hDataset);
+  VRTDataset* poVRTDS = dynamic_cast<VRTDataset*>(poDS);
+  if (poVRTDS == nullptr) {
+    Rcpp::stop("failed to cast dataset to VRTDataset");
+  }
+  
+  // Get the band and cast to VRTSourcedRasterBand
+  GDALRasterBand* poBand = poVRTDS->GetRasterBand(band);
+  VRTSourcedRasterBand* poVRTBand = dynamic_cast<VRTSourcedRasterBand*>(poBand);
+  if (poVRTBand == nullptr) {
+    Rcpp::stop("band is not a VRTSourcedRasterBand");
+  }
+  
+  // Handle nodata
+  double dfNoData = VRT_NODATA_UNSET;
+  if (nodata.isNotNull()) {
+    double nd = Rcpp::as<double>(nodata);
+    if (!ISNA(nd)) {
+      dfNoData = nd;
+    }
+  }
+  
+  // Use the overload that takes filename and band number
+  std::string src_fn = src_filename.get_cstring();
+  CPLErr eErr = poVRTBand->AddComplexSource(
+    src_fn.c_str(),
+    src_band,
+    src_xoff, src_yoff, src_xsize, src_ysize,
+    dst_xoff, dst_yoff, dst_xsize, dst_ysize,
+    scale_offset,
+    scale_ratio,
+    dfNoData,
+    color_table_component
+  );
+  
+  if (eErr != CE_None) {
+    if (!quiet)
+      Rcpp::Rcout << "AddComplexSource failed: " << CPLGetLastErrorMsg() << "\n";
+    return false;
+  }
+  
+  return true;
+}
+
+
+// -----------------------------------------------------------------------------
+// getVRTXML()
+// -----------------------------------------------------------------------------
+// Serialize the VRT dataset to an XML string.
+
+std::string GDALRaster::getVRTXML() {
+  checkAccess_(GA_ReadOnly);
+  
+  GDALDriverH hDriver = GDALGetDatasetDriver(m_hDataset);
+  if (hDriver == nullptr || !EQUAL(GDALGetDriverShortName(hDriver), "VRT")) {
+    Rcpp::stop("getVRTXML() is only supported for VRT datasets");
+  }
+  
+  GDALDataset* poDS = GDALDataset::FromHandle(m_hDataset);
+  VRTDataset* poVRTDS = dynamic_cast<VRTDataset*>(poDS);
+  if (poVRTDS == nullptr) {
+    Rcpp::stop("failed to cast dataset to VRTDataset");
+  }
+  
+  // Get the VRT's directory path for resolving relative filenames
+  const char* pszVRTPath = nullptr;
+  std::string osVRTPath;
+  const char* pszDesc = poVRTDS->GetDescription();
+  if (pszDesc != nullptr && pszDesc[0] != '\0') {
+    osVRTPath = CPLGetPath(pszDesc);
+    if (!osVRTPath.empty()) {
+      pszVRTPath = osVRTPath.c_str();
+    }
+  }
+  
+  CPLXMLNode* psTree = poVRTDS->SerializeToXML(pszVRTPath);
+  if (psTree == nullptr) {
+    Rcpp::stop("failed to serialize VRT to XML");
+  }
+  
+  char* pszXML = CPLSerializeXMLTree(psTree);
+  if (pszXML == nullptr) {
+    CPLDestroyXMLNode(psTree);
+    Rcpp::stop("failed to serialize XML tree to string");
+  }
+  std::string result(pszXML);
+  
+  CPLFree(pszXML);
+  CPLDestroyXMLNode(psTree);
+  
+  return result;
+}
+
+
 // ****************************************************************************
 
 RCPP_MODULE(mod_GDALRaster) {
@@ -3028,5 +3237,13 @@ RCPP_MODULE(mod_GDALRaster) {
     .const_method("show", &GDALRaster::show,
         "S4 show()")
 
+    // VRT source methods
+    .method("addSimpleSource", &GDALRaster::addSimpleSource,
+    "Add a simple source to a VRT raster band")
+    .method("addComplexSource", &GDALRaster::addComplexSource,
+    "Add a complex source (with scaling) to a VRT raster band")
+    .method("getVRTXML", &GDALRaster::getVRTXML,
+    "Serialize VRT dataset to XML string")
+  
     ;
 }

@@ -190,6 +190,45 @@ class GDALRaster {
     GDALDatasetH getGDALDatasetH_() const;
     void setGDALDatasetH_(GDALDatasetH hDs);
 
+    // =============================================================================
+    // VRT Source Method Declarations
+    // Add to src/gdalraster.h in the GDALRaster class public section
+    // =============================================================================
+    
+    // VRT-specific methods (GDAL VRT driver only)
+    
+    bool addSimpleSource(int band,
+                         Rcpp::String src_filename,
+                         int src_band,
+                         double src_xoff,
+                         double src_yoff,
+                         double src_xsize,
+                         double src_ysize,
+                         double dst_xoff,
+                         double dst_yoff,
+                         double dst_xsize,
+                         double dst_ysize,
+                         std::string resampling,
+                         Rcpp::Nullable<double> nodata);
+    
+    bool addComplexSource(int band,
+                          Rcpp::String src_filename,
+                          int src_band,
+                          double src_xoff,
+                          double src_yoff,
+                          double src_xsize,
+                          double src_ysize,
+                          double dst_xoff,
+                          double dst_yoff,
+                          double dst_xsize,
+                          double dst_ysize,
+                          double scale_offset,
+                          double scale_ratio,
+                          Rcpp::Nullable<double> nodata,
+                          int color_table_component);
+    
+    std::string getVRTXML();
+    
  private:
     std::string m_fname {};
     Rcpp::CharacterVector m_open_options;

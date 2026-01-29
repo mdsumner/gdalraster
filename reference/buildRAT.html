@@ -27,7 +27,7 @@ usage in a GDAL Raster Attribute Table)."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.4.0.9073</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,17 +38,22 @@ usage in a GDAL Raster Attribute Table)."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
-    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
-    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
     <li><a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a></li>
+    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-api-overview.html">Vector API Overview</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-read-benchmarks.html">Vector Read Benchmarks</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
+    <li><a class="dropdown-item" href="../articles/use-gdal-cli-from-r.html">Using 'gdal' CLI algorithms from R</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Archived articles</h6></li>
+    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/USDAForestService/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/firelab/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
@@ -64,7 +69,7 @@ usage in a GDAL Raster Attribute Table)."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Build a GDAL Raster Attribute Table with VALUE, COUNT</h1>
-      <small class="dont-index">Source: <a href="https://github.com/USDAForestService/gdalraster/blob/main/R/gdal_rat.R" class="external-link"><code>R/gdal_rat.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/firelab/gdalraster/blob/main/R/gdal_rat.R" class="external-link"><code>R/gdal_rat.R</code></a></small>
       <div class="d-none name"><code>buildRAT.Rd</code></div>
     </div>
 
@@ -156,11 +161,12 @@ to either a single pixel value or a range of values, and might have
 attributes such as the histogram count for that value (or range), the color
 that pixels of that value (or range) should be displayed, names of classes,
 or various other information.</p>
-<p>Each column in a raster attribute table has a name, a type (integer,
-double, or string), and a <code>GDALRATFieldUsage</code>. The usage
-distinguishes columns with particular understood purposes (such as color,
-histogram count, class name), and columns that have other purposes not
-understood by the library (long labels, ancillary attributes, etc).</p>
+<p>Each column in a raster attribute table has a name, a type (Integer,
+Double, String, and with GDAL &gt;= 3.12, Boolean, DateTime, or WKBGeometry),
+and a <code>GDALRATFieldUsage</code>. The usage distinguishes columns with particular
+understood purposes (such as color, histogram count, class name), and
+columns that have other purposes not understood by the library (long labels,
+ancillary attributes, etc).</p>
 <p>In the general case, each row has a field indicating the minimum pixel
 value falling into that category, and a field indicating the maximum pixel
 value. In the GDAL API, these are indicated with usage values of <code>GFU_Min</code>
@@ -187,14 +193,14 @@ assigned a GFU will be assigned <code>"Generic"</code>.</p>
 spaced, and the categorization can be determined by knowing the value at
 which the categories start and the size of a category. This is called
 "Linear Binning" and the information is kept specially on the raster
-attribute table as a whole. In R, a RAT that uses linear binning would
+attribute table as a whole. In <span style="R">R</span>, a RAT that uses linear binning would
 have the following attributes set on the data frame:
 attribute <code>"Row0Min"</code> = the numeric lower bound (pixel value) of the first
 category, and attribute <code>"BinSize"</code> = the numeric width of each category (in
 pixel value units). <code>buildRAT()</code> does not create tables with linear binning,
 but one could be created manually based on the specifications above, and
 applied to a raster with the class method <code>GDALRaster$setDefaultRAT()</code>.</p>
-<p>A raster attribute table is thematic or athematic (continuous). In R, this
+<p>A raster attribute table is thematic or athematic (continuous). In <span style="R">R</span>, this
 is defined by an attribute on the data frame named <code>"GDALRATTableType"</code> with
 value of either <code>"thematic"</code> or <code>"athematic"</code>.</p>
     </div>
@@ -205,7 +211,7 @@ value of either <code>"thematic"</code> or <code>"athematic"</code>.</p>
 will not be recoded in the output data frame. This may have implications
 if joining to other data (<code>NA</code> will not match), or when using the returned
 data frame to set a default RAT on a dataset (<code>NA</code> will be interpreted
-as the value that R uses internally to represent it for the type, e.g.,
+as the value that <span style="R">R</span> uses internally to represent it for the type, e.g.,
 -2147483648 for <code>NA_integer_</code>). In some cases, removing the row in the output
 data frame with value <code>NA</code>, rather than recoding, may be desirable (i.e., by
 removing manually or by side effect of joining via <code><a href="https://rdrr.io/r/base/merge.html" class="external-link">merge()</a></code>, for example).
@@ -228,7 +234,7 @@ Users should consider what is appropriate for a particular case.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">ds</span> <span class="op">&lt;-</span> <span class="fu">new</span><span class="op">(</span><span class="va">GDALRaster</span>, <span class="va">f</span>, read_only<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">getDefaultRAT</span><span class="op">(</span>band<span class="op">=</span><span class="fl">1</span><span class="op">)</span> <span class="co"># NULL</span></span></span>
+<span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">getDefaultRAT</span><span class="op">(</span>band <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="co"># NULL</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># get the full attribute table for LANDFIRE EVT from the CSV file</span></span></span>
@@ -326,11 +332,11 @@ Users should consider what is appropriate for a particular case.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Blue"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">setDefaultRAT</span><span class="op">(</span>band<span class="op">=</span><span class="fl">1</span>, <span class="va">tbl</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">setDefaultRAT</span><span class="op">(</span>band <span class="op">=</span> <span class="fl">1</span>, <span class="va">tbl</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
 <span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">flushCache</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">tbl2</span> <span class="op">&lt;-</span> <span class="va">ds</span><span class="op">$</span><span class="fu">getDefaultRAT</span><span class="op">(</span>band<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">tbl2</span> <span class="op">&lt;-</span> <span class="va">ds</span><span class="op">$</span><span class="fu">getDefaultRAT</span><span class="op">(</span>band <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 0...10...20...30...40...50...60...70...80...90...100 - done.</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">tbl2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 24</span>
@@ -367,11 +373,11 @@ Users should consider what is appropriate for a particular case.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
+  <p>Developed by Chris Toney, Michael D. Sumner.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

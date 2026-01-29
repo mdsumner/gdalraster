@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.4.0.9073</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,12 +33,17 @@
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
-    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
-    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+<li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
     <li><a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a></li>
+    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-api-overview.html">Vector API Overview</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-read-benchmarks.html">Vector Read Benchmarks</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
+    <li><a class="dropdown-item" href="../articles/use-gdal-cli-from-r.html">Using 'gdal' CLI algorithms from R</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Archived articles</h6></li>
+    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -47,7 +52,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/USDAForestService/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/firelab/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
@@ -72,7 +77,7 @@
       <h1>Raster Attribute Tables</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/USDAForestService/gdalraster/blob/main/vignettes/raster-attribute-tables.Rmd" class="external-link"><code>vignettes/raster-attribute-tables.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/firelab/gdalraster/blob/main/vignettes/raster-attribute-tables.Rmd" class="external-link"><code>vignettes/raster-attribute-tables.Rmd</code></a></small>
       <div class="d-none name"><code>raster-attribute-tables.Rmd</code></div>
     </div>
 
@@ -91,12 +96,15 @@ band.</p>
 <div class="section level2">
 <h2 id="format-of-gdal-rat">Format of GDAL RAT<a class="anchor" aria-label="anchor" href="#format-of-gdal-rat"></a>
 </h2>
-<p>Each column in a raster attribute table has a name, a type (integer,
-floating point or string), and a <code>GDALRATFieldUsage</code>. The
-field usage distinguishes columns with particular understood purposes
-(such as color, histogram count, class name), and columns that have
-other purposes not understood by the library (long labels, ancillary
-attributes, etc).</p>
+<p>Each column in a raster attribute table has a name, a type (Integer,
+Double, String, and with GDAL &gt;= 3.12, Boolean, DateTime, or
+WKBGeometry), and a <code>GDALRATFieldUsage</code>. The field usage
+distinguishes columns with particular understood purposes (such as
+color, histogram count, class name), and columns that have other
+purposes not understood by the library (long labels, ancillary
+attributes, etc). With GDAL &gt;= 3.12, a WKBGeometry field is meant to
+help GIS software find (zoom to) areas where specific rows are present
+in the RAT.</p>
 <p>In the general case, each row has a field indicating the minimum
 pixel value falling into that category, and a field indicating the
 maximum pixel value. In the GDAL API, these are indicated with usage
@@ -135,7 +143,7 @@ with the appropriate metadata automatically assigned (i.e., R attributes
 assigned on the data frame and its columns that define usage as a GDAL
 RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://usdaforestservice.github.io/gdalraster/">gdalraster</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://firelab.github.io/gdalraster/">gdalraster</a></span><span class="op">)</span></span>
 <span><span class="co">#&gt; GDAL 3.8.4 (released 2024-02-08), GEOS 3.12.1, PROJ 9.4.0</span></span>
 <span></span>
 <span><span class="co"># LANDFIRE Existing Vegetation Type (EVT)</span></span>
@@ -257,7 +265,7 @@ RAT, for passing to <code>GDALRaster$setDefaultRAT()</code>):</p>
 <span>            maxColorValue <span class="op">=</span> <span class="fl">255</span>,</span>
 <span>            interpolate <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>            main <span class="op">=</span> <span class="st">"Storm Lake LANDFIRE EVT"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="raster-attribute-tables_files/figure-html/unnamed-chunk-3-1.png" width="576"></p>
+<p><img src="raster-attribute-tables_files/figure-html/unnamed-chunk-3-1.png" class="r-plt" alt="" width="576"></p>
 <p>The function <code><a href="../reference/displayRAT.html">displayRAT()</a></code> generates a nicely formatted
 table for display. Colors are shown if the RAT contains RGB columns:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -1015,7 +1023,7 @@ Attribute Table” can be selected after right-clicking a raster layer
 that has an associated RAT. For the LANDFIRE EVT layer as modified
 above, classifying on EVT_NAME generates the following display:</p>
 <div class="figure">
-<img src="qgis_rat_classify.png" alt="A screen capture of the QGIS desktop application showing support for GDAL raster attribute tables. The display of attribute tables in gdalraster is modeled after that of QGIS, having a similar format by default." width="90%"><p class="caption">
+<img src="qgis_rat_classify.png" class="r-plt" alt="A screen capture of the QGIS desktop application showing support for GDAL raster attribute tables. The display of attribute tables in gdalraster is modeled after that of QGIS, having a similar format by default." width="90%"><p class="caption">
 LANDFIRE EVT in the Raster Attribute Table QGIS Plugin
 </p>
 </div>
@@ -1024,7 +1032,7 @@ LANDFIRE EVT in the Raster Attribute Table QGIS Plugin
 <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a>
 </h2>
 <ul>
-<li><p>Documentation for <a href="https://usdaforestservice.github.io/gdalraster/reference/buildRAT.html"><code>gdalraster::buildRAT()</code></a></p></li>
+<li><p>Documentation for <a href="https://firelab.github.io/gdalraster/reference/buildRAT.html"><code>gdalraster::buildRAT()</code></a></p></li>
 <li><p><a href="https://gdal.org/en/stable/doxygen/classGDALRasterAttributeTable.html" class="external-link">GDALRasterAttributeTable
 Class Reference</a></p></li>
 <li><p><a href="https://github.com/qgis/QGIS/pull/50687" class="external-link">Raster
@@ -1049,11 +1057,11 @@ Ecological Systems</a>.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
+  <p>Developed by Chris Toney, Michael D. Sumner.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer>

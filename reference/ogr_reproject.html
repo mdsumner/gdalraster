@@ -15,7 +15,7 @@ for reprojection to occur."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.4.0.9073</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,17 +26,22 @@ for reprojection to occur."></head><body>
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
-    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
-    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
     <li><a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a></li>
+    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-api-overview.html">Vector API Overview</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-read-benchmarks.html">Vector Read Benchmarks</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
+    <li><a class="dropdown-item" href="../articles/use-gdal-cli-from-r.html">Using 'gdal' CLI algorithms from R</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Archived articles</h6></li>
+    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/USDAForestService/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/firelab/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
@@ -52,7 +57,7 @@ for reprojection to occur."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Reproject a vector layer</h1>
-      <small class="dont-index">Source: <a href="https://github.com/USDAForestService/gdalraster/blob/main/R/ogr_reproject.R" class="external-link"><code>R/ogr_reproject.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/firelab/gdalraster/blob/main/R/ogr_reproject.R" class="external-link"><code>R/ogr_reproject.R</code></a></small>
       <div class="d-none name"><code>ogr_reproject.Rd</code></div>
     </div>
 
@@ -222,8 +227,9 @@ written to an existing database.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
-    <div class="dont-index"><p><code><a href="ogr2ogr.html">ogr2ogr()</a></code>, <code><a href="warp.html">warp()</a></code> for raster reprojection</p>
-<p>GDAL documentation for <code>ogr2ogr</code>:<br><a href="https://gdal.org/en/stable/programs/ogr2ogr.html" class="external-link">https://gdal.org/en/stable/programs/ogr2ogr.html</a></p></div>
+    <div class="dont-index"><p><code><a href="ogr2ogr.html">ogr2ogr()</a></code></p>
+<p>GDAL documentation for <code>ogr2ogr</code>:<br><a href="https://gdal.org/en/stable/programs/ogr2ogr.html" class="external-link">https://gdal.org/en/stable/programs/ogr2ogr.html</a></p>
+<p><code><a href="warp.html">warp()</a></code> for raster reprojection</p></div>
     </div>
 
     <div class="section level2">
@@ -243,11 +249,13 @@ written to an existing database.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># YNP boundary</span></span></span>
 <span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata/ynp_features.zip"</span>, package <span class="op">=</span> <span class="st">"gdalraster"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ynp_dsn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="st">"/vsizip"</span>, <span class="va">f</span>, <span class="st">"ynp_features.gpkg"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/unzip.html" class="external-link">unzip</a></span><span class="op">(</span><span class="va">f</span>, files <span class="op">=</span> <span class="st">"ynp_features.gpkg"</span>, exdir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ynp_dsn</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"ynp_features.gpkg"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="op">(</span><span class="va">bnd</span> <span class="op">&lt;-</span> <span class="fu">new</span><span class="op">(</span><span class="va">GDALVector</span>, <span class="va">ynp_dsn</span>, <span class="st">"ynp_bnd"</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> C++ object of class GDALVector</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Driver : GeoPackage (GPKG)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  DSN    : /vsizip//home/runner/work/_temp/Library/gdalraster/extdata/ynp_features.zip/ynp_features.gpkg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  DSN    : /tmp/RtmpvisLRQ/ynp_features.gpkg</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Layer  : ynp_bnd</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  CRS    : NAD83 (EPSG:4269)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Geom   : POLYGON</span>
@@ -260,7 +268,7 @@ written to an existing database.</p>
 <span class="r-in"><span><span class="op">(</span><span class="va">bnd_mtsp</span> <span class="op">&lt;-</span> <span class="fu">ogr_reproject</span><span class="op">(</span><span class="va">ynp_dsn</span>, <span class="st">"ynp_bnd"</span>, <span class="va">out_dsn</span>, <span class="va">mtbs</span><span class="op">$</span><span class="fu">getSpatialRef</span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> C++ object of class GDALVector</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Driver : GeoPackage (GPKG)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  DSN    : /tmp/Rtmp7yUXFL/file237f56226db5.gpkg</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  DSN    : /tmp/RtmpvisLRQ/file2366804856d.gpkg</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Layer  : ynp_bnd</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  CRS    : NAD83 / Montana (EPSG:32100)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Geom   : POLYGON</span>
@@ -326,11 +334,11 @@ written to an existing database.</p>
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
+  <p>Developed by Chris Toney, Michael D. Sumner.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

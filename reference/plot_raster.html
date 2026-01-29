@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">gdalraster</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">1.12.0.9296</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">2.4.0.9073</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -18,17 +18,22 @@
       <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
-    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
-    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
-    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/raster-api-tutorial.html">Raster API Tutorial</a></li>
     <li><a class="dropdown-item" href="../articles/raster-display.html">Raster Display</a></li>
+    <li><a class="dropdown-item" href="../articles/raster-attribute-tables.html">Raster Attribute Tables</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-block-cache.html">GDAL Block Cache</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-api-overview.html">Vector API Overview</a></li>
+    <li><a class="dropdown-item" href="../articles/vector-read-benchmarks.html">Vector Read Benchmarks</a></li>
+    <li><a class="dropdown-item" href="../articles/gdal-config-quick-ref.html">GDAL Config Quick Reference</a></li>
+    <li><a class="dropdown-item" href="../articles/use-gdal-cli-from-r.html">Using 'gdal' CLI algorithms from R</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Archived articles</h6></li>
+    <li><a class="dropdown-item" href="../articles/gdalvector-draft.html">Draft Bindings to the GDAL/OGR Vector API</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json"></form></li>
-<li class="nav-item"><a class="external-link nav-link" href="https://github.com/USDAForestService/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/firelab/gdalraster/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
   <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch"><li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
@@ -44,7 +49,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Display raster data</h1>
-      <small class="dont-index">Source: <a href="https://github.com/USDAForestService/gdalraster/blob/main/R/display.R" class="external-link"><code>R/display.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/firelab/gdalraster/blob/main/R/display.R" class="external-link"><code>R/display.R</code></a></small>
       <div class="d-none name"><code>plot_raster.Rd</code></div>
     </div>
 
@@ -162,10 +167,16 @@ the percentiles to use (e.g., <code>c(2, 98)</code>). Applied per band. Ignored 
 
 
 <dt id="arg-col-map-fn">col_map_fn<a class="anchor" aria-label="anchor" href="#arg-col-map-fn"></a></dt>
-<dd><p>An optional color map function (default is
+<dd><p>An optional color map function that maps input pixel values
+to colors in "#RRGGBB" (or "#RRGGBBAA") character form (default is
 <code><a href="https://rdrr.io/r/grDevices/gray.html" class="external-link">grDevices::gray</a></code> for single-band data or <code><a href="https://rdrr.io/r/grDevices/rgb.html" class="external-link">grDevices::rgb</a></code> for 3-band).
-Ignored if <code>col_tbl</code> is used. Set <code>normalize</code> to <code>FALSE</code> if using a color
-map function that operates on raw pixel values.</p></dd>
+Ignored if <code>col_tbl</code> is used. Set <code>normalize = FALSE</code> if using a color
+map function that operates on raw pixel values. This argument can also be
+given as a color palette, in which case a color-ramp function is assumed.
+The color palette can be a character vector of <code>"#RRGGBB"</code> or <code>"#RRGGBBAA"</code>,
+color names from <code><a href="https://rdrr.io/r/grDevices/colors.html" class="external-link">grDevices::colors()</a></code>, or a positive integer that indexes
+into <code><a href="https://rdrr.io/r/grDevices/palette.html" class="external-link">grDevices::palette()</a></code> (i.e., must be a valid argument to
+<code><a href="https://rdrr.io/r/grDevices/col2rgb.html" class="external-link">grDevices::col2rgb()</a></code>).</p></dd>
 
 
 <dt id="arg-pixel-fn">pixel_fn<a class="anchor" aria-label="anchor" href="#arg-pixel-fn"></a></dt>
@@ -292,11 +303,12 @@ CUBIC, CUBICSPLINE, LANCZOS, AVERAGE or MODE, for example:</p><div class="source
 <span class="r-in"><span><span class="fu">plot_raster</span><span class="op">(</span><span class="va">ds</span>, legend <span class="op">=</span> <span class="cn">TRUE</span>, main <span class="op">=</span> <span class="st">"Storm Lake elevation (m)"</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_raster-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># color ramp from user-defined palette</span></span></span>
-<span class="r-in"><span><span class="va">elev_pal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#00A60E"</span>,<span class="st">"#63C600"</span>,<span class="st">"#E6E600"</span>,<span class="st">"#E9BD3B"</span>,</span></span>
-<span class="r-in"><span>              <span class="st">"#ECB176"</span>,<span class="st">"#EFC2B3"</span>,<span class="st">"#F2F2F2"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ramp</span> <span class="op">&lt;-</span> <span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/colour_ramp.html" class="external-link">colour_ramp</a></span><span class="op">(</span><span class="va">elev_pal</span>, alpha <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">plot_raster</span><span class="op">(</span><span class="va">ds</span>, col_map_fn <span class="op">=</span> <span class="va">ramp</span>, legend <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span><span class="co"># color ramp from a user-defined palette: the `col_map_fn` can optionally</span></span></span>
+<span class="r-in"><span><span class="co"># be given as a color palette, for which a color ramp function is assumed</span></span></span>
+<span class="r-in"><span><span class="va">pal</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"#00A60E"</span>, <span class="st">"#63C600"</span>, <span class="st">"#E6E600"</span>, <span class="st">"#E9BD3B"</span>, <span class="st">"#ECB176"</span>, <span class="st">"#EFC2B3"</span>,</span></span>
+<span class="r-in"><span>         <span class="st">"#F2F2F2"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="fu">plot_raster</span><span class="op">(</span><span class="va">ds</span>, col_map_fn <span class="op">=</span> <span class="va">pal</span>, legend <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
 <span class="r-in"><span>            main <span class="op">=</span> <span class="st">"Storm Lake elevation (m)"</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_raster-2.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
@@ -355,11 +367,12 @@ CUBIC, CUBICSPLINE, LANCZOS, AVERAGE or MODE, for example:</p><div class="source
 <span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">getDataTypeName</span><span class="op">(</span>band <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>  <span class="co"># complex floating point</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "CFloat32"</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="va">ramp</span> <span class="op">&lt;-</span> <span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/colour_ramp.html" class="external-link">colour_ramp</a></span><span class="op">(</span><span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/pal_viridis.html" class="external-link">pal_viridis</a></span><span class="op">(</span>option <span class="op">=</span> <span class="st">"plasma"</span><span class="op">)</span><span class="op">(</span><span class="fl">6</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                            alpha <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="fu">plot_raster</span><span class="op">(</span><span class="va">ds</span>, pixel_fn <span class="op">=</span> <span class="va">Arg</span>, col_map_fn <span class="op">=</span> <span class="va">ramp</span>, interpolate <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
-<span class="r-in"><span>            legend <span class="op">=</span> <span class="cn">TRUE</span>, main <span class="op">=</span> <span class="st">"Arg(complex.tif)"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">plot_raster</span><span class="op">(</span><span class="va">ds</span>,</span></span>
+<span class="r-in"><span>            pixel_fn <span class="op">=</span> <span class="va">Arg</span>,</span></span>
+<span class="r-in"><span>            col_map_fn <span class="op">=</span> <span class="fu">scales</span><span class="fu">::</span><span class="fu"><a href="https://scales.r-lib.org/reference/pal_viridis.html" class="external-link">pal_viridis</a></span><span class="op">(</span>option <span class="op">=</span> <span class="st">"plasma"</span><span class="op">)</span><span class="op">(</span><span class="fl">6</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>            interpolate <span class="op">=</span> <span class="cn">FALSE</span>,</span></span>
+<span class="r-in"><span>            legend <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>            main <span class="op">=</span> <span class="st">"Arg(complex.tif)"</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_raster-5.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">ds</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></span>
@@ -370,11 +383,11 @@ CUBIC, CUBICSPLINE, LANCZOS, AVERAGE or MODE, for example:</p><div class="source
 
 
     <footer><div class="pkgdown-footer-left">
-  <p>Developed by <a href="https://github.com/ctoney" class="external-link">Chris Toney</a>.</p>
+  <p>Developed by Chris Toney, Michael D. Sumner.</p>
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
 </div>
 
     </footer></div>

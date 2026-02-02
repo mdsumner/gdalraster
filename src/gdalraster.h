@@ -207,6 +207,7 @@ int gdal_version_num();
 Rcpp::DataFrame gdal_formats(const std::string &fmt);
 std::string get_config_option(const std::string &key);
 void set_config_option(const std::string &key, const std::string &value);
+std::vector<std::string> get_config_options(); 
 Rcpp::NumericVector get_cache_max(std::string units);
 Rcpp::NumericVector get_cache_used(std::string units);
 void set_cache_max(Rcpp::NumericVector nbytes);

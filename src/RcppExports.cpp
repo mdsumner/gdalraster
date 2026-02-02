@@ -171,6 +171,16 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// get_config_options
+std::vector<std::string> get_config_options();
+RcppExport SEXP _gdalraster_get_config_options() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(get_config_options());
+    return rcpp_result_gen;
+END_RCPP
+}
 // get_cache_max
 Rcpp::NumericVector get_cache_max(std::string units);
 RcppExport SEXP _gdalraster_get_cache_max(SEXP unitsSEXP) {
@@ -2571,6 +2581,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_gdal_formats", (DL_FUNC) &_gdalraster_gdal_formats, 1},
     {"_gdalraster_get_config_option", (DL_FUNC) &_gdalraster_get_config_option, 1},
     {"_gdalraster_set_config_option", (DL_FUNC) &_gdalraster_set_config_option, 2},
+    {"_gdalraster_get_config_options", (DL_FUNC) &_gdalraster_get_config_options, 0},
     {"_gdalraster_get_cache_max", (DL_FUNC) &_gdalraster_get_cache_max, 1},
     {"_gdalraster_get_cache_used", (DL_FUNC) &_gdalraster_get_cache_used, 1},
     {"_gdalraster_set_cache_max", (DL_FUNC) &_gdalraster_set_cache_max, 1},

@@ -264,6 +264,34 @@ set_config_option <- function(key, value) {
     invisible(.Call(`_gdalraster_set_config_option`, key, value))
 }
 
+#' Get all currently set GDAL configuration options
+#'
+#' `get_config_options()` returns all GDAL configuration options that have
+#' been set via `set_config_option()` or other mechanism for setting GDAL 
+#' configuration options. This is useful for debugging to see
+#' what options are currently active. Note that options set as environment
+#' variables or via `CPLSetThreadLocalConfigOption()` are not included.
+#' For a full description and listing of available options see
+#' \url{https://gdal.org/en/stable/user/configoptions.html}.
+#'
+#' @returns A named character vector where names are configuration option
+#' keys and values are the corresponding values. Returns an empty character
+#' vector if no options are currently set.
+#'
+#' @seealso
+#' [get_config_option()], [set_config_option()]
+#'
+#' `vignette("gdal-config-quick-ref")`
+#'
+#' @examples
+#' op <- get_config_option("GDAL_CACHEMAX")
+#' set_config_option("GDAL_CACHEMAX", "12")
+#' get_config_options()
+#' set_config_option("GDAL_CACHEMAX", op)
+get_config_options <- function() {
+    .Call(`_gdalraster_get_config_options`)
+}
+
 #' Get the maximum memory size available for the GDAL block cache
 #'
 #' `get_cache_max()` returns the maximum amount of memory available to the

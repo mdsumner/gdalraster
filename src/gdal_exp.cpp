@@ -374,6 +374,47 @@ void set_config_option(const std::string &key, const std::string &value) {
     CPLSetConfigOption(key.c_str(), value_in);
 }
 
+//' Get all currently set GDAL configuration options
+//'
+//' `get_config_options()` returns all GDAL configuration options that have been
+//' set explicitly (e.g. by `set_config_option()`). Note that many configuration
+//' options have default values which are not visible to this function. This is
+//' useful to see what options are currently active by being deliberately set.
+//' Note that options set as environment variables or via
+//' `CPLSetThreadLocalConfigOption()` are not included. For a full description
+//' and listing of available options see
+//' \url{https://gdal.org/en/stable/user/configoptions.html}.
+//'
+//' @returns A character vector of configuration option keys and values in the
+//'   form "KEY=VALUE". Returns an empty character vector if no options are
+//'   currently set.
+//'
+//' @seealso
+//' [get_config_option()], [set_config_option()]
+//'
+//' `vignette("gdal-config-quick-ref")`
+//'
+//' @examples
+//' op <- get_config_option("GDAL_CACHEMAX")
+//' set_config_option("GDAL_CACHEMAX", "12")
+//' get_config_options()
+//' set_config_option("GDAL_CACHEMAX", op)
+// [[Rcpp::export]]
+std::vector<std::string> get_config_options() {
+   std::vector<std::string> ret;
+   char **papszOptions = CPLGetConfigOptions();
+   if (papszOptions == nullptr) {
+     return ret;
+   }
+   
+   for (int i = 0; papszOptions[i] != nullptr; i++) {
+     ret.push_back(std::string(papszOptions[i]));
+   }
+   
+   CSLDestroy(papszOptions);
+   return ret;
+}
+
 
 //' Get the maximum memory size available for the GDAL block cache
 //'

@@ -194,6 +194,7 @@ reference:
   - set_cache_max
   - get_config_option
   - set_config_option
+  - get_config_options
   - get_num_cpus
   - get_usable_physical_ram
   - has_spatialite

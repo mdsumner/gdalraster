@@ -26,6 +26,7 @@ test_that("get/set_config_option work", {
     co <- get_config_option("GDAL_CACHEMAX")
     set_config_option("GDAL_CACHEMAX", "64")
     expect_equal(get_config_option("GDAL_CACHEMAX"), "64")
+    expect_true(grepl("GDAL_CACHEMAX=64", get_config_options()))
     set_config_option("GDAL_CACHEMAX", co)
 })
 

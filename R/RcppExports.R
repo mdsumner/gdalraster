@@ -1785,6 +1785,22 @@ mdim_dim_values <- function(arr, dim_index) {
     .Call(`_gdalraster_mdim_dim_values`, arr, dim_index)
 }
 
+mdim_group_attr_names <- function(group) {
+    .Call(`_gdalraster_mdim_group_attr_names`, group)
+}
+
+mdim_group_attr <- function(group, name) {
+    .Call(`_gdalraster_mdim_group_attr`, group, name)
+}
+
+mdim_group_attrs <- function(group) {
+    .Call(`_gdalraster_mdim_group_attrs`, group)
+}
+
+mdim_coord_info <- function(arr, dim_index) {
+    .Call(`_gdalraster_mdim_coord_info`, arr, dim_index)
+}
+
 #' Copy a source file to a target filename
 #'
 #' `vsi_copy_file()` is a wrapper for `VSICopyFile()` in the GDAL Common

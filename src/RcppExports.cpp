@@ -917,6 +917,52 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mdim_group_attr_names
+Rcpp::CharacterVector mdim_group_attr_names(SEXP group);
+RcppExport SEXP _gdalraster_mdim_group_attr_names(SEXP groupSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type group(groupSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_group_attr_names(group));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_group_attr
+SEXP mdim_group_attr(SEXP group, std::string name);
+RcppExport SEXP _gdalraster_mdim_group_attr(SEXP groupSEXP, SEXP nameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type group(groupSEXP);
+    Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_group_attr(group, name));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_group_attrs
+Rcpp::List mdim_group_attrs(SEXP group);
+RcppExport SEXP _gdalraster_mdim_group_attrs(SEXP groupSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type group(groupSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_group_attrs(group));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_coord_info
+Rcpp::List mdim_coord_info(SEXP arr, int dim_index);
+RcppExport SEXP _gdalraster_mdim_coord_info(SEXP arrSEXP, SEXP dim_indexSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< int >::type dim_index(dim_indexSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_coord_info(arr, dim_index));
+    return rcpp_result_gen;
+END_RCPP
+}
 // vsi_copy_file
 int vsi_copy_file(const Rcpp::CharacterVector& src_file, const Rcpp::CharacterVector& target_file, bool show_progress);
 RcppExport SEXP _gdalraster_vsi_copy_file(SEXP src_fileSEXP, SEXP target_fileSEXP, SEXP show_progressSEXP) {
@@ -2737,6 +2783,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_mdim_array_attr_names", (DL_FUNC) &_gdalraster_mdim_array_attr_names, 1},
     {"_gdalraster_mdim_array_attr", (DL_FUNC) &_gdalraster_mdim_array_attr, 2},
     {"_gdalraster_mdim_dim_values", (DL_FUNC) &_gdalraster_mdim_dim_values, 2},
+    {"_gdalraster_mdim_group_attr_names", (DL_FUNC) &_gdalraster_mdim_group_attr_names, 1},
+    {"_gdalraster_mdim_group_attr", (DL_FUNC) &_gdalraster_mdim_group_attr, 2},
+    {"_gdalraster_mdim_group_attrs", (DL_FUNC) &_gdalraster_mdim_group_attrs, 1},
+    {"_gdalraster_mdim_coord_info", (DL_FUNC) &_gdalraster_mdim_coord_info, 2},
     {"_gdalraster_vsi_copy_file", (DL_FUNC) &_gdalraster_vsi_copy_file, 3},
     {"_gdalraster_vsi_curl_clear_cache", (DL_FUNC) &_gdalraster_vsi_curl_clear_cache, 3},
     {"_gdalraster_vsi_read_dir", (DL_FUNC) &_gdalraster_vsi_read_dir, 4},

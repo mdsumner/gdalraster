@@ -2682,6 +2682,22 @@ vsi_uri_to_vsi_path <- function(uris) {
     .Call(`_gdalraster_gdal_global_reg_names`)
 }
 
+edtCreate <- function(dataType) {
+    .Call(`_gdalraster_edtCreate`, dataType)
+}
+
+edtCreateString <- function(maxLength = 0L) {
+    .Call(`_gdalraster_edtCreateString`, maxLength)
+}
+
+edtCreateCompound <- function(name, totalSize, components) {
+    .Call(`_gdalraster_edtCreateCompound`, name, totalSize, components)
+}
+
+mdimCreate <- function(filename, driverName, options = characterVector()) {
+    .Call(`_gdalraster_mdimCreate`, filename, driverName, options)
+}
+
 #' get GEOS version
 #' @noRd
 .getGEOSVersion <- function() {

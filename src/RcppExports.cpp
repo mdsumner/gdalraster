@@ -1183,6 +1183,54 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// edtCreate
+SEXP edtCreate(int dataType);
+RcppExport SEXP _gdalraster_edtCreate(SEXP dataTypeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type dataType(dataTypeSEXP);
+    rcpp_result_gen = Rcpp::wrap(edtCreate(dataType));
+    return rcpp_result_gen;
+END_RCPP
+}
+// edtCreateString
+SEXP edtCreateString(int maxLength);
+RcppExport SEXP _gdalraster_edtCreateString(SEXP maxLengthSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type maxLength(maxLengthSEXP);
+    rcpp_result_gen = Rcpp::wrap(edtCreateString(maxLength));
+    return rcpp_result_gen;
+END_RCPP
+}
+// edtCreateCompound
+SEXP edtCreateCompound(std::string name, int totalSize, Rcpp::List components);
+RcppExport SEXP _gdalraster_edtCreateCompound(SEXP nameSEXP, SEXP totalSizeSEXP, SEXP componentsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
+    Rcpp::traits::input_parameter< int >::type totalSize(totalSizeSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List >::type components(componentsSEXP);
+    rcpp_result_gen = Rcpp::wrap(edtCreateCompound(name, totalSize, components));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdimCreate
+SEXP mdimCreate(std::string filename, std::string driverName, Rcpp::CharacterVector options);
+RcppExport SEXP _gdalraster_mdimCreate(SEXP filenameSEXP, SEXP driverNameSEXP, SEXP optionsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type filename(filenameSEXP);
+    Rcpp::traits::input_parameter< std::string >::type driverName(driverNameSEXP);
+    Rcpp::traits::input_parameter< Rcpp::CharacterVector >::type options(optionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdimCreate(filename, driverName, options));
+    return rcpp_result_gen;
+END_RCPP
+}
 // getGEOSVersion
 std::vector<int> getGEOSVersion();
 RcppExport SEXP _gdalraster_getGEOSVersion() {
@@ -2551,6 +2599,7 @@ END_RCPP
 
 RcppExport SEXP _rcpp_module_boot_mod_cmb_table();
 RcppExport SEXP _rcpp_module_boot_mod_GDALAlg();
+RcppExport SEXP _rcpp_module_boot_mod_gdalmultidim();
 RcppExport SEXP _rcpp_module_boot_mod_GDALRaster();
 RcppExport SEXP _rcpp_module_boot_mod_GDALVector();
 RcppExport SEXP _rcpp_module_boot_mod_running_stats();
@@ -2650,6 +2699,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_vsi_uri_to_vsi_path", (DL_FUNC) &_gdalraster_vsi_uri_to_vsi_path, 1},
     {"_gdalraster_gdal_commands", (DL_FUNC) &_gdalraster_gdal_commands, 3},
     {"_gdalraster_gdal_global_reg_names", (DL_FUNC) &_gdalraster_gdal_global_reg_names, 0},
+    {"_gdalraster_edtCreate", (DL_FUNC) &_gdalraster_edtCreate, 1},
+    {"_gdalraster_edtCreateString", (DL_FUNC) &_gdalraster_edtCreateString, 1},
+    {"_gdalraster_edtCreateCompound", (DL_FUNC) &_gdalraster_edtCreateCompound, 3},
+    {"_gdalraster_mdimCreate", (DL_FUNC) &_gdalraster_mdimCreate, 3},
     {"_gdalraster_getGEOSVersion", (DL_FUNC) &_gdalraster_getGEOSVersion, 0},
     {"_gdalraster_has_geos", (DL_FUNC) &_gdalraster_has_geos, 0},
     {"_gdalraster_g_wkb2wkt", (DL_FUNC) &_gdalraster_g_wkb2wkt, 2},
@@ -2759,6 +2812,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_transform_bounds", (DL_FUNC) &_gdalraster_transform_bounds, 5},
     {"_rcpp_module_boot_mod_cmb_table", (DL_FUNC) &_rcpp_module_boot_mod_cmb_table, 0},
     {"_rcpp_module_boot_mod_GDALAlg", (DL_FUNC) &_rcpp_module_boot_mod_GDALAlg, 0},
+    {"_rcpp_module_boot_mod_gdalmultidim", (DL_FUNC) &_rcpp_module_boot_mod_gdalmultidim, 0},
     {"_rcpp_module_boot_mod_GDALRaster", (DL_FUNC) &_rcpp_module_boot_mod_GDALRaster, 0},
     {"_rcpp_module_boot_mod_GDALVector", (DL_FUNC) &_rcpp_module_boot_mod_GDALVector, 0},
     {"_rcpp_module_boot_mod_running_stats", (DL_FUNC) &_rcpp_module_boot_mod_running_stats, 0},

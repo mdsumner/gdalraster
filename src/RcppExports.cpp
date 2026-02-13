@@ -856,6 +856,67 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mdim_array_read
+SEXP mdim_array_read(SEXP arr, Rcpp::Nullable<Rcpp::NumericVector> start, Rcpp::Nullable<Rcpp::NumericVector> count, Rcpp::Nullable<Rcpp::NumericVector> step, bool decode);
+RcppExport SEXP _gdalraster_mdim_array_read(SEXP arrSEXP, SEXP startSEXP, SEXP countSEXP, SEXP stepSEXP, SEXP decodeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type start(startSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type count(countSEXP);
+    Rcpp::traits::input_parameter< Rcpp::Nullable<Rcpp::NumericVector> >::type step(stepSEXP);
+    Rcpp::traits::input_parameter< bool >::type decode(decodeSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_array_read(arr, start, count, step, decode));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_array_info
+Rcpp::List mdim_array_info(SEXP arr);
+RcppExport SEXP _gdalraster_mdim_array_info(SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_array_info(arr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_array_attr_names
+Rcpp::CharacterVector mdim_array_attr_names(SEXP arr);
+RcppExport SEXP _gdalraster_mdim_array_attr_names(SEXP arrSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_array_attr_names(arr));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_array_attr
+SEXP mdim_array_attr(SEXP arr, std::string name);
+RcppExport SEXP _gdalraster_mdim_array_attr(SEXP arrSEXP, SEXP nameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< std::string >::type name(nameSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_array_attr(arr, name));
+    return rcpp_result_gen;
+END_RCPP
+}
+// mdim_dim_values
+Rcpp::NumericVector mdim_dim_values(SEXP arr, int dim_index);
+RcppExport SEXP _gdalraster_mdim_dim_values(SEXP arrSEXP, SEXP dim_indexSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< SEXP >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< int >::type dim_index(dim_indexSEXP);
+    rcpp_result_gen = Rcpp::wrap(mdim_dim_values(arr, dim_index));
+    return rcpp_result_gen;
+END_RCPP
+}
 // vsi_copy_file
 int vsi_copy_file(const Rcpp::CharacterVector& src_file, const Rcpp::CharacterVector& target_file, bool show_progress);
 RcppExport SEXP _gdalraster_vsi_copy_file(SEXP src_fileSEXP, SEXP target_fileSEXP, SEXP show_progressSEXP) {
@@ -2671,6 +2732,11 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_gt_from_dim_bbox_", (DL_FUNC) &_gdalraster_gt_from_dim_bbox_, 2},
     {"_gdalraster_mdim_info", (DL_FUNC) &_gdalraster_mdim_info, 10},
     {"_gdalraster_mdim_translate", (DL_FUNC) &_gdalraster_mdim_translate, 12},
+    {"_gdalraster_mdim_array_read", (DL_FUNC) &_gdalraster_mdim_array_read, 5},
+    {"_gdalraster_mdim_array_info", (DL_FUNC) &_gdalraster_mdim_array_info, 1},
+    {"_gdalraster_mdim_array_attr_names", (DL_FUNC) &_gdalraster_mdim_array_attr_names, 1},
+    {"_gdalraster_mdim_array_attr", (DL_FUNC) &_gdalraster_mdim_array_attr, 2},
+    {"_gdalraster_mdim_dim_values", (DL_FUNC) &_gdalraster_mdim_dim_values, 2},
     {"_gdalraster_vsi_copy_file", (DL_FUNC) &_gdalraster_vsi_copy_file, 3},
     {"_gdalraster_vsi_curl_clear_cache", (DL_FUNC) &_gdalraster_vsi_curl_clear_cache, 3},
     {"_gdalraster_vsi_read_dir", (DL_FUNC) &_gdalraster_vsi_read_dir, 4},

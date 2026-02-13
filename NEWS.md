@@ -1,4 +1,18 @@
-# gdalraster 2.4.0.9073 (dev)
+# gdalraster 2.4.0.9081 (dev)
+
+* recognize new color interpretation (`GCI_xxxx`) items added to the `GDALColorInterp` enumeration in GDAL 3.10 (#900) (2026-02-10)
+
+* (internal) initialize the progress counter to zero in some cases where it was missing for a progress bar managed directly (#903) (2026-02-06)
+
+* class `VSIFile`: add a writable field `reportVSIFErrorAsEof`, and check the VSI error indicator in the `read()` and `eof()` methods if GDAL >= 3.10 (#901) (2026-02-06)
+
+* `calc()`: use `cli::cli_progress_bar()` instead of `utils::txtProgressBar()` (2026-02-01)
+
+* (internal) `VSIFile::read()`: avoid a copy from temporary buffer most of the time (#888) (2026-02-01)
+
+* use package **cli** for enhanced progress reporting throughout, adding **cli** in `LinkingTo` (#889, thanks to @pepijn-devries) (2026-02-01)
+
+* add package **vctrs** in Suggests since it is suggested in **wk** but `wk::wk_plot()` requires it, and various conditionals in examples/tests/vignettes for suggested packages (#886) (2026-01-28)
 
 * class `VSIFile`: fix crash when using file open options due to incorrectly sized buffer, and add const correctness (#883, thanks to @pepijn-devries) (2026-01-27)
 

@@ -6,6 +6,7 @@
 
 #include "vsifile.h"
 
+#include <gdal.h>
 #include <cpl_port.h>
 #include <cpl_conv.h>
 
@@ -163,27 +164,35 @@ SEXP VSIFile::read(Rcpp::NumericVector nbytes) {
     if (nbytes_in == 0)
         return R_NilValue;
 
-    GByte *buf = static_cast<GByte *>(CPLMalloc(nbytes_in));
+    Rcpp::RawVector raw = Rcpp::no_init(nbytes_in);
     size_t nRead = 0;
-    nRead = VSIFReadL(buf, 1, nbytes_in, m_fp);
+    nRead = VSIFReadL(raw.begin(), 1, nbytes_in, m_fp);
     if (nRead == 0) {
-        VSIFree(buf);
         return R_NilValue;
     }
 
-    Rcpp::RawVector raw = Rcpp::no_init(nRead);
-    std::memcpy(&raw[0], buf, nRead);
-    VSIFree(buf);
-    return raw;
+    if (nRead < nbytes_in) {
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 10, 0)
+        if (VSIFErrorL(m_fp))
+            Rcpp::warning("short read and VSI error indicator is TRUE");
+#endif
+        Rcpp::RawVector raw_resized = Rcpp::no_init(nRead);
+        std::memcpy(raw_resized.begin(), raw.begin(), nRead);
+        return raw_resized;
+    }
+    else {
+        return raw;
+    }
 }
 
-Rcpp::NumericVector VSIFile::write(const Rcpp::RawVector& object) {
+Rcpp::NumericVector VSIFile::write(const Rcpp::RawVector &object) {
     if (m_fp == nullptr)
         Rcpp::stop("the file is not open");
 
     std::vector<int64_t> ret(1);
     ret[0] = static_cast<int64_t>(
-        VSIFWriteL(&object[0], 1, static_cast<size_t>(object.size()), m_fp));
+        VSIFWriteL(
+            object.begin(), 1, static_cast<size_t>(object.size()), m_fp));
 
     return Rcpp::wrap(ret);
 }
@@ -193,6 +202,15 @@ bool VSIFile::eof() const {
         Rcpp::stop("the file is not open");
 
     int eof = VSIFEofL(m_fp);
+
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 10, 0)
+    if (VSIFErrorL(m_fp) && this->reportVSIFErrorAsEof) {
+        Rcpp::warning(
+            "eof reported as TRUE due to VSI error indicator is TRUE");
+        return true;
+    }
+#endif
+
     if (eof == 0)
         return false;
     else
@@ -261,7 +279,7 @@ SEXP VSIFile::ingest(Rcpp::NumericVector max_size) {
     }
 
     Rcpp::RawVector raw = Rcpp::no_init(nSize);
-    std::memcpy(&raw[0], paby, nSize);
+    std::memcpy(raw.begin(), paby, nSize);
     VSIFree(paby);
     return raw;
 }
@@ -317,6 +335,9 @@ RCPP_MODULE(mod_VSIFile) {
         ("Usage: new(VSIFile, filename, access)")
     .constructor<Rcpp::CharacterVector, std::string, Rcpp::CharacterVector>
         ("Usage: new(VSIFile, filename, access, options)")
+
+    // read/write fields
+    .field("reportVSIFErrorAsEof", &VSIFile::reportVSIFErrorAsEof)
 
     // exposed member functions
     .method("open", &VSIFile::open,

@@ -1,14 +1,15 @@
 Package: gdalraster
 Title: Bindings to 'GDAL'
-Version: 2.4.0.9073
+Version: 2.4.0.9081
 Authors@R: c(
     person("Chris", "Toney", email = "jctoney@gmail.com",
             role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5734-6510")),
     person("Michael D.","Sumner", role = c("aut"), comment = c(ORCID = "0000-0002-2471-7511")),
+    person("Pepijn", "de Vries", role = c("ctb"), comment = c(ORCID = "0000-0002-7961-6646")),
     person("Frank", "Warmerdam",
-            role = c("ctb", "cph"), comment = "GDAL API documentation; src/progress_r.cpp from gdal/port/cpl_progress.cpp"),
+            role = c("ctb", "cph"), comment = "GDAL API/documentation"),
     person("Even", "Rouault",
-            role = c("ctb", "cph"), comment = "GDAL API documentation"),
+            role = c("ctb", "cph"), comment = "GDAL API/documentation"),
     person("Marius", "Appel",
             role = c("ctb", "cph"), comment = "configure.ac based on https://github.com/appelmar/gdalcubes"),
     person("Daniel", "James",
@@ -51,6 +52,7 @@ BugReports: https://github.com/firelab/gdalraster/issues
 Depends: R (>= 4.2.0)
 Imports:
     bit64,
+    cli,
     graphics,
     grDevices,
     methods,
@@ -62,13 +64,14 @@ Imports:
     wk,
     xml2,
     yyjsonr
-LinkingTo: nanoarrow, Rcpp, RcppInt64
+LinkingTo: cli, nanoarrow, Rcpp, RcppInt64
 Suggests:
     gt,
     knitr,
     rmarkdown,
     scales,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    vctrs (>= 0.3.0)
 NeedsCompilation: yes
 SystemRequirements: C++17, GDAL (>= 3.1.0, built against GEOS)
 Encoding: UTF-8

@@ -22,41 +22,201 @@ SEXP mdim_array_read(SEXP arr,
   SEXP result = pArr->read(startVec, countVec, stepVec,
                            Rcpp::NumericVector(), R_NilValue);
   
-  if (!decode || Rf_isNull(result)) {
+  if (Rf_isNull(result)) {
     return result;
   }
   
-  // Apply CF decoding
+  // Get data type info for type decisions
+  Rcpp::XPtr<GDALExtendedDataTypeR> pDT(pArr->getDataType());
+  int gdalType = pDT->getNumericDataType();  // GDALDataType enum
+  std::string dtName = pDT->getNumericDataTypeAsString();
+  
+  // GDALDataType values:
+  // GDT_Byte=1, GDT_UInt16=2, GDT_Int16=3, GDT_UInt32=4, GDT_Int32=5,
+  // GDT_Float32=6, GDT_Float64=7, GDT_UInt64=12, GDT_Int64=13, GDT_Int8=14
+  
+  // Type categories for R output:
+  // - Byte (1) → raw
+  // - Int8 (14), Int16 (3), UInt16 (2), Int32 (5) → integer
+  // - UInt32 (4), Int64 (13), UInt64 (12), Float32 (6), Float64 (7) → numeric
+  //   (UInt32 can exceed R's signed int max ~2.1B)
+  bool isByteType = (gdalType == 1);  // GDT_Byte
+  bool isIntegerType = (gdalType == 2 || gdalType == 3 || 
+                        gdalType == 5 || gdalType == 14);  // exclude UInt32
+  // UInt32, 64-bit integers and floats → numeric
+  
+  // Check for CF decoding parameters
   Rcpp::NumericVector nodata = pArr->getNoDataValueAsDouble();
   Rcpp::NumericVector scale = pArr->getScale();
   Rcpp::NumericVector offset = pArr->getOffset();
   
   bool hasNodata = nodata.size() > 0;
-  bool hasScale = scale.size() > 0;
-  bool hasOffset = offset.size() > 0;
+  bool hasScale = scale.size() > 0 && scale[0] != 1.0;
+  bool hasOffset = offset.size() > 0 && offset[0] != 0.0;
+  bool needsDecode = decode && (hasNodata || hasScale || hasOffset);
   
-  if (!hasNodata && !hasScale && !hasOffset) {
-    return result;  // nothing to decode
+  // Prepare output data
+  SEXP data;
+  
+  if (needsDecode) {
+    // Decoding requires numeric (double) output
+    Rcpp::NumericVector numData = Rcpp::as<Rcpp::NumericVector>(result);
+    double dfNodata = hasNodata ? nodata[0] : NA_REAL;
+    double dfScale = hasScale ? scale[0] : 1.0;
+    double dfOffset = hasOffset ? offset[0] : 0.0;
+    
+    for (R_xlen_t i = 0; i < numData.size(); ++i) {
+      if (hasNodata && numData[i] == dfNodata) {
+        numData[i] = NA_REAL;
+      } else if (hasScale || hasOffset) {
+        numData[i] = numData[i] * dfScale + dfOffset;
+      }
+    }
+    numData.attr("dim") = R_NilValue;  // flat vector
+    data = numData;
+  } else if (isByteType) {
+    // Byte → raw
+    Rcpp::RawVector rawData = Rcpp::as<Rcpp::RawVector>(result);
+    rawData.attr("dim") = R_NilValue;  // flat vector
+    data = rawData;
+  } else if (isIntegerType) {
+    // Int8/Int16/UInt16/Int32 → integer
+    Rcpp::IntegerVector intData = Rcpp::as<Rcpp::IntegerVector>(result);
+    intData.attr("dim") = R_NilValue;  // flat vector
+    data = intData;
+  } else {
+    // UInt32/Float32/Float64/Int64/UInt64 → numeric
+    Rcpp::NumericVector numData = Rcpp::as<Rcpp::NumericVector>(result);
+    numData.attr("dim") = R_NilValue;  // flat vector
+    data = numData;
   }
   
-  // Convert to numeric if needed and apply transformations
-  Rcpp::NumericVector data = Rcpp::as<Rcpp::NumericVector>(result);
-  double dfNodata = hasNodata ? nodata[0] : NA_REAL;
-  double dfScale = hasScale ? scale[0] : 1.0;
-  double dfOffset = hasOffset ? offset[0] : 0.0;
+  // Build $gis attribute (always included)
+  Rcpp::List rawDims = pArr->getDimensions();
+  int ndim = rawDims.size();
   
-  for (R_xlen_t i = 0; i < data.size(); ++i) {
-    if (hasNodata && data[i] == dfNodata) {
-      data[i] = NA_REAL;
+  // Build dim and dim_names in R order (reversed from GDAL C-order)
+  Rcpp::NumericVector rdim(ndim);
+  Rcpp::CharacterVector dim_names(ndim);
+  Rcpp::List coords(ndim);
+  
+  // Track spatial dims for bbox
+  int lon_r_idx = -1, lat_r_idx = -1;
+  double xmin = NA_REAL, xmax = NA_REAL, ymin = NA_REAL, ymax = NA_REAL;
+  
+  for (int i = 0; i < ndim; ++i) {
+    int r_idx = ndim - 1 - i;  // reverse for R order
+    Rcpp::XPtr<GDALDimensionR> pDim(rawDims[i]);
+    
+    std::string dimName = pDim->getName();
+    GUInt64 dimSize = pDim->getSize();
+    std::string dimType = pDim->getType();
+    
+    dim_names[r_idx] = dimName;
+    
+    // Compute actual size for this read
+    // count IS the output size; step affects which source indices are read
+    GUInt64 actualSize = dimSize;
+    if (countVec.size() > (R_xlen_t)i) {
+      actualSize = static_cast<GUInt64>(countVec[i]);
+    }
+    rdim[r_idx] = static_cast<double>(actualSize);
+    
+    // Read coordinate values
+    SEXP coordArr = pDim->getIndexingVariable();
+    if (!Rf_isNull(coordArr)) {
+      Rcpp::XPtr<GDALMDArrayR> pCoord(coordArr);
+      
+      // Check if coord is 1D or 2D
+      size_t coordNdim = pCoord->getDimensionCount();
+      
+      if (coordNdim == 1) {
+        // 1D coord - subset if we're subsetting the data
+        Rcpp::NumericVector coordStart, coordCount, coordStep;
+        if (startVec.size() > (R_xlen_t)i) {
+          coordStart = Rcpp::NumericVector::create(startVec[i]);
+        }
+        if (countVec.size() > (R_xlen_t)i) {
+          coordCount = Rcpp::NumericVector::create(countVec[i]);
+        }
+        if (stepVec.size() > (R_xlen_t)i) {
+          coordStep = Rcpp::NumericVector::create(stepVec[i]);
+        }
+        coords[r_idx] = pCoord->read(coordStart, coordCount, coordStep,
+                                     Rcpp::NumericVector(), R_NilValue);
+      } else {
+        // 2D coord (curvilinear) - read full for now
+        // TODO: subset based on which dims match
+        coords[r_idx] = pCoord->read(Rcpp::NumericVector(), Rcpp::NumericVector(),
+                                     Rcpp::NumericVector(), Rcpp::NumericVector(), 
+                                     R_NilValue);
+      }
+      
+      // Track spatial dims for bbox (1D coords only)
+      if (coordNdim == 1) {
+        Rcpp::NumericVector cv = Rcpp::as<Rcpp::NumericVector>(coords[r_idx]);
+        if (dimType == "HORIZONTAL_X") {
+          lon_r_idx = r_idx;
+          xmin = Rcpp::min(cv);
+          xmax = Rcpp::max(cv);
+        } else if (dimType == "HORIZONTAL_Y") {
+          lat_r_idx = r_idx;
+          ymin = Rcpp::min(cv);
+          ymax = Rcpp::max(cv);
+        }
+      }
     } else {
-      data[i] = data[i] * dfScale + dfOffset;
+      // No coord variable - generate 0:(n-1)
+      int n = static_cast<int>(actualSize);
+      Rcpp::NumericVector seq(n);
+      for (int j = 0; j < n; ++j) seq[j] = j;
+      coords[r_idx] = seq;
     }
   }
+  coords.names() = dim_names;
   
-  // Preserve dim attribute
-  if (Rf_getAttrib(result, R_DimSymbol) != R_NilValue) {
-    data.attr("dim") = Rf_getAttrib(result, R_DimSymbol);
+  // Build gis list (matching read_ds() structure)
+  Rcpp::List gisAttr = Rcpp::List::create(
+    Rcpp::Named("type") = "multidim",
+    Rcpp::Named("dim") = rdim,
+    Rcpp::Named("dim_names") = dim_names,
+    Rcpp::Named("coords") = coords,
+    Rcpp::Named("srs") = pArr->getSpatialRef(),
+    Rcpp::Named("datatype") = dtName
+  );
+  
+  // Add CF encoding parameters as scalars (useful for manual decode)
+  if (nodata.size() > 0) {
+    gisAttr["nodata"] = nodata[0];
   }
+  if (scale.size() > 0) {
+    gisAttr["scale"] = scale[0];
+  }
+  if (offset.size() > 0) {
+    gisAttr["offset"] = offset[0];
+  }
+  
+  // Add bbox if we found both spatial dims with 1D coords
+  if (lon_r_idx >= 0 && lat_r_idx >= 0) {
+    // Adjust for cell centers to cell edges (half cell)
+    Rcpp::NumericVector lonCoords = Rcpp::as<Rcpp::NumericVector>(coords[lon_r_idx]);
+    Rcpp::NumericVector latCoords = Rcpp::as<Rcpp::NumericVector>(coords[lat_r_idx]);
+    
+    double dx = 0, dy = 0;
+    if (lonCoords.size() > 1) {
+      dx = std::abs(lonCoords[1] - lonCoords[0]) / 2.0;
+    }
+    if (latCoords.size() > 1) {
+      dy = std::abs(latCoords[1] - latCoords[0]) / 2.0;
+    }
+    
+    gisAttr["bbox"] = Rcpp::NumericVector::create(
+      xmin - dx, ymin - dy, xmax + dx, ymax + dy
+    );
+  }
+  
+  // Attach gis attribute
+  Rf_setAttrib(data, Rf_install("gis"), gisAttr);
   
   return data;
 }

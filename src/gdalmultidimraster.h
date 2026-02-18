@@ -34,6 +34,25 @@
 #error "GDAL >= 3.1.0 is required for multidimensional raster support"
 #endif
 
+
+// Helper to extract a pointer from either a raw Rcpp::XPtr<T> (EXTPTRSXP)
+// or a module-wrapped S4 object (which stores the XPtr in a ".pointer" slot).
+// Handles both old-style XPtr returns and new-style module-wrapped returns.
+template<typename T>
+T* unwrapModulePtr(SEXP x) {
+    if (TYPEOF(x) == EXTPTRSXP) {
+        return Rcpp::XPtr<T>(x);
+    }
+    if (Rf_isS4(x)) {
+        Rcpp::S4 s4(x);
+        if (s4.hasSlot(".pointer")) {
+            return Rcpp::XPtr<T>(s4.slot(".pointer"));
+        }
+    }
+    Rcpp::stop("Expected a module object or external pointer");
+    return nullptr;  // unreachable
+}
+
 // Forward declarations
 class GDALGroupR;
 class GDALMDArrayR;
@@ -104,7 +123,7 @@ public:
   GUInt64 getSize() const;
   
   // Indexing variable
-  SEXP getIndexingVariable() const;  // Returns GDALMDArrayR or NULL
+  GDALMDArrayR getIndexingVariable() const;
   bool setIndexingVariable(SEXP poArrayR);
   
   // Rename (if supported by driver)
@@ -138,7 +157,7 @@ public:
   GUInt64 getTotalElementsCount() const;
   Rcpp::NumericVector getDimensionCount() const;
   std::vector<GUInt64> getDimensionsSize() const;
-  SEXP getDataType() const;
+  GDALExtendedDataTypeR getDataType() const;
   
   // Read methods - return appropriate R type based on data type
   Rcpp::RawVector readAsRaw() const;
@@ -189,7 +208,7 @@ public:
   GUInt64 getTotalElementsCount() const;
   size_t getDimensionCount() const;
   Rcpp::List getDimensions() const;  // Returns list of GDALDimensionR
-  SEXP getDataType() const;
+  GDALExtendedDataTypeR getDataType() const;
   std::string getSpatialRef() const;  // WKT
   std::string getUnit() const;
   bool setUnit(const std::string& osUnit);
@@ -209,9 +228,9 @@ public:
   
   // Attributes
   Rcpp::CharacterVector getAttributeNames() const;
-  SEXP getAttribute(const std::string& osName) const;  // Returns GDALAttributeR
+  GDALAttributeR getAttribute(const std::string& osName) const;
   Rcpp::List getAttributes() const;
-  SEXP createAttribute(
+  GDALAttributeR createAttribute(
       const std::string& osName,
       Rcpp::NumericVector dimensions,
       SEXP oType,
@@ -243,13 +262,13 @@ public:
       Rcpp::CharacterVector options = Rcpp::CharacterVector());
   
   // Views and transforms
-  SEXP getView(const std::string& osViewExpr) const;  // Returns GDALMDArrayR
-  SEXP transpose(Rcpp::IntegerVector anMapNewAxisToOldAxis) const;
-  SEXP getUnscaled() const;  // Returns GDALMDArrayR with scale/offset applied
-  SEXP getMask(Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
+  GDALMDArrayR getView(const std::string& osViewExpr) const;
+  GDALMDArrayR transpose(Rcpp::IntegerVector anMapNewAxisToOldAxis) const;
+  GDALMDArrayR getUnscaled() const;
+  GDALMDArrayR getMask(Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
   
   // Resampling and reprojection
-  SEXP getResampled(
+  GDALMDArrayR getResampled(
       Rcpp::List apoNewDims,  // List of GDALDimensionR or empty/NULL for same
       const std::string& resampleAlg,
       const std::string& targetSRS = "",  // Empty for same
@@ -277,6 +296,17 @@ public:
   
   // Rename (if supported)
   bool rename(const std::string& osNewName);
+  
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 12, 0)
+  // Raw block info (chunk byte-range references)
+  // Single chunk query — returns list with filename, offset, size, info, inline
+  Rcpp::List getRawBlockInfo(Rcpp::IntegerVector blockIdx) const;
+  
+  // Bulk scan all chunks — returns data.frame with filename, offset, size,
+  // info, chunk_0, chunk_1, ... (one column per dimension).
+  // Missing chunks are excluded.
+  Rcpp::DataFrame getRawBlockRefs() const;
+#endif
   
   // Internal accessor
   std::shared_ptr<GDALMDArray> getSharedPtr() const { return m_poArray; }
@@ -313,13 +343,13 @@ public:
   // Subgroups
   Rcpp::CharacterVector getGroupNames(
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP openGroup(
+  GDALGroupR openGroup(
       const std::string& osName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP openGroupFromFullname(
+  GDALGroupR openGroupFromFullname(
       const std::string& osFullName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP createGroup(
+  GDALGroupR createGroup(
       const std::string& osName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector());
   bool deleteGroup(
@@ -329,13 +359,13 @@ public:
   // Arrays
   Rcpp::CharacterVector getMDArrayNames(
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP openMDArray(
+  GDALMDArrayR openMDArray(
       const std::string& osName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP openMDArrayFromFullname(
+  GDALMDArrayR openMDArrayFromFullname(
       const std::string& osFullName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP createMDArray(const std::string& name, Rcpp::List dimensions,
+  GDALMDArrayR createMDArray(const std::string& name, Rcpp::List dimensions,
                      SEXP oType, Rcpp::CharacterVector options);
   bool deleteMDArray(
       const std::string& osName,
@@ -344,7 +374,7 @@ public:
   // Dimensions
   Rcpp::List getDimensions(
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP createDimension(
+  GDALDimensionR createDimension(
       const std::string& osName,
       const std::string& osType,
       const std::string& osDirection,
@@ -354,10 +384,10 @@ public:
   // Attributes
   Rcpp::CharacterVector getAttributeNames(
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP getAttribute(const std::string& osName) const;
+  GDALAttributeR getAttribute(const std::string& osName) const;
   Rcpp::List getAttributes(
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
-  SEXP createAttribute(
+  GDALAttributeR createAttribute(
       const std::string& osName,
       Rcpp::NumericVector dimensions,
       const SEXP oType,
@@ -419,7 +449,7 @@ public:
   std::string info(Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
   
   // Get the root group
-  SEXP getRootGroup() const;  // Returns GDALGroupR
+  GDALGroupR getRootGroup() const;
   
   // Driver info
   std::string getDriverShortName() const;
@@ -451,7 +481,7 @@ public:
   // -------------------------------------------------------------------------
   
   // Create a new multidimensional dataset using a driver that supports it
-  static SEXP createMultiDimensional(
+  static GDALMultiDimRaster createMultiDimensional(
       const std::string& pszFilename,
       const std::string& pszDriverName,
       SEXP poRootGroup,  // GDALGroupR with initial structure, or NULL
@@ -465,12 +495,12 @@ public:
   Rcpp::CharacterVector getArrayNames() const;
   
   // Open array from root group by name
-  SEXP openArray(
+  GDALMDArrayR openArray(
       const std::string& osName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
   
   // Open array by full path
-  SEXP openArrayFromFullname(
+  GDALMDArrayR openArrayFromFullname(
       const std::string& osFullname,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
   
@@ -478,7 +508,7 @@ public:
   Rcpp::CharacterVector getSubGroupNames() const;
   
   // Open subgroup from root group
-  SEXP openSubGroup(
+  GDALGroupR openSubGroup(
       const std::string& osName,
       Rcpp::CharacterVector options = Rcpp::CharacterVector()) const;
   
@@ -521,6 +551,15 @@ private:
   // Check dataset validity
   void checkOpen() const;
 };
+
+// Enable Rcpp::wrap() / Rcpp::as() for module classes (needed for
+// returning these types from methods and building lists of them)
+RCPP_EXPOSED_CLASS(GDALExtendedDataTypeR)
+RCPP_EXPOSED_CLASS(GDALDimensionR)
+RCPP_EXPOSED_CLASS(GDALAttributeR)
+RCPP_EXPOSED_CLASS(GDALMDArrayR)
+RCPP_EXPOSED_CLASS(GDALGroupR)
+RCPP_EXPOSED_CLASS(GDALMultiDimRaster)
 
 // ============================================================================
 // Helper functions (non-member)

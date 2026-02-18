@@ -7,7 +7,7 @@ SEXP mdim_array_read(SEXP arr,
                      Rcpp::Nullable<Rcpp::NumericVector> count = R_NilValue,
                      Rcpp::Nullable<Rcpp::NumericVector> step = R_NilValue,
                      bool decode = true) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     Rcpp::stop("Invalid array");
   }
@@ -27,9 +27,9 @@ SEXP mdim_array_read(SEXP arr,
   }
   
   // Get data type info for type decisions
-  Rcpp::XPtr<GDALExtendedDataTypeR> pDT(pArr->getDataType());
-  int gdalType = pDT->getNumericDataType();  // GDALDataType enum
-  std::string dtName = pDT->getNumericDataTypeAsString();
+  GDALExtendedDataTypeR dt = pArr->getDataType();
+  int gdalType = dt.getNumericDataType();  // GDALDataType enum
+  std::string dtName = dt.getNumericDataTypeAsString();
   
   // GDALDataType values:
   // GDT_Byte=1, GDT_UInt16=2, GDT_Int16=3, GDT_UInt32=4, GDT_Int32=5,
@@ -106,7 +106,7 @@ SEXP mdim_array_read(SEXP arr,
   
   for (int i = 0; i < ndim; ++i) {
     int r_idx = ndim - 1 - i;  // reverse for R order
-    Rcpp::XPtr<GDALDimensionR> pDim(rawDims[i]);
+    GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(rawDims[i]);
     
     std::string dimName = pDim->getName();
     GUInt64 dimSize = pDim->getSize();
@@ -123,9 +123,9 @@ SEXP mdim_array_read(SEXP arr,
     rdim[r_idx] = static_cast<double>(actualSize);
     
     // Read coordinate values
-    SEXP coordArr = pDim->getIndexingVariable();
-    if (!Rf_isNull(coordArr)) {
-      Rcpp::XPtr<GDALMDArrayR> pCoord(coordArr);
+    GDALMDArrayR coordArr = pDim->getIndexingVariable();
+    if (coordArr.isValid()) {
+      GDALMDArrayR* pCoord = &coordArr;
       
       // Check if coord is 1D or 2D
       size_t coordNdim = pCoord->getDimensionCount();
@@ -222,7 +222,7 @@ SEXP mdim_array_read(SEXP arr,
 }
 // [[Rcpp::export]]
 Rcpp::List mdim_array_info(SEXP arr) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     return Rcpp::List();
   }
@@ -234,7 +234,7 @@ Rcpp::List mdim_array_info(SEXP arr) {
   Rcpp::CharacterVector dimNames(rawDims.size());
   
   for (R_xlen_t i = 0; i < rawDims.size(); ++i) {
-    Rcpp::XPtr<GDALDimensionR> pDim(rawDims[i]);
+    GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(rawDims[i]);
     dimNames[i] = pDim->getName();
     shape[i] = static_cast<int>(pDim->getSize());
     
@@ -247,7 +247,7 @@ Rcpp::List mdim_array_info(SEXP arr) {
   }
   
   // Get data type info
-  Rcpp::XPtr<GDALExtendedDataTypeR> pDT(pArr->getDataType());
+  GDALExtendedDataTypeR dt = pArr->getDataType();
   
   return Rcpp::List::create(
     Rcpp::Named("name") = pArr->getName(),
@@ -255,7 +255,7 @@ Rcpp::List mdim_array_info(SEXP arr) {
     Rcpp::Named("dims") = dims,
     Rcpp::Named("dim_names") = dimNames,
     Rcpp::Named("shape") = shape,
-    Rcpp::Named("dtype") = pDT->getNumericDataTypeAsString(),
+    Rcpp::Named("dtype") = dt.getNumericDataTypeAsString(),
     Rcpp::Named("unit") = pArr->getUnit(),
     Rcpp::Named("nodata") = pArr->getNoDataValueAsDouble(),
     Rcpp::Named("scale") = pArr->getScale(),
@@ -266,7 +266,7 @@ Rcpp::List mdim_array_info(SEXP arr) {
 
 // [[Rcpp::export]]
 Rcpp::CharacterVector mdim_array_attr_names(SEXP arr) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     return Rcpp::CharacterVector();
   }
@@ -275,47 +275,43 @@ Rcpp::CharacterVector mdim_array_attr_names(SEXP arr) {
 
 // [[Rcpp::export]]
 SEXP mdim_array_attr(SEXP arr, std::string name) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     return R_NilValue;
   }
   
-  SEXP attrPtr = pArr->getAttribute(name);
-  if (Rf_isNull(attrPtr)) return R_NilValue;
-  
-  Rcpp::XPtr<GDALAttributeR> pAttr(attrPtr);
+  GDALAttributeR attr = pArr->getAttribute(name);
+  if (!attr.isValid()) return R_NilValue;
   
   // Get the data type to determine how to read
-  SEXP dtPtr = pAttr->getDataType();
-  if (Rf_isNull(dtPtr)) return R_NilValue;
-  Rcpp::XPtr<GDALExtendedDataTypeR> pDT(dtPtr);
+  GDALExtendedDataTypeR dt = attr.getDataType();
   
-  int dtClass = pDT->getClass();  // 0=NUMERIC, 1=STRING, 2=COMPOUND
-  GUInt64 nElems = pAttr->getTotalElementsCount();
+  int dtClass = dt.getClass();  // 0=NUMERIC, 1=STRING, 2=COMPOUND
+  GUInt64 nElems = attr.getTotalElementsCount();
   
   if (dtClass == 1) {  // GEDTC_STRING
     // String type - read as string
     if (nElems == 1) {
-      return Rcpp::wrap(pAttr->readAsString());
+      return Rcpp::wrap(attr.readAsString());
     } else {
-      return pAttr->readAsStringArray();
+      return attr.readAsStringArray();
     }
   } else if (dtClass == 0) {  // GEDTC_NUMERIC
     // Numeric type
     if (nElems == 1) {
-      return Rcpp::wrap(pAttr->readAsDouble());
+      return Rcpp::wrap(attr.readAsDouble());
     } else {
-      return pAttr->readAsDoubleArray();
+      return attr.readAsDoubleArray();
     }
   } else {
     // Compound or unknown - return as raw
-    return pAttr->readAsRaw();
+    return attr.readAsRaw();
   }
 }
 
 // [[Rcpp::export]]
 Rcpp::NumericVector mdim_dim_values(SEXP arr, int dim_index) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     Rcpp::stop("Invalid array");
   }
@@ -325,10 +321,10 @@ Rcpp::NumericVector mdim_dim_values(SEXP arr, int dim_index) {
     Rcpp::stop("dim_index out of range (0 to %d)", dims.size() - 1);
   }
   
-  Rcpp::XPtr<GDALDimensionR> pDim(dims[dim_index]);
-  SEXP coordArr = pDim->getIndexingVariable();
+  GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(dims[dim_index]);
+  GDALMDArrayR coordArr = pDim->getIndexingVariable();
   
-  if (Rf_isNull(coordArr)) {
+  if (!coordArr.isValid()) {
     // No coordinate variable - return sequence 0:(size-1)
     int n = static_cast<int>(pDim->getSize());
     Rcpp::NumericVector seq(n);
@@ -337,9 +333,8 @@ Rcpp::NumericVector mdim_dim_values(SEXP arr, int dim_index) {
   }
   
   // Read the coordinate array
-  Rcpp::XPtr<GDALMDArrayR> pCoord(coordArr);
   return Rcpp::as<Rcpp::NumericVector>(
-    pCoord->read(Rcpp::NumericVector(), Rcpp::NumericVector(),
+    coordArr.read(Rcpp::NumericVector(), Rcpp::NumericVector(),
                  Rcpp::NumericVector(), Rcpp::NumericVector(), R_NilValue));
 }
 
@@ -349,7 +344,7 @@ Rcpp::NumericVector mdim_dim_values(SEXP arr, int dim_index) {
 
 // [[Rcpp::export]]
 Rcpp::CharacterVector mdim_group_attr_names(SEXP group) {
-  Rcpp::XPtr<GDALGroupR> pGroup(group);
+  GDALGroupR* pGroup = unwrapModulePtr<GDALGroupR>(group);
   if (!pGroup->isValid()) {
     Rcpp::stop("Invalid group");
   }
@@ -358,44 +353,40 @@ Rcpp::CharacterVector mdim_group_attr_names(SEXP group) {
 
 // [[Rcpp::export]]
 SEXP mdim_group_attr(SEXP group, std::string name) {
-  Rcpp::XPtr<GDALGroupR> pGroup(group);
+  GDALGroupR* pGroup = unwrapModulePtr<GDALGroupR>(group);
   if (!pGroup->isValid()) {
     Rcpp::stop("Invalid group");
   }
   
-  SEXP attrPtr = pGroup->getAttribute(name);
-  if (Rf_isNull(attrPtr)) return R_NilValue;
-  
-  Rcpp::XPtr<GDALAttributeR> pAttr(attrPtr);
+  GDALAttributeR attr = pGroup->getAttribute(name);
+  if (!attr.isValid()) return R_NilValue;
   
   // Get the data type to determine how to read
-  SEXP dtPtr = pAttr->getDataType();
-  if (Rf_isNull(dtPtr)) return R_NilValue;
-  Rcpp::XPtr<GDALExtendedDataTypeR> pDT(dtPtr);
+  GDALExtendedDataTypeR dt = attr.getDataType();
   
-  int dtClass = pDT->getClass();  // 0=NUMERIC, 1=STRING, 2=COMPOUND
-  GUInt64 nElems = pAttr->getTotalElementsCount();
+  int dtClass = dt.getClass();  // 0=NUMERIC, 1=STRING, 2=COMPOUND
+  GUInt64 nElems = attr.getTotalElementsCount();
   
   if (dtClass == 1) {  // GEDTC_STRING
     if (nElems == 1) {
-      return Rcpp::wrap(pAttr->readAsString());
+      return Rcpp::wrap(attr.readAsString());
     } else {
-      return pAttr->readAsStringArray();
+      return attr.readAsStringArray();
     }
   } else if (dtClass == 0) {  // GEDTC_NUMERIC
     if (nElems == 1) {
-      return Rcpp::wrap(pAttr->readAsDouble());
+      return Rcpp::wrap(attr.readAsDouble());
     } else {
-      return pAttr->readAsDoubleArray();
+      return attr.readAsDoubleArray();
     }
   } else {
-    return pAttr->readAsRaw();
+    return attr.readAsRaw();
   }
 }
 
 // [[Rcpp::export]]
 Rcpp::List mdim_group_attrs(SEXP group) {
-  Rcpp::XPtr<GDALGroupR> pGroup(group);
+  GDALGroupR* pGroup = unwrapModulePtr<GDALGroupR>(group);
   if (!pGroup->isValid()) {
     Rcpp::stop("Invalid group");
   }
@@ -418,7 +409,7 @@ Rcpp::List mdim_group_attrs(SEXP group) {
 
 // [[Rcpp::export]]
 Rcpp::List mdim_coord_info(SEXP arr, int dim_index) {
-  Rcpp::XPtr<GDALMDArrayR> pArr(arr);
+  GDALMDArrayR* pArr = unwrapModulePtr<GDALMDArrayR>(arr);
   if (!pArr->isValid()) {
     Rcpp::stop("Invalid array");
   }
@@ -428,7 +419,7 @@ Rcpp::List mdim_coord_info(SEXP arr, int dim_index) {
     Rcpp::stop("dim_index out of range (0 to %d)", dims.size() - 1);
   }
   
-  Rcpp::XPtr<GDALDimensionR> pDim(dims[dim_index]);
+  GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(dims[dim_index]);
   
   // Basic dimension info
   Rcpp::List result = Rcpp::List::create(
@@ -442,30 +433,26 @@ Rcpp::List mdim_coord_info(SEXP arr, int dim_index) {
   );
   
   // Try to get the indexing variable (coordinate array)
-  SEXP coordArr = pDim->getIndexingVariable();
-  if (Rf_isNull(coordArr)) {
+  GDALMDArrayR coordArr = pDim->getIndexingVariable();
+  if (!coordArr.isValid()) {
     return result;
   }
   
   result["has_coord_var"] = true;
   
-  Rcpp::XPtr<GDALMDArrayR> pCoord(coordArr);
-  
   // Get unit from the coordinate array
-  std::string unit = pCoord->getUnit();
+  std::string unit = coordArr.getUnit();
   if (!unit.empty()) {
     result["units"] = unit;
   }
   
   // Try to get calendar attribute (for CF time)
-  SEXP calAttr = pCoord->getAttribute("calendar");
-  if (!Rf_isNull(calAttr)) {
-    Rcpp::XPtr<GDALAttributeR> pCalAttr(calAttr);
-    SEXP dtPtr = pCalAttr->getDataType();
-    if (!Rf_isNull(dtPtr)) {
-      Rcpp::XPtr<GDALExtendedDataTypeR> pDT(dtPtr);
-      if (pDT->getClass() == 1) {  // STRING
-        result["calendar"] = pCalAttr->readAsString();
+  GDALAttributeR calAttr = coordArr.getAttribute("calendar");
+  if (calAttr.isValid()) {
+    GDALExtendedDataTypeR calDT = calAttr.getDataType();
+    {
+      if (calDT.getClass() == 1) {  // STRING
+        result["calendar"] = calAttr.readAsString();
       }
     }
   }

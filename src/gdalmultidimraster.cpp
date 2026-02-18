@@ -153,7 +153,7 @@ GDALExtendedDataTypeR GDALExtendedDataTypeR::CreateCompound(
             compType = GDALExtendedDataType::Create(static_cast<GDALDataType>(typeInt));
         } else {
             // Assume it's a GDALExtendedDataTypeR
-            Rcpp::XPtr<GDALExtendedDataTypeR> pType(typeObj);
+            GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(typeObj);
             compType = pType->getRef();
         }
         
@@ -208,8 +208,7 @@ Rcpp::List GDALExtendedDataTypeR::getComponents() const {
         Rcpp::List compInfo;
         compInfo["name"] = comp->GetName();
         compInfo["offset"] = comp->GetOffset();
-        compInfo["type"] = Rcpp::XPtr<GDALExtendedDataTypeR>(
-            new GDALExtendedDataTypeR(comp->GetType()));
+        compInfo["type"] = GDALExtendedDataTypeR(comp->GetType());
         result.push_back(compInfo);
     }
     
@@ -217,12 +216,12 @@ Rcpp::List GDALExtendedDataTypeR::getComponents() const {
 }
 
 bool GDALExtendedDataTypeR::canConvertTo(const SEXP other) const {
-  Rcpp::XPtr<GDALExtendedDataTypeR> pOther(other);
+  GDALExtendedDataTypeR* pOther = unwrapModulePtr<GDALExtendedDataTypeR>(other);
     return m_oType.CanConvertTo(pOther->m_oType);
 }
 
 bool GDALExtendedDataTypeR::equals(const SEXP other) const {
-  Rcpp::XPtr<GDALExtendedDataTypeR> pOther(other);
+  GDALExtendedDataTypeR* pOther = unwrapModulePtr<GDALExtendedDataTypeR>(other);
     return m_oType == pOther->m_oType;
 }
 
@@ -270,13 +269,13 @@ GUInt64 GDALDimensionR::getSize() const {
     return m_poDim->GetSize();
 }
 
-SEXP GDALDimensionR::getIndexingVariable() const {
-    if (!isValid()) return R_NilValue;
+GDALMDArrayR GDALDimensionR::getIndexingVariable() const {
+    if (!isValid()) return GDALMDArrayR();
     
     auto poArray = m_poDim->GetIndexingVariable();
-    if (!poArray) return R_NilValue;
+    if (!poArray) return GDALMDArrayR();
     
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+    return GDALMDArrayR(poArray);
 }
 
 bool GDALDimensionR::setIndexingVariable(SEXP poArrayR) {
@@ -286,7 +285,7 @@ bool GDALDimensionR::setIndexingVariable(SEXP poArrayR) {
         return m_poDim->SetIndexingVariable(nullptr);
     }
     
-    Rcpp::XPtr<GDALMDArrayR> pArray(poArrayR);
+    GDALMDArrayR* pArray = unwrapModulePtr<GDALMDArrayR>(poArrayR);
     return m_poDim->SetIndexingVariable(pArray->getSharedPtr());
 }
 
@@ -339,10 +338,9 @@ std::vector<GUInt64> GDALAttributeR::getDimensionsSize() const {
     return m_poAttr->GetDimensionsSize();
 }
 
-SEXP GDALAttributeR::getDataType() const {
-  if (!isValid()) return R_NilValue;
-  return Rcpp::XPtr<GDALExtendedDataTypeR>(
-    new GDALExtendedDataTypeR(m_poAttr->GetDataType()));
+GDALExtendedDataTypeR GDALAttributeR::getDataType() const {
+  if (!isValid()) return GDALExtendedDataTypeR();
+  return GDALExtendedDataTypeR(m_poAttr->GetDataType());
 }
 
 Rcpp::RawVector GDALAttributeR::readAsRaw() const {
@@ -523,15 +521,14 @@ Rcpp::List GDALMDArrayR::getDimensions() const {
     
     const auto& dims = m_poArray->GetDimensions();
     for (const auto& dim : dims) {
-        result.push_back(Rcpp::XPtr<GDALDimensionR>(new GDALDimensionR(dim)));
+        result.push_back(GDALDimensionR(dim));
     }
     return result;
 }
 
-SEXP GDALMDArrayR::getDataType() const {
-  if (!isValid()) return R_NilValue;
-  return Rcpp::XPtr<GDALExtendedDataTypeR>(
-    new GDALExtendedDataTypeR(m_poArray->GetDataType()));
+GDALExtendedDataTypeR GDALMDArrayR::getDataType() const {
+  if (!isValid()) return GDALExtendedDataTypeR();
+  return GDALExtendedDataTypeR(m_poArray->GetDataType());
 }
 
 std::string GDALMDArrayR::getSpatialRef() const {
@@ -692,13 +689,13 @@ Rcpp::CharacterVector GDALMDArrayR::getAttributeNames() const {
     return result;
 }
 
-SEXP GDALMDArrayR::getAttribute(const std::string& osName) const {
-    if (!isValid()) return R_NilValue;
+GDALAttributeR GDALMDArrayR::getAttribute(const std::string& osName) const {
+    if (!isValid()) return GDALAttributeR();
     
     auto poAttr = m_poArray->GetAttribute(osName);
-    if (!poAttr) return R_NilValue;
+    if (!poAttr) return GDALAttributeR();
     
-    return Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(poAttr));
+    return GDALAttributeR(poAttr);
 }
 
 Rcpp::List GDALMDArrayR::getAttributes() const {
@@ -707,19 +704,19 @@ Rcpp::List GDALMDArrayR::getAttributes() const {
     
     auto attrs = m_poArray->GetAttributes();
     for (const auto& attr : attrs) {
-        result.push_back(Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(attr)));
+        result.push_back(GDALAttributeR(attr));
     }
     return result;
 }
 
-SEXP GDALMDArrayR::createAttribute(
+GDALAttributeR GDALMDArrayR::createAttribute(
         const std::string& osName,
         Rcpp::NumericVector dimensions,
         SEXP oType,
         Rcpp::CharacterVector options) {
     
-    Rcpp::XPtr<GDALExtendedDataTypeR> pOther(oType);
-    if (!isValid()) return R_NilValue;
+    GDALExtendedDataTypeR* pOther = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
+    if (!isValid()) return GDALAttributeR();
     
     std::vector<GUInt64> anDimensions = rVecToGUInt64(dimensions);
     char** papszOptions = charVecToCSL(options);
@@ -729,8 +726,8 @@ SEXP GDALMDArrayR::createAttribute(
     
     CSLDestroy(papszOptions);
     
-    if (!poAttr) return R_NilValue;
-    return Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(poAttr));
+    if (!poAttr) return GDALAttributeR();
+    return GDALAttributeR(poAttr);
 }
 
 bool GDALMDArrayR::deleteAttribute(const std::string& osName,
@@ -754,7 +751,7 @@ SEXP GDALMDArrayR::read(
   if (bufferDataType == R_NilValue) {
     //oBufType = m_poArray->GetDataType();  // or whatever the default should be
   } else {
-    Rcpp::XPtr<GDALExtendedDataTypeR> pType(bufferDataType);
+    GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(bufferDataType);
     oBufType = pType->getRef();
   }
   //GDALExtendedDataType oBufType = pBuffer->getRef();
@@ -938,7 +935,7 @@ bool GDALMDArrayR::write(
         Rcpp::NumericVector bufferStride,
         SEXP bufferDataType) {
     
-    Rcpp::XPtr<GDALExtendedDataTypeR> pBufferType(bufferDataType);
+    GDALExtendedDataTypeR* pBufferType = unwrapModulePtr<GDALExtendedDataTypeR>(bufferDataType);
   
     if (!isValid()) return false;
     
@@ -1067,52 +1064,52 @@ bool GDALMDArrayR::adviseRead(
     return bRet;
 }
 
-SEXP GDALMDArrayR::getView(const std::string& osViewExpr) const {
-    if (!isValid()) return R_NilValue;
+GDALMDArrayR GDALMDArrayR::getView(const std::string& osViewExpr) const {
+    if (!isValid()) return GDALMDArrayR();
     
     auto poView = m_poArray->GetView(osViewExpr);
-    if (!poView) return R_NilValue;
+    if (!poView) return GDALMDArrayR();
     
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poView));
+    return GDALMDArrayR(poView);
 }
 
-SEXP GDALMDArrayR::transpose(Rcpp::IntegerVector anMapNewAxisToOldAxis) const {
-    if (!isValid()) return R_NilValue;
+GDALMDArrayR GDALMDArrayR::transpose(Rcpp::IntegerVector anMapNewAxisToOldAxis) const {
+    if (!isValid()) return GDALMDArrayR();
     
     std::vector<int> map(anMapNewAxisToOldAxis.begin(), anMapNewAxisToOldAxis.end());
     auto poTransposed = m_poArray->Transpose(map);
-    if (!poTransposed) return R_NilValue;
+    if (!poTransposed) return GDALMDArrayR();
     
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poTransposed));
+    return GDALMDArrayR(poTransposed);
 }
 
-SEXP GDALMDArrayR::getUnscaled() const {
-    if (!isValid()) return R_NilValue;
+GDALMDArrayR GDALMDArrayR::getUnscaled() const {
+    if (!isValid()) return GDALMDArrayR();
     
     auto poUnscaled = m_poArray->GetUnscaled();
-    if (!poUnscaled) return R_NilValue;
+    if (!poUnscaled) return GDALMDArrayR();
     
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poUnscaled));
+    return GDALMDArrayR(poUnscaled);
 }
 
-SEXP GDALMDArrayR::getMask(Rcpp::CharacterVector options) const {
-    if (!isValid()) return R_NilValue;
+GDALMDArrayR GDALMDArrayR::getMask(Rcpp::CharacterVector options) const {
+    if (!isValid()) return GDALMDArrayR();
     
     char** papszOptions = charVecToCSL(options);
     auto poMask = m_poArray->GetMask(papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poMask) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poMask));
+    if (!poMask) return GDALMDArrayR();
+    return GDALMDArrayR(poMask);
 }
 
-SEXP GDALMDArrayR::getResampled(
+GDALMDArrayR GDALMDArrayR::getResampled(
         Rcpp::List apoNewDims,
         const std::string& resampleAlg,
         const std::string& targetSRS,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALMDArrayR();
     
     // Build dimension vector
     std::vector<std::shared_ptr<GDALDimension>> aoDims;
@@ -1121,7 +1118,7 @@ SEXP GDALMDArrayR::getResampled(
         if (Rf_isNull(dimObj)) {
             aoDims.push_back(nullptr);
         } else {
-            Rcpp::XPtr<GDALDimensionR> pDim(dimObj);
+            GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(dimObj);
             aoDims.push_back(pDim->getSharedPtr());
         }
     }
@@ -1143,8 +1140,8 @@ SEXP GDALMDArrayR::getResampled(
     auto poResampled = m_poArray->GetResampled(aoDims, eResample, poTargetSRS, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poResampled) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poResampled));
+    if (!poResampled) return GDALMDArrayR();
+    return GDALMDArrayR(poResampled);
 }
 
 SEXP GDALMDArrayR::asClassicDataset(
@@ -1157,7 +1154,7 @@ SEXP GDALMDArrayR::asClassicDataset(
     
     std::shared_ptr<GDALGroup> poGroup;
     if (!Rf_isNull(poRootGroup)) {
-        Rcpp::XPtr<GDALGroupR> pGroup(poRootGroup);
+        GDALGroupR* pGroup = unwrapModulePtr<GDALGroupR>(poRootGroup);
         poGroup = pGroup->getSharedPtr();
     }
     
@@ -1231,6 +1228,201 @@ bool GDALMDArrayR::rename(const std::string& osNewName) {
     return m_poArray->Rename(osNewName);
 }
 
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 12, 0)
+
+// ---------------------------------------------------------------------------
+// getRawBlockInfo - single chunk raw block info query
+// ---------------------------------------------------------------------------
+Rcpp::List GDALMDArrayR::getRawBlockInfo(Rcpp::IntegerVector blockIdx) const {
+    if (!isValid())
+        Rcpp::stop("GDALMDArrayR object is not valid");
+
+    size_t ndims = m_poArray->GetDimensionCount();
+    if (static_cast<size_t>(blockIdx.size()) != ndims) {
+        Rcpp::stop("blockIdx length (%d) must match dimension count (%d)",
+                    blockIdx.size(), static_cast<int>(ndims));
+    }
+
+    // Convert IntegerVector to uint64_t, checking for negative values
+    std::vector<uint64_t> idx(ndims);
+    for (size_t d = 0; d < ndims; d++) {
+        if (blockIdx[d] < 0)
+            Rcpp::stop("blockIdx[%d] = %d is negative",
+                        static_cast<int>(d) + 1, blockIdx[d]);
+        idx[d] = static_cast<uint64_t>(blockIdx[d]);
+    }
+
+    // Default constructor zero-initializes all members.
+    // Do NOT memset — struct has non-trivial destructor/copy/move.
+    GDALMDArrayRawBlockInfo info;
+    bool ok = m_poArray->GetRawBlockInfo(idx.data(), info);
+    if (!ok) {
+        Rcpp::stop("GetRawBlockInfo failed for array '%s'",
+                    m_poArray->GetName().c_str());
+    }
+
+    // Missing chunk: all fields zeroed but returns true
+    if (info.nSize == 0 && info.pszFilename == nullptr) {
+        return Rcpp::List::create(
+            Rcpp::Named("filename") = NA_STRING,
+            Rcpp::Named("offset") = NA_REAL,
+            Rcpp::Named("size") = NA_REAL,
+            Rcpp::Named("info") = Rcpp::CharacterVector::create(),
+            Rcpp::Named("inline") = R_NilValue
+        );
+    }
+
+    // Inline data: copy out before struct destructs
+    Rcpp::RObject inline_data = R_NilValue;
+    if (info.pabyInlineData != nullptr && info.nSize > 0) {
+        Rcpp::RawVector raw(info.nSize);
+        std::memcpy(raw.begin(), info.pabyInlineData, info.nSize);
+        inline_data = raw;
+    }
+
+    // Convert CSL info strings to CharacterVector
+    Rcpp::CharacterVector info_vec;
+    if (info.papszInfo != nullptr) {
+        for (int i = 0; info.papszInfo[i] != nullptr; i++) {
+            info_vec.push_back(info.papszInfo[i]);
+        }
+    }
+
+    return Rcpp::List::create(
+        Rcpp::Named("filename") = std::string(
+            info.pszFilename ? info.pszFilename : ""),
+        Rcpp::Named("offset") = static_cast<double>(info.nOffset),
+        Rcpp::Named("size") = static_cast<double>(info.nSize),
+        Rcpp::Named("info") = info_vec,
+        Rcpp::Named("inline") = inline_data
+    );
+    // info destructor frees owned memory here — no manual cleanup needed
+}
+
+// ---------------------------------------------------------------------------
+// getRawBlockRefs - bulk scan all chunks, returns data.frame
+// ---------------------------------------------------------------------------
+Rcpp::DataFrame GDALMDArrayR::getRawBlockRefs() const {
+    if (!isValid())
+        Rcpp::stop("GDALMDArrayR object is not valid");
+
+    auto dims = m_poArray->GetDimensions();
+    auto block_size = m_poArray->GetBlockSize();
+    size_t ndims = dims.size();
+
+    if (ndims == 0) {
+        Rcpp::stop("getRawBlockRefs requires a dimensioned array");
+    }
+
+    // Compute number of chunks per dimension
+    std::vector<size_t> n_chunks(ndims);
+    size_t total_chunks = 1;
+    for (size_t d = 0; d < ndims; d++) {
+        size_t dim_size = static_cast<size_t>(dims[d]->GetSize());
+        size_t chunk_size = (block_size[d] > 0)
+            ? static_cast<size_t>(block_size[d])
+            : dim_size;
+        n_chunks[d] = (dim_size + chunk_size - 1) / chunk_size;
+        total_chunks *= n_chunks[d];
+    }
+
+    // Accumulate into vectors. Size not known ahead due to missing chunk
+    // filtering, but reserve for the common case (most chunks present).
+    std::vector<std::string> filenames;
+    std::vector<double> offsets;
+    std::vector<double> sizes;
+    std::vector<std::string> infos;
+    std::vector<std::vector<int>> chunk_indices(ndims);
+
+    filenames.reserve(total_chunks);
+    offsets.reserve(total_chunks);
+    sizes.reserve(total_chunks);
+    infos.reserve(total_chunks);
+    for (size_t d = 0; d < ndims; d++) {
+        chunk_indices[d].reserve(total_chunks);
+    }
+
+    std::vector<uint64_t> idx(ndims, 0);
+
+    for (size_t i = 0; i < total_chunks; i++) {
+        if (i % 1000 == 0) R_CheckUserInterrupt();
+
+        // Construct a fresh struct each iteration. The default constructor
+        // zero-initializes, and the destructor frees owned memory at end of
+        // scope. This is safe regardless of whether the struct has a clear()
+        // method, and the per-iteration overhead is trivial vs I/O.
+        GDALMDArrayRawBlockInfo info;
+        bool ok = m_poArray->GetRawBlockInfo(idx.data(), info);
+
+        // Skip failed calls and missing chunks (all fields zeroed)
+        if (ok && info.nSize > 0) {
+            filenames.push_back(
+                info.pszFilename ? info.pszFilename : "");
+            offsets.push_back(static_cast<double>(info.nOffset));
+            sizes.push_back(static_cast<double>(info.nSize));
+
+            // Build pipe-separated info string
+            std::string info_str;
+            if (info.papszInfo != nullptr) {
+                for (int j = 0; info.papszInfo[j] != nullptr; j++) {
+                    if (j > 0) info_str += '|';
+                    info_str += info.papszInfo[j];
+                }
+            }
+            infos.push_back(std::move(info_str));
+
+            for (size_t d = 0; d < ndims; d++) {
+                chunk_indices[d].push_back(static_cast<int>(idx[d]));
+            }
+        }
+
+        // Increment multi-dimensional index (last dimension fastest)
+        for (int d = static_cast<int>(ndims) - 1; d >= 0; d--) {
+            idx[d]++;
+            if (idx[d] < n_chunks[d]) break;
+            idx[d] = 0;
+        }
+    }
+
+    // Build data.frame
+    int n_present = static_cast<int>(filenames.size());
+    if (n_present == 0) {
+        // Return empty data.frame with correct column structure
+        Rcpp::List df = Rcpp::List::create(
+            Rcpp::Named("filename") = Rcpp::CharacterVector(0),
+            Rcpp::Named("offset") = Rcpp::NumericVector(0),
+            Rcpp::Named("size") = Rcpp::NumericVector(0),
+            Rcpp::Named("info") = Rcpp::CharacterVector(0)
+        );
+        for (size_t d = 0; d < ndims; d++) {
+            std::string col_name = "chunk_" + std::to_string(d);
+            df.push_back(Rcpp::IntegerVector(0), col_name);
+        }
+        df.attr("class") = "data.frame";
+        df.attr("row.names") = Rcpp::IntegerVector(0);
+        return Rcpp::as<Rcpp::DataFrame>(df);
+    }
+
+    Rcpp::List df = Rcpp::List::create(
+        Rcpp::Named("filename") = Rcpp::wrap(filenames),
+        Rcpp::Named("offset") = Rcpp::wrap(offsets),
+        Rcpp::Named("size") = Rcpp::wrap(sizes),
+        Rcpp::Named("info") = Rcpp::wrap(infos)
+    );
+    for (size_t d = 0; d < ndims; d++) {
+        std::string col_name = "chunk_" + std::to_string(d);
+        df.push_back(Rcpp::IntegerVector(chunk_indices[d].begin(),
+                                          chunk_indices[d].end()),
+                     col_name);
+    }
+    df.attr("class") = "data.frame";
+    df.attr("row.names") = Rcpp::seq(1, n_present);
+
+    return Rcpp::as<Rcpp::DataFrame>(df);
+}
+
+#endif  // GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 12, 0)
+
 // ============================================================================
 // GDALGroupR implementation
 // ============================================================================
@@ -1272,46 +1464,46 @@ Rcpp::CharacterVector GDALGroupR::getGroupNames(
     return Rcpp::wrap(names);
 }
 
-SEXP GDALGroupR::openGroup(
+GDALGroupR GDALGroupR::openGroup(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALGroupR();
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = m_poGroup->OpenGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return R_NilValue;
-    return Rcpp::XPtr<GDALGroupR>(new GDALGroupR(poSubGroup));
+    if (!poSubGroup) return GDALGroupR();
+    return GDALGroupR(poSubGroup);
 }
 
-SEXP GDALGroupR::openGroupFromFullname(
+GDALGroupR GDALGroupR::openGroupFromFullname(
         const std::string& osFullName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALGroupR();
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = m_poGroup->OpenGroupFromFullname(osFullName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return R_NilValue;
-    return Rcpp::XPtr<GDALGroupR>(new GDALGroupR(poSubGroup));
+    if (!poSubGroup) return GDALGroupR();
+    return GDALGroupR(poSubGroup);
 }
 
-SEXP GDALGroupR::createGroup(
+GDALGroupR GDALGroupR::createGroup(
         const std::string& osName,
         Rcpp::CharacterVector options) {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALGroupR();
     
     char** papszOptions = charVecToCSL(options);
     auto poNewGroup = m_poGroup->CreateGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poNewGroup) return R_NilValue;
-    return Rcpp::XPtr<GDALGroupR>(new GDALGroupR(poNewGroup));
+    if (!poNewGroup) return GDALGroupR();
+    return GDALGroupR(poNewGroup);
 }
 
 bool GDALGroupR::deleteGroup(
@@ -1338,49 +1530,48 @@ Rcpp::CharacterVector GDALGroupR::getMDArrayNames(
     return Rcpp::wrap(names);
 }
 
-SEXP GDALGroupR::openMDArray(
+GDALMDArrayR GDALGroupR::openMDArray(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALMDArrayR();
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = m_poGroup->OpenMDArray(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+    if (!poArray) return GDALMDArrayR();
+    return GDALMDArrayR(poArray);
 }
 
-SEXP GDALGroupR::openMDArrayFromFullname(
+GDALMDArrayR GDALGroupR::openMDArrayFromFullname(
         const std::string& osFullName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALMDArrayR();
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = m_poGroup->OpenMDArrayFromFullname(osFullName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+    if (!poArray) return GDALMDArrayR();
+    return GDALMDArrayR(poArray);
 }
 
-SEXP GDALGroupR::createMDArray(
+GDALMDArrayR GDALGroupR::createMDArray(
     const std::string& osName,
     Rcpp::List dimensions,
-    SEXP oType,  // Changed from const GDALExtendedDataTypeR&
+    SEXP oType,
     Rcpp::CharacterVector options) {
   
-  if (!isValid()) return R_NilValue;
+  if (!isValid()) return GDALMDArrayR();
   
-  // Unwrap the XPtr
-  Rcpp::XPtr<GDALExtendedDataTypeR> pType(oType);
+  GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
   
   // Build dimension vector
   std::vector<std::shared_ptr<GDALDimension>> aoDims;
   for (R_xlen_t i = 0; i < dimensions.size(); ++i) {
-    Rcpp::XPtr<GDALDimensionR> pDim(dimensions[i]);
+    GDALDimensionR* pDim = unwrapModulePtr<GDALDimensionR>(dimensions[i]);
     if (pDim->isValid()) {
       aoDims.push_back(pDim->getSharedPtr());
     }
@@ -1390,8 +1581,8 @@ SEXP GDALGroupR::createMDArray(
   auto poArray = m_poGroup->CreateMDArray(osName, aoDims, pType->getRef(), papszOptions);
   CSLDestroy(papszOptions);
   
-  if (!poArray) return R_NilValue;
-  return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+  if (!poArray) return GDALMDArrayR();
+  return GDALMDArrayR(poArray);
 }
 
 bool GDALGroupR::deleteMDArray(
@@ -1417,27 +1608,27 @@ Rcpp::List GDALGroupR::getDimensions(
     CSLDestroy(papszOptions);
     
     for (const auto& dim : dims) {
-        result.push_back(Rcpp::XPtr<GDALDimensionR>(new GDALDimensionR(dim)));
+        result.push_back(GDALDimensionR(dim));
     }
     return result;
 }
 
-SEXP GDALGroupR::createDimension(
+GDALDimensionR GDALGroupR::createDimension(
         const std::string& osName,
         const std::string& osType,
         const std::string& osDirection,
         GUInt64 nSize,
         Rcpp::CharacterVector options) {
     
-    if (!isValid()) return R_NilValue;
+    if (!isValid()) return GDALDimensionR();
     
     char** papszOptions = charVecToCSL(options);
     auto poDim = m_poGroup->CreateDimension(
         osName, osType, osDirection, nSize, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poDim) return R_NilValue;
-    return Rcpp::XPtr<GDALDimensionR>(new GDALDimensionR(poDim));
+    if (!poDim) return GDALDimensionR();
+    return GDALDimensionR(poDim);
 }
 
 Rcpp::CharacterVector GDALGroupR::getAttributeNames(
@@ -1456,13 +1647,13 @@ Rcpp::CharacterVector GDALGroupR::getAttributeNames(
     return result;
 }
 
-SEXP GDALGroupR::getAttribute(const std::string& osName) const {
-    if (!isValid()) return R_NilValue;
+GDALAttributeR GDALGroupR::getAttribute(const std::string& osName) const {
+    if (!isValid()) return GDALAttributeR();
     
     auto poAttr = m_poGroup->GetAttribute(osName);
-    if (!poAttr) return R_NilValue;
+    if (!poAttr) return GDALAttributeR();
     
-    return Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(poAttr));
+    return GDALAttributeR(poAttr);
 }
 
 Rcpp::List GDALGroupR::getAttributes(
@@ -1476,19 +1667,19 @@ Rcpp::List GDALGroupR::getAttributes(
     CSLDestroy(papszOptions);
     
     for (const auto& attr : attrs) {
-        result.push_back(Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(attr)));
+        result.push_back(GDALAttributeR(attr));
     }
     return result;
 }
 
-SEXP GDALGroupR::createAttribute(
+GDALAttributeR GDALGroupR::createAttribute(
         const std::string& osName,
         Rcpp::NumericVector dimensions,
         const SEXP oType,
         Rcpp::CharacterVector options) {
     
-    Rcpp::XPtr<GDALExtendedDataTypeR> pType(oType);
-    if (!isValid()) return R_NilValue;
+    GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
+    if (!isValid()) return GDALAttributeR();
     
     std::vector<GUInt64> anDimensions(dimensions.size());
     for (R_xlen_t i = 0; i < dimensions.size(); ++i) {
@@ -1500,8 +1691,8 @@ SEXP GDALGroupR::createAttribute(
         osName, anDimensions, pType->getRef(), papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poAttr) return R_NilValue;
-    return Rcpp::XPtr<GDALAttributeR>(new GDALAttributeR(poAttr));
+    if (!poAttr) return GDALAttributeR();
+    return GDALAttributeR(poAttr);
 }
 
 bool GDALGroupR::deleteAttribute(
@@ -1692,13 +1883,13 @@ std::string GDALMultiDimRaster::info(Rcpp::CharacterVector options) const {
     return result;
 }
 
-SEXP GDALMultiDimRaster::getRootGroup() const {
+GDALGroupR GDALMultiDimRaster::getRootGroup() const {
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return R_NilValue;
+    if (!poGroup) return GDALGroupR();
     
-    return Rcpp::XPtr<GDALGroupR>(new GDALGroupR(poGroup));
+    return GDALGroupR(poGroup);
 }
 
 std::string GDALMultiDimRaster::getDriverShortName() const {
@@ -1814,7 +2005,7 @@ void GDALMultiDimRaster::flushCache() {
     }
 }
 
-SEXP GDALMultiDimRaster::createMultiDimensional(
+GDALMultiDimRaster GDALMultiDimRaster::createMultiDimensional(
         const std::string& pszFilename,
         const std::string& pszDriverName,
         SEXP poRootGroup,
@@ -1843,13 +2034,14 @@ SEXP GDALMultiDimRaster::createMultiDimensional(
         Rcpp::stop("Failed to create multidimensional dataset");
     }
     
-    // Wrap in our class
-    GDALMultiDimRaster* pRaster = new GDALMultiDimRaster();
-    pRaster->m_osFilename = pszFilename;
-    pRaster->m_hDataset = poDS;
-    pRaster->m_bReadOnly = false;
+    // Wrap in our class — the copy constructor will close this handle
+    // and reopen from pszFilename in update mode
+    GDALMultiDimRaster raster;
+    raster.m_osFilename = pszFilename;
+    raster.m_hDataset = poDS;
+    raster.m_bReadOnly = false;
     
-    return Rcpp::XPtr<GDALMultiDimRaster>(pRaster);
+    return raster;
 }
 
 Rcpp::CharacterVector GDALMultiDimRaster::getArrayNames() const {
@@ -1861,38 +2053,38 @@ Rcpp::CharacterVector GDALMultiDimRaster::getArrayNames() const {
     return Rcpp::wrap(poGroup->GetMDArrayNames());
 }
 
-SEXP GDALMultiDimRaster::openArray(
+GDALMDArrayR GDALMultiDimRaster::openArray(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return R_NilValue;
+    if (!poGroup) return GDALMDArrayR();
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = poGroup->OpenMDArray(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+    if (!poArray) return GDALMDArrayR();
+    return GDALMDArrayR(poArray);
 }
 
-SEXP GDALMultiDimRaster::openArrayFromFullname(
+GDALMDArrayR GDALMultiDimRaster::openArrayFromFullname(
         const std::string& osFullname,
         Rcpp::CharacterVector options) const {
     
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return R_NilValue;
+    if (!poGroup) return GDALMDArrayR();
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = poGroup->OpenMDArrayFromFullname(osFullname, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return R_NilValue;
-    return Rcpp::XPtr<GDALMDArrayR>(new GDALMDArrayR(poArray));
+    if (!poArray) return GDALMDArrayR();
+    return GDALMDArrayR(poArray);
 }
 
 Rcpp::CharacterVector GDALMultiDimRaster::getSubGroupNames() const {
@@ -1904,19 +2096,19 @@ Rcpp::CharacterVector GDALMultiDimRaster::getSubGroupNames() const {
     return Rcpp::wrap(poGroup->GetGroupNames());
 }
 
-SEXP GDALMultiDimRaster::openSubGroup(
+GDALGroupR GDALMultiDimRaster::openSubGroup(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return R_NilValue;
+    if (!poGroup) return GDALGroupR();
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = poGroup->OpenGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return R_NilValue;
-    return Rcpp::XPtr<GDALGroupR>(new GDALGroupR(poSubGroup));
+    if (!poSubGroup) return GDALGroupR();
+    return GDALGroupR(poSubGroup);
 }

@@ -224,6 +224,14 @@ RCPP_MODULE(mod_gdalmultidim) {
                 "Resize the array")
         .method("rename", &GDALMDArrayR::rename,
                 "Rename the array")
+        
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3, 12, 0)
+        // Raw block info (chunk byte-range references)
+        .method("getRawBlockInfo", &GDALMDArrayR::getRawBlockInfo,
+                "Get raw block info for a single chunk (filename, offset, size, info)")
+        .method("getRawBlockRefs", &GDALMDArrayR::getRawBlockRefs,
+                "Scan all chunks and return data.frame of byte-range references")
+#endif
     ;
     
     // -------------------------------------------------------------------------
@@ -371,27 +379,24 @@ RCPP_MODULE(mod_gdalmultidim) {
 
 // [[Rcpp::export]]
 SEXP edtCreate(int dataType) {
-    return Rcpp::XPtr<GDALExtendedDataTypeR>(
-        new GDALExtendedDataTypeR(static_cast<GDALDataType>(dataType)));
+    return Rcpp::wrap(GDALExtendedDataTypeR(static_cast<GDALDataType>(dataType)));
 }
 
 // [[Rcpp::export]]
 SEXP edtCreateString(int maxLength = 0) {
-    GDALExtendedDataTypeR edt = GDALExtendedDataTypeR::CreateString(
-        static_cast<size_t>(maxLength));
-    return Rcpp::XPtr<GDALExtendedDataTypeR>(new GDALExtendedDataTypeR(edt));
+    return Rcpp::wrap(
+        GDALExtendedDataTypeR::CreateString(static_cast<size_t>(maxLength)));
 }
 
 // [[Rcpp::export]]
 SEXP edtCreateCompound(std::string name, int totalSize, Rcpp::List components) {
-    GDALExtendedDataTypeR edt = GDALExtendedDataTypeR::CreateCompound(
-        name, static_cast<size_t>(totalSize), components);
-    return Rcpp::XPtr<GDALExtendedDataTypeR>(new GDALExtendedDataTypeR(edt));
+    return Rcpp::wrap(GDALExtendedDataTypeR::CreateCompound(
+        name, static_cast<size_t>(totalSize), components));
 }
 
 // [[Rcpp::export]]
 SEXP mdimCreate(std::string filename, std::string driverName,
                 Rcpp::CharacterVector options = Rcpp::CharacterVector()) {
-    return GDALMultiDimRaster::createMultiDimensional(
-        filename, driverName, R_NilValue, options);
+    return Rcpp::wrap(GDALMultiDimRaster::createMultiDimensional(
+        filename, driverName, R_NilValue, options));
 }

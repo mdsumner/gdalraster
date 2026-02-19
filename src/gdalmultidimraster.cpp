@@ -339,7 +339,7 @@ std::vector<GUInt64> GDALAttributeR::getDimensionsSize() const {
 }
 
 GDALExtendedDataTypeR GDALAttributeR::getDataType() const {
-  if (!isValid()) return GDALExtendedDataTypeR();
+  if (!isValid()) Rcpp::stop("Attribute object is not valid");
   return GDALExtendedDataTypeR(m_poAttr->GetDataType());
 }
 
@@ -527,7 +527,7 @@ Rcpp::List GDALMDArrayR::getDimensions() const {
 }
 
 GDALExtendedDataTypeR GDALMDArrayR::getDataType() const {
-  if (!isValid()) return GDALExtendedDataTypeR();
+  if (!isValid()) Rcpp::stop("Array object is not valid");
   return GDALExtendedDataTypeR(m_poArray->GetDataType());
 }
 
@@ -690,7 +690,7 @@ Rcpp::CharacterVector GDALMDArrayR::getAttributeNames() const {
 }
 
 GDALAttributeR GDALMDArrayR::getAttribute(const std::string& osName) const {
-    if (!isValid()) return GDALAttributeR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     auto poAttr = m_poArray->GetAttribute(osName);
     if (!poAttr) return GDALAttributeR();
@@ -716,7 +716,7 @@ GDALAttributeR GDALMDArrayR::createAttribute(
         Rcpp::CharacterVector options) {
     
     GDALExtendedDataTypeR* pOther = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
-    if (!isValid()) return GDALAttributeR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     std::vector<GUInt64> anDimensions = rVecToGUInt64(dimensions);
     char** papszOptions = charVecToCSL(options);
@@ -726,7 +726,7 @@ GDALAttributeR GDALMDArrayR::createAttribute(
     
     CSLDestroy(papszOptions);
     
-    if (!poAttr) return GDALAttributeR();
+    if (!poAttr) Rcpp::stop("Failed to create attribute '%s'", osName.c_str());
     return GDALAttributeR(poAttr);
 }
 
@@ -1065,41 +1065,41 @@ bool GDALMDArrayR::adviseRead(
 }
 
 GDALMDArrayR GDALMDArrayR::getView(const std::string& osViewExpr) const {
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     auto poView = m_poArray->GetView(osViewExpr);
-    if (!poView) return GDALMDArrayR();
+    if (!poView) Rcpp::stop("GetView failed for expression '%s'", osViewExpr.c_str());
     
     return GDALMDArrayR(poView);
 }
 
 GDALMDArrayR GDALMDArrayR::transpose(Rcpp::IntegerVector anMapNewAxisToOldAxis) const {
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     std::vector<int> map(anMapNewAxisToOldAxis.begin(), anMapNewAxisToOldAxis.end());
     auto poTransposed = m_poArray->Transpose(map);
-    if (!poTransposed) return GDALMDArrayR();
+    if (!poTransposed) Rcpp::stop("Transpose failed");
     
     return GDALMDArrayR(poTransposed);
 }
 
 GDALMDArrayR GDALMDArrayR::getUnscaled() const {
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     auto poUnscaled = m_poArray->GetUnscaled();
-    if (!poUnscaled) return GDALMDArrayR();
+    if (!poUnscaled) Rcpp::stop("GetUnscaled failed");
     
     return GDALMDArrayR(poUnscaled);
 }
 
 GDALMDArrayR GDALMDArrayR::getMask(Rcpp::CharacterVector options) const {
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poMask = m_poArray->GetMask(papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poMask) return GDALMDArrayR();
+    if (!poMask) Rcpp::stop("GetMask failed");
     return GDALMDArrayR(poMask);
 }
 
@@ -1109,7 +1109,7 @@ GDALMDArrayR GDALMDArrayR::getResampled(
         const std::string& targetSRS,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Array object is not valid");
     
     // Build dimension vector
     std::vector<std::shared_ptr<GDALDimension>> aoDims;
@@ -1140,7 +1140,7 @@ GDALMDArrayR GDALMDArrayR::getResampled(
     auto poResampled = m_poArray->GetResampled(aoDims, eResample, poTargetSRS, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poResampled) return GDALMDArrayR();
+    if (!poResampled) Rcpp::stop("GetResampled failed");
     return GDALMDArrayR(poResampled);
 }
 
@@ -1468,13 +1468,13 @@ GDALGroupR GDALGroupR::openGroup(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return GDALGroupR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = m_poGroup->OpenGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return GDALGroupR();
+    if (!poSubGroup) Rcpp::stop("Group '%s' not found", osName.c_str());
     return GDALGroupR(poSubGroup);
 }
 
@@ -1482,13 +1482,13 @@ GDALGroupR GDALGroupR::openGroupFromFullname(
         const std::string& osFullName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return GDALGroupR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = m_poGroup->OpenGroupFromFullname(osFullName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return GDALGroupR();
+    if (!poSubGroup) Rcpp::stop("Group '%s' not found", osFullName.c_str());
     return GDALGroupR(poSubGroup);
 }
 
@@ -1496,13 +1496,13 @@ GDALGroupR GDALGroupR::createGroup(
         const std::string& osName,
         Rcpp::CharacterVector options) {
     
-    if (!isValid()) return GDALGroupR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poNewGroup = m_poGroup->CreateGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poNewGroup) return GDALGroupR();
+    if (!poNewGroup) Rcpp::stop("Failed to create group '%s'", osName.c_str());
     return GDALGroupR(poNewGroup);
 }
 
@@ -1534,13 +1534,13 @@ GDALMDArrayR GDALGroupR::openMDArray(
         const std::string& osName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = m_poGroup->OpenMDArray(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return GDALMDArrayR();
+    if (!poArray) Rcpp::stop("Array '%s' not found", osName.c_str());
     return GDALMDArrayR(poArray);
 }
 
@@ -1548,13 +1548,13 @@ GDALMDArrayR GDALGroupR::openMDArrayFromFullname(
         const std::string& osFullName,
         Rcpp::CharacterVector options) const {
     
-    if (!isValid()) return GDALMDArrayR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = m_poGroup->OpenMDArrayFromFullname(osFullName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return GDALMDArrayR();
+    if (!poArray) Rcpp::stop("Array '%s' not found", osFullName.c_str());
     return GDALMDArrayR(poArray);
 }
 
@@ -1564,7 +1564,7 @@ GDALMDArrayR GDALGroupR::createMDArray(
     SEXP oType,
     Rcpp::CharacterVector options) {
   
-  if (!isValid()) return GDALMDArrayR();
+  if (!isValid()) Rcpp::stop("Group object is not valid");
   
   GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
   
@@ -1581,7 +1581,7 @@ GDALMDArrayR GDALGroupR::createMDArray(
   auto poArray = m_poGroup->CreateMDArray(osName, aoDims, pType->getRef(), papszOptions);
   CSLDestroy(papszOptions);
   
-  if (!poArray) return GDALMDArrayR();
+  if (!poArray) Rcpp::stop("Failed to create array '%s'", osName.c_str());
   return GDALMDArrayR(poArray);
 }
 
@@ -1620,14 +1620,14 @@ GDALDimensionR GDALGroupR::createDimension(
         GUInt64 nSize,
         Rcpp::CharacterVector options) {
     
-    if (!isValid()) return GDALDimensionR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     char** papszOptions = charVecToCSL(options);
     auto poDim = m_poGroup->CreateDimension(
         osName, osType, osDirection, nSize, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poDim) return GDALDimensionR();
+    if (!poDim) Rcpp::stop("Failed to create dimension '%s'", osName.c_str());
     return GDALDimensionR(poDim);
 }
 
@@ -1648,7 +1648,7 @@ Rcpp::CharacterVector GDALGroupR::getAttributeNames(
 }
 
 GDALAttributeR GDALGroupR::getAttribute(const std::string& osName) const {
-    if (!isValid()) return GDALAttributeR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     auto poAttr = m_poGroup->GetAttribute(osName);
     if (!poAttr) return GDALAttributeR();
@@ -1679,7 +1679,7 @@ GDALAttributeR GDALGroupR::createAttribute(
         Rcpp::CharacterVector options) {
     
     GDALExtendedDataTypeR* pType = unwrapModulePtr<GDALExtendedDataTypeR>(oType);
-    if (!isValid()) return GDALAttributeR();
+    if (!isValid()) Rcpp::stop("Group object is not valid");
     
     std::vector<GUInt64> anDimensions(dimensions.size());
     for (R_xlen_t i = 0; i < dimensions.size(); ++i) {
@@ -1691,7 +1691,7 @@ GDALAttributeR GDALGroupR::createAttribute(
         osName, anDimensions, pType->getRef(), papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poAttr) return GDALAttributeR();
+    if (!poAttr) Rcpp::stop("Failed to create attribute '%s'", osName.c_str());
     return GDALAttributeR(poAttr);
 }
 
@@ -1887,7 +1887,7 @@ GDALGroupR GDALMultiDimRaster::getRootGroup() const {
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return GDALGroupR();
+    if (!poGroup) Rcpp::stop("Dataset has no root group");
     
     return GDALGroupR(poGroup);
 }
@@ -2060,13 +2060,13 @@ GDALMDArrayR GDALMultiDimRaster::openArray(
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return GDALMDArrayR();
+    if (!poGroup) Rcpp::stop("Dataset has no root group");
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = poGroup->OpenMDArray(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return GDALMDArrayR();
+    if (!poArray) Rcpp::stop("Array '%s' not found", osName.c_str());
     return GDALMDArrayR(poArray);
 }
 
@@ -2077,13 +2077,13 @@ GDALMDArrayR GDALMultiDimRaster::openArrayFromFullname(
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return GDALMDArrayR();
+    if (!poGroup) Rcpp::stop("Dataset has no root group");
     
     char** papszOptions = charVecToCSL(options);
     auto poArray = poGroup->OpenMDArrayFromFullname(osFullname, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poArray) return GDALMDArrayR();
+    if (!poArray) Rcpp::stop("Array '%s' not found", osFullname.c_str());
     return GDALMDArrayR(poArray);
 }
 
@@ -2103,12 +2103,12 @@ GDALGroupR GDALMultiDimRaster::openSubGroup(
     checkOpen();
     
     auto poGroup = m_hDataset->GetRootGroup();
-    if (!poGroup) return GDALGroupR();
+    if (!poGroup) Rcpp::stop("Dataset has no root group");
     
     char** papszOptions = charVecToCSL(options);
     auto poSubGroup = poGroup->OpenGroup(osName, papszOptions);
     CSLDestroy(papszOptions);
     
-    if (!poSubGroup) return GDALGroupR();
+    if (!poSubGroup) Rcpp::stop("Group '%s' not found", osName.c_str());
     return GDALGroupR(poSubGroup);
 }

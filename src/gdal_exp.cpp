@@ -355,16 +355,23 @@ std::string get_config_option(const std::string &key) {
 //' `set_config_option()`.
 //' @returns No return value, called for side effects.
 //'
+//' @note
+//' The configuration option `"CPL_LOG_ERRORS"` can be set to `"OFF"` to disable
+//' printing error massages to the console by GDAL. This only affects messages
+//' printed by GDAL, and does not disable errors, warnings or other messages
+//' emitted by \pkg{gdalraster}. The latter can generally be configured using a
+//' function argument or object-level setting in most cases.
+//'
 //' @seealso
 //' [get_config_option()]
 //'
 //' `vignette("gdal-config-quick-ref")`
 //'
 //' @examples
-//' set_config_option("GDAL_CACHEMAX", "10%")
-//' get_config_option("GDAL_CACHEMAX")
-//' ## unset:
-//' set_config_option("GDAL_CACHEMAX", "")
+//' set_config_option("CPL_LOG_ERRORS", "OFF")
+//' get_config_option("CPL_LOG_ERRORS")
+//' ## unset to default:
+//' set_config_option("CPL_LOG_ERRORS", "")
 // [[Rcpp::export]]
 void set_config_option(const std::string &key, const std::string &value) {
     const char *value_in = nullptr;
@@ -372,6 +379,17 @@ void set_config_option(const std::string &key, const std::string &value) {
         value_in = value.c_str();
 
     CPLSetConfigOption(key.c_str(), value_in);
+
+    if (EQUAL(key.c_str(), "CPL_LOG_ERRORS")) {
+        if (value_in && (EQUAL(value_in, "OFF") || EQUAL(value_in, "FALSE") ||
+                         EQUAL(value_in, "NO"))) {
+
+            CPLSetErrorHandler((CPLErrorHandler) gdal_silent_errors_r);
+        }
+        else {
+            CPLSetErrorHandler((CPLErrorHandler) gdal_error_handler_r);
+        }
+    }
 }
 
 
@@ -569,13 +587,17 @@ int dump_open_datasets(const std::string &outfile) {
 //' handler specific to the R environment is in use by default.
 //'
 //' Setting `handler = "logging"` will use `CPLLoggingErrorHandler()`, error
-//' handler that logs into the file defined by the `CPL_LOG` configuration
+//' handler that logs into the file defined by the `"CPL_LOG"` configuration
 //' option. Be sure that option is set when using this error handler.
 //'
 //' This only affects error reporting from GDAL.
 //'
+//' Also note that the configuration option `"CPL_LOG_ERRORS"` can be set to
+//' `"OFF"` to disable globally the printing of error massages to the console
+//' by GDAL.
+//'
 //' @seealso
-//' [pop_error_handler()]
+//' [pop_error_handler()], [set_config_option()]
 //'
 //' @examples
 //' push_error_handler("quiet")
@@ -756,6 +778,10 @@ bool http_enabled() {
 }
 
 
+// Extract non-directory portion of filename.
+// Returns a string containing the bare filename portion of the passed filename.
+// If there is no filename (passed value ends in trailing directory separator)
+// an empty string is returned.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_filename")]]
 std::string cpl_get_filename(const Rcpp::CharacterVector &full_filename) {
@@ -766,23 +792,88 @@ std::string cpl_get_filename(const Rcpp::CharacterVector &full_filename) {
 }
 
 
+// Extract directory path portion of filename.
+// Returns a string containing the directory path portion of the passed
+// filename. If there is no path in the passed filename an empty string
+// will be returned (not NULL).
+//' @noRd
+// [[Rcpp::export(name = ".cpl_get_path")]]
+std::string cpl_get_path(const Rcpp::CharacterVector &full_filename) {
+    const std::string filename_in =
+        Rcpp::as<std::string>(check_gdal_filename(full_filename));
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLGetPath(filename_in.c_str()));
+#else
+    return CPLGetPathSafe(filename_in.c_str());
+#endif
+}
+
+
+// Extract directory path portion of filename.
+// Returns a string containing the directory path portion of the passed
+// filename. If there is no path in the passed filename the dot will be
+// returned. It is the only difference from CPLGetPath().
+//' @noRd
+// [[Rcpp::export(name = ".cpl_get_dirname")]]
+std::string cpl_get_dirname(const Rcpp::CharacterVector &full_filename) {
+    const std::string filename_in =
+        Rcpp::as<std::string>(check_gdal_filename(full_filename));
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLGetDirname(filename_in.c_str()));
+#else
+    return CPLGetDirnameSafe(filename_in.c_str());
+#endif
+}
+
+
+// Extract basename (non-directory, non-extension) portion of filename.
+// Returns a string containing the file basename portion of the passed name. If
+// there is no basename (passed value ends in trailing directory separator, or
+// filename starts with a dot) an empty string is returned.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_basename")]]
 std::string cpl_get_basename(const Rcpp::CharacterVector &full_filename) {
     const std::string filename_in =
         Rcpp::as<std::string>(check_gdal_filename(full_filename));
 
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
     return std::string(CPLGetBasename(filename_in.c_str()));
+#else
+    return CPLGetBasenameSafe(filename_in.c_str());
+#endif
 }
 
 
+// Extract filename extension from full filename.
+// Returns a string containing the extension portion of the passed name. If
+// there is no extension (the filename has no dot) an empty string is returned.
+// The returned extension will not include the period.
 //' @noRd
 // [[Rcpp::export(name = ".cpl_get_extension")]]
 std::string cpl_get_extension(const Rcpp::CharacterVector &full_filename) {
     const std::string filename_in =
         Rcpp::as<std::string>(check_gdal_filename(full_filename));
 
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
     return std::string(CPLGetExtension(filename_in.c_str()));
+#else
+    return CPLGetExtensionSafe(filename_in.c_str());
+#endif
+}
+
+
+// Launder a string to be compatible of a filename.
+// (for the non-directory portion of a filename)
+//' @noRd
+// [[Rcpp::export(name = ".cpl_launder_for_filename")]]
+std::string cpl_launder_for_filename(const std::string &full_filename) {
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 11, 0)
+    return std::string(CPLLaunderForFilename(full_filename.c_str(), nullptr));
+#else
+    return CPLLaunderForFilenameSafe(full_filename.c_str(), nullptr);
+#endif
 }
 
 
@@ -3759,32 +3850,36 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
     const std::string in_filename_in =
         Rcpp::as<std::string>(check_gdal_filename(in_filename));
 
-    bool ret = false;
-    VSIStatBufL buf;
-
-    std::vector<char *> opt_zip_create;
+    std::vector<char *> opt_zip_create = {};
     if (overwrite) {
         VSIUnlink(zip_filename_in.c_str());
     } else {
-        if (VSIStatExL(zip_filename_in.c_str(), &buf, VSI_STAT_EXISTS_FLAG)
-                == 0) {
+        VSIStatBufL buf;
+        int nStatRet =
+            VSIStatExL(zip_filename_in.c_str(), &buf, VSI_STAT_EXISTS_FLAG);
+
+        if (nStatRet == 0) {
             opt_zip_create.push_back(const_cast<char *>("APPEND=TRUE"));
+            opt_zip_create.push_back(nullptr);
         }
     }
-    opt_zip_create.push_back(nullptr);
 
-    void *hZIP = CPLCreateZip(zip_filename_in.c_str(), opt_zip_create.data());
-    if (hZIP == nullptr)
-        Rcpp::stop("failed to obtain file handle for zip file");
+    std::unique_ptr<void, decltype(&CPLCloseZip)> hZIP(
+        CPLCreateZip(
+            zip_filename_in.c_str(),
+            opt_zip_create.empty() ? nullptr : opt_zip_create.data()),
+        CPLCloseZip);
 
-    std::vector<char *> opt_list = {nullptr};
+    if (!hZIP)
+        Rcpp::stop("failed to obtain file handle for the zip file");
+
+    std::vector<char *> opt_list = {};
     if (options.isNotNull()) {
         Rcpp::CharacterVector options_in(options);
-        opt_list.resize(options_in.size() + 1);
         for (R_xlen_t i = 0; i < options_in.size(); ++i) {
-            opt_list[i] = (char *) options_in[i];
+            opt_list.push_back((char *) options_in[i]);
         }
-        opt_list[options_in.size()] = nullptr;
+        opt_list.push_back(nullptr);
     }
 
     if (!quiet) {
@@ -3792,20 +3887,15 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
         GDALTermProgressR(0, nullptr, nullptr);
     }
 
-    CPLErr err = CPLAddFileInZip(hZIP, archive_filename_in.c_str(),
-                                 in_filename_in.c_str(),
-                                 nullptr, opt_list.data(),
-                                 quiet ? nullptr : GDALTermProgressR,
-                                 nullptr);
+    CPLErr err = CPLAddFileInZip(
+        hZIP.get(), archive_filename_in.c_str(), in_filename_in.c_str(),
+        nullptr, opt_list.empty() ? nullptr : opt_list.data(),
+        quiet ? nullptr : GDALTermProgressR, nullptr);
 
     if (err == CE_None)
-        ret = true;
+        return true;
     else
-        ret = false;
-
-    CPLCloseZip(hZIP);
-    return ret;
-
+        return false;
 #endif
 }
 

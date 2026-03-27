@@ -24,9 +24,14 @@ test_that(".check_gdal_filename works", {
 
 test_that("get/set_config_option work", {
     co <- get_config_option("GDAL_CACHEMAX")
-    set_config_option("GDAL_CACHEMAX", "64")
-    expect_equal(get_config_option("GDAL_CACHEMAX"), "64")
+    set_config_option("GDAL_CACHEMAX", "10%")
+    expect_equal(get_config_option("GDAL_CACHEMAX"), "10%")
     set_config_option("GDAL_CACHEMAX", co)
+
+    set_config_option("CPL_LOG_ERRORS", "OFF")
+    expect_equal(get_config_option("CPL_LOG_ERRORS"), "OFF")
+    set_config_option("CPL_LOG_ERRORS", "")
+    expect_equal(get_config_option("CPL_LOG_ERRORS"), "")
 })
 
 test_that("get_cache_used returns integer64", {
@@ -74,6 +79,30 @@ test_that("http_enabled returns logical", {
 
 test_that(".cpl_http_cleanup runs without error", {
     expect_no_error(.cpl_http_cleanup())
+})
+
+test_that("wrappers for CPL path manipulation functions work", {
+    f <- "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp/poly.zip"
+
+    expect_equal(.cpl_get_filename(f),  "poly.zip")
+
+    expect_equal(.cpl_get_path(f),
+                 "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp")
+
+    expect_equal(.cpl_get_filename(f) |> .cpl_get_path(),  "")
+
+    expect_equal(.cpl_get_dirname(f),
+                 "/vsizip//vsicurl/https://raw.githubusercontent.com/OSGeo/gdal/master/autotest/ogr/data/shp")
+
+    expect_equal(.cpl_get_filename(f) |> .cpl_get_dirname(),  ".")
+
+    expect_equal(.cpl_get_basename(f), "poly")
+    expect_equal(.cpl_get_extension(f), "zip")
+
+    expect_true(.cpl_get_filename(f) |> .cpl_launder_for_filename() ==
+                .cpl_get_filename(f))
+
+    expect_false(.cpl_launder_for_filename(f) == f)
 })
 
 test_that("createCopy writes correct output", {

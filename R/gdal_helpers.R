@@ -134,26 +134,26 @@ gdal_compute_version <- function(maj, min, rev) {
 #' [vsi_get_file_metadata()]
 #'
 #' @examples
-#' lcp_file <- system.file("extdata/storm_lake.lcp", package="gdalraster")
-#' zip_file <- file.path(tempdir(), "storml_lcp.zip")
+#' f <- system.file("extdata/ynp_fires_1984_2022.gpkg", package = "gdalraster")
+#' zip_file <- file.path(tempdir(), "ynp_fires.zip")
 #'
 #' # Requires GDAL >= 3.7
 #' if (gdal_version_num() >= gdal_compute_version(3, 7, 0)) {
-#'   addFilesInZip(zip_file, lcp_file, full_paths = FALSE,
-#'                 sozip_enabled = "YES", num_threads = 1)
+#'   addFilesInZip(zip_file, f, full_paths = FALSE, sozip_enabled = "YES",
+#'                 num_threads = 1)
 #'
 #'   print("Files in zip archive:")
 #'   print(unzip(zip_file, list = TRUE))
 #'
 #'   # Open with GDAL using Virtual File System handler '/vsizip/'
-#'   # see: https://gdal.org/en/stable/user/virtual_file_systems.html#vsizip-zip-archives
-#'   lcp_in_zip <- file.path("/vsizip", zip_file, "storm_lake.lcp")
+#'   # https://gdal.org/en/stable/user/virtual_file_systems.html#vsizip-zip-archives
+#'   vsi_f <- file.path("/vsizip", zip_file, "ynp_fires_1984_2022.gpkg")
 #'   print("SOZip metadata:")
-#'   print(vsi_get_file_metadata(lcp_in_zip, domain = "ZIP"))
+#'   print(vsi_get_file_metadata(vsi_f, domain = "ZIP"))
 #'
-#'   ds <- new(GDALRaster, lcp_in_zip)
-#'   ds$info()
-#'   ds$close()
+#'   lyr <- new(GDALVector, vsi_f)
+#'   lyr$info()
+#'   lyr$close()
 #'   \dontshow{vsi_unlink(zip_file)}
 #' }
 #' @export
@@ -173,7 +173,7 @@ addFilesInZip <- function(
         stop("addFilesInZip() requires GDAL >= 3.7", call. = FALSE)
 
     if (!is.character(zip_file) || length(zip_file) > 1)
-        stop("'zip_file' must be a character string", call. = FALSE)
+        stop("'zip_file' must be a single character string", call. = FALSE)
     else
         zip_file <- .check_gdal_filename(zip_file)
 
@@ -204,51 +204,58 @@ addFilesInZip <- function(
 
     opt <- NULL
     if (!is.null(sozip_enabled)) {
-        if (!is.character(sozip_enabled) || length(sozip_enabled) > 1)
-            stop("'sozip_enabled' must be a character string", call. = FALSE)
+        if (!is.character(sozip_enabled) || length(sozip_enabled) > 1) {
+            stop("'sozip_enabled' must be a single character string",
+                 call. = FALSE)
+        }
         sozip_enabled <- toupper(sozip_enabled)
-        if (!(sozip_enabled %in% c("AUTO", "YES", "NO")))
+        if (!(sozip_enabled %in% c("AUTO", "YES", "NO"))) {
             stop("'sozip_enabled' must be one of \"AUTO\", \"YES\" or \"NO\"",
                  call. = FALSE)
-        else
+        } else {
             opt <- c(opt, paste0("SOZIP_ENABLED=", sozip_enabled))
+        }
     }
     if (!is.null(sozip_chunk_size)) {
         if (length(sozip_chunk_size) > 1)
-            stop("'sozip_chunk_size' must be length-1", call. = FALSE)
+            stop("'sozip_chunk_size' must be a single value", call. = FALSE)
         opt <- c(opt, paste0("SOZIP_CHUNK_SIZE=", sozip_chunk_size))
     }
     if (!is.null(sozip_min_file_size)) {
         if (length(sozip_min_file_size) > 1)
-            stop("'sozip_min_file_size' must be length-1", call. = FALSE)
+            stop("'sozip_min_file_size' must be a single value", call. = FALSE)
         opt <- c(opt, paste0("SOZIP_MIN_FILE_SIZE=", sozip_min_file_size))
     }
     if (!is.null(num_threads)) {
         if (length(num_threads) > 1)
-            stop("'num_threads' must be length-1", call. = FALSE)
+            stop("'num_threads' must be a single value", call. = FALSE)
         opt <- c(opt, paste0("NUM_THREADS=", num_threads))
     }
     if (!is.null(content_type)) {
-        if (!is.character(content_type) || length(content_type) > 1)
-            stop("'content_type' must be a character string", call. = FALSE)
+        if (!is.character(content_type) || length(content_type) > 1) {
+            stop("'content_type' must be a single character string",
+                 call. = FALSE)
+        }
         opt <- c(opt, paste0("CONTENT_TYPE=", content_type))
     }
 
-    if (overwrite)
-        unlink(zip_file)
+    if (overwrite) {
+        if (vsi_stat_exists(zip_file) && vsi_unlink(zip_file) != 0)
+            stop("cannot overwrite: ", zip_file, call. = FALSE)
+    }
 
     ret <- FALSE
     for (f in add_files) {
-        if (!(utils::file_test("-f", f)))
+        if (!(vsi_stat_exists(f) && vsi_stat_type(f) == "file"))
             stop("file not found: ", f, call. = FALSE)
 
         archive_fname <- f
-        if (!full_paths) {
-            archive_fname <- basename(f)
+        if (!full_paths || substr(f, 1, 4) == "/vsi") {
+            archive_fname <- .cpl_get_filename(f)
         } else if (substr(f, 1, 1) == "/") {
             archive_fname <- substring(f, 2)
         } else if (nchar(f) > 3 && substr(f, 2, 2) == ":" &&
-                       (substr(f, 3, 3) == "/" || substr(f, 3, 3) == "\\")) {
+                   (substr(f, 3, 3) == "/" || substr(f, 3, 3) == "\\")) {
             archive_fname <- substring(f, 4)
         }
         archive_fname <- .check_gdal_filename(archive_fname)
@@ -819,4 +826,173 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 
     return(.make_chunk_index(raster_xsize, raster_ysize, block_xsize,
                              block_ysize, gt, max_pixels))
+}
+
+
+#' Create a GDAL in-memory dataset from R data without copying
+#'
+#' `vector_to_MEM()` creates a GDAL MEM dataset that references pixel data in
+#' an existing R vector. It returns an object of class `GDALRaster` for a
+#' writable in-memory dataset without copying the source data. The underlying
+#' R object is protected from garbage collection until the returned dataset is
+#' closed. GDAL MEM datasets support most kinds of auxiliary information
+#' including metadata, coordinate systems, georeferencing, color interpretation,
+#' nodata, color tables and all pixel data types (see Details).
+#'
+#' @details
+#' The returned dataset is open with write access. Methods of the `GDALRaster`
+#' object can be called to modify dataset and band properties, e.g., to set
+#' nodata values, metadata items, band descriptions, color tables, etc. The
+#' original R vector will be modified in place if the object's `$write()`
+#' method is used.
+#'
+#' The MEM dataset will have a GDAL data type matching the type of the
+#' input vector:
+#' \tabular{rl}{
+#' **R vector type**  \tab  **GDAL raster type**\cr
+#' double             \tab  Float64\cr
+#' integer            \tab  Int32\cr
+#' raw                \tab  UInt8 (Byte in GDAL < 3.13)\cr
+#' complex            \tab  CFloat64
+#' }
+#'
+#' @param data An R vector of type `"double"`, `"integer"`, `"raw"` or
+#' `"complex"`, containing pixel values to be exposed as a GDAL in-memory
+#' raster. The pixels must be arranged in left-to-right, top-to-bottom order
+#' interleaved by band. `length(data)` must equal `xsize * ysize * nbands`.
+#' @param xsize Integer value giving the number of raster columns.
+#' @param ysize Integer value giving the number of raster rows.
+#' @param nbands Integer value giving the number of raster bands.
+#' @param gt A numeric vector of length six containing the affine geotransform
+#' for the raster. Defaults to `c(0, 1, 0, 0, 0, 1)` if neither `gt` nor `bbox`
+#' are given.
+#' @param bbox A numeric vector of length four containing the raster bounding
+#' box geospatial coordinates (`c(xmin, ymin, xmax, ymax)`). Ignored if `gt` is
+#' given.
+#' @param srs Optional character string containing the raster spatial reference
+#' coordinate system as a WKT string. [epsg_to_wkt()] or [srs_to_wkt()] can be
+#' used to convert from other formats to WKT if necessary.
+#' @return An object of class `GDALRaster` providing a GDAL MEM dataset with
+#' write access pointing to the underlying C array for `data`. The R object
+#' referenced by `data` is protected from garbage collection during the lifetime
+#' of the returned dataset, i.e., until its `$close()` is called or the dataset
+#' object itself is garbage collected. An error is raised if creation of the
+#' MEM dataset fails.
+#'
+#' @note
+#' The `$close()` method should be called when the `GDALRaster` object is no
+#' longer needed so that resources can be freed. MEM datasets cannot be
+#' re-opened once the object's `$close()` method has been called.
+#'
+#' @seealso
+#' [`GDALRaster-class`][GDALRaster]
+#'
+#' @examples
+#' v <- sample(0:255, 50, replace = TRUE)
+#' (ds_mem <- vector_to_MEM(v, xsize = 10, ysize = 5))
+#'
+#' all((ds_mem$read(1, 0, 0, 10, 5, 10, 5) == v))
+#'
+#' ds_mem$write(1, 0, 0, 10, 5, (v * -1))
+#' print(v)
+#'
+#' ds_mem$close()
+#' @export
+vector_to_MEM <- function(data, xsize, ysize, nbands = 1L, gt = NULL,
+                          bbox = NULL, srs = NULL) {
+
+    if (!is.vector(data) && !is.numeric(data) && !is.raw(data) &&
+        !is.complex(data)) {
+
+        stop("'data' must be a vector of raw, integer, double or complex",
+             call. = FALSE)
+    }
+
+    if (!(is.numeric(xsize) && length(xsize) == 1))
+        stop("'xsize' must be a single integer value", call. = FALSE)
+
+    if (!(is.numeric(ysize) && length(ysize) == 1))
+        stop("'ysize' must be a single integer value", call. = FALSE)
+
+    if (!(is.numeric(nbands) && length(nbands) == 1))
+        stop("'nbands' must be a single integer value", call. = FALSE)
+
+    if (length(data) != as.double(xsize) * ysize * nbands) {
+        stop("length of 'data' must equal 'xsize' * 'ysize' * 'nbands'",
+             call. = FALSE)
+    }
+
+    if (!is.null(gt)) {
+        if (!(is.numeric(gt) && length(gt) == 6))
+            stop("'gt' must be a numeric vector of length 6", call. = FALSE)
+    }
+
+    if (!is.null(bbox)) {
+        if (!is.null(gt))
+            message("NOTE: 'bbox' ignored since 'gt' was given")
+        else if (!(is.numeric(bbox) && length(bbox) == 4))
+            stop("'bbox' must be a numeric vector of length 4", call. = FALSE)
+    }
+
+    if (is.null(gt)) {
+        if (!is.null(bbox))
+            gt <- gt_from_dim_bbox(c(xsize, ysize), bbox)
+        else
+            gt <- c(0, 1, 0, 0, 0, 1)
+    }
+
+    if (!is.null(srs)) {
+        if (!(is.character(srs) && length(srs) == 1))
+            stop("'srs' must be a single character string", call. = FALSE)
+    }
+
+    dt <- "Unknown"
+    if (is.double(data)) {
+        dt <- "Float64"
+    } else if (is.integer(data)) {
+        dt <- "Int32"
+    } else if (is.raw(data)) {
+        if (gdal_version_num() < gdal_compute_version(3, 13, 0))
+            dt <- "Byte"
+        else
+            dt <- "UInt8"
+    } else if (is.complex(data)) {
+        dt <- "CFloat64"
+    } else {
+        stop("failed to determine a raster data type for 'data'", call. = FALSE)
+    }
+
+    gt_str <- paste(gt, collapse = "/")
+    band_offset <- as.double(xsize) * ysize * dt_size(dt)
+    ptr <- .get_data_ptr(data)
+
+    dsn_fmt <- "MEM:::DATAPOINTER=%s,PIXELS=%d,LINES=%d,BANDS=%d,DATATYPE=%s,GEOTRANSFORM=%s,BANDOFFSET=%d"
+    dsn <- sprintf(dsn_fmt, ptr, xsize, ysize, nbands, dt, gt_str, band_offset)
+
+    orig_opt <- ""
+    reset_opt <- FALSE
+    if (gdal_version_num() >= gdal_compute_version(3, 10, 0)) {
+        reset_opt <- TRUE
+        orig_opt <- get_config_option("GDAL_MEM_ENABLE_OPEN")
+        set_config_option("GDAL_MEM_ENABLE_OPEN", "YES")
+    }
+
+    ds_mem <- new(GDALRaster, dsn, FALSE)
+
+    if (!ds_mem$preserveRObject_(data)) {
+        ds_mem$close()
+        stop("failed to preserve the R object", call. = FALSE)
+    }
+
+    if (!is.null(srs)) {
+        if (!ds_mem$setProjection(srs)) {
+            warning("failed to set projection on the MEM dataset",
+                    call. = FALSE)
+        }
+    }
+
+    if (reset_opt)
+        set_config_option("GDAL_MEM_ENABLE_OPEN", orig_opt)
+
+    return(ds_mem)
 }

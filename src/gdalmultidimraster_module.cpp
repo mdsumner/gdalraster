@@ -15,7 +15,7 @@ using namespace Rcpp;
 // Module definition
 // ============================================================================
 
-RCPP_MODULE(mod_gdalmultidim) {
+RCPP_MODULE(mod_GDALMultiDimRaster) {
     
     // -------------------------------------------------------------------------
     // GDALExtendedDataTypeR class

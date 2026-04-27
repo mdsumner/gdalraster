@@ -75,10 +75,17 @@ SEXP mdim_array_read(SEXP arr,
     numData.attr("dim") = R_NilValue;  // flat vector
     data = numData;
   } else if (isByteType) {
-    // Byte → raw
-    Rcpp::RawVector rawData = Rcpp::as<Rcpp::RawVector>(result);
-    rawData.attr("dim") = R_NilValue;  // flat vector
-    data = rawData;
+      if (decode) {
+          // promote raw to integer for usability
+          Rcpp::IntegerVector intData = Rcpp::as<Rcpp::IntegerVector>(result);
+          intData.attr("dim") = R_NilValue;
+          data = intData;
+      } else {
+          // raw bytes as-is
+          Rcpp::RawVector rawData = Rcpp::as<Rcpp::RawVector>(result);
+          rawData.attr("dim") = R_NilValue;
+          data = rawData;
+      }
   } else if (isIntegerType) {
     // Int8/Int16/UInt16/Int32 → integer
     Rcpp::IntegerVector intData = Rcpp::as<Rcpp::IntegerVector>(result);

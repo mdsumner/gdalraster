@@ -48,9 +48,16 @@ T* unwrapModulePtr(SEXP x) {
         if (s4.hasSlot(".pointer")) {
             return Rcpp::XPtr<T>(s4.slot(".pointer"));
         }
+        if (s4.hasSlot(".xData")) {
+            Rcpp::Environment env(s4.slot(".xData"));
+            SEXP ptr = env.get(".pointer");
+            if (TYPEOF(ptr) == EXTPTRSXP) {
+                return Rcpp::XPtr<T>(ptr);
+            }
+        }
     }
     Rcpp::stop("Expected a module object or external pointer");
-    return nullptr;  // unreachable
+    return nullptr;
 }
 
 // Forward declarations

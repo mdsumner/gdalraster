@@ -41,8 +41,7 @@ reference:
   - getCreationOptions
   - validateCreationOptions
   - rasterFromRaster
-  - translate
-  - vector_to_MEM
+  - rvector_to_MEM
 - subtitle: Virtual raster
 - contents:
   - autoCreateWarpedVRT
@@ -53,6 +52,7 @@ reference:
   - calc
   - combine
   - dem_proc
+  - dem_derivatives
   - fillNodata
   - footprint
   - is_los_visible
@@ -60,6 +60,7 @@ reference:
   - polygonize
   - rasterize
   - sieveFilter
+  - translate
   - warp
 - subtitle: Raster display
 - contents:
@@ -201,6 +202,7 @@ reference:
   - http_enabled
   - push_error_handler
   - pop_error_handler
+  - progress_bar_clear
   - dump_open_datasets
 - subtitle: PROJ configuration
 - contents:

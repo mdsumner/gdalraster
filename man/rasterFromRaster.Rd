@@ -12,7 +12,8 @@ rasterFromRaster(
   dtName = NULL,
   options = NULL,
   init = NULL,
-  dstnodata = init
+  dstnodata = init,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -26,7 +27,8 @@ to guess from the output filename if \code{fmt} is not specified.}
 \item{nbands}{Number of output bands.}
 
 \item{dtName}{Output raster data type name. Commonly used types include
-\code{"Byte"}, \code{"Int16"}, \code{"UInt16"}, \code{"Int32"} and \code{"Float32"}.}
+\code{"Byte"} (or \code{"UInt8"} in GDAL >= 3.13), \code{"Int16"}, \code{"UInt16"}, \code{"Int32"}
+and \code{"Float32"}.}
 
 \item{options}{Optional list of format-specific creation options in a
 vector of "NAME=VALUE" pairs
@@ -36,6 +38,8 @@ during creation of a GTiff file).}
 \item{init}{Numeric value to initialize all pixels in the output raster.}
 
 \item{dstnodata}{Numeric nodata value for the output raster.}
+
+\item{quiet}{Logical value, \code{TRUE} to suppress informational messages.}
 }
 \value{
 Returns the destination filename invisibly.

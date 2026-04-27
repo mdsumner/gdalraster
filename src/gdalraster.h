@@ -132,6 +132,10 @@ class GDALRaster {
                                      int num_buckets, bool incl_out_of_range,
                                      bool approx_ok) const;
     Rcpp::List getDefaultHistogram(int band, bool force) const;
+    Rcpp::NumericVector getInterBandCovMatrix(const Rcpp::IntegerVector &bands,
+                                              bool approx_ok, bool force,
+                                              bool write_in_metadata,
+                                              int df_correction) const;
 
     Rcpp::CharacterVector getMetadata(int band,
                                       const std::string &domain) const;
@@ -180,7 +184,7 @@ class GDALRaster {
 
     void close();
 
-    void show() const;
+    void show();
 
     // internal methods exported to R
     bool preserveRObject_(SEXP robj);

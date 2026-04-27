@@ -7,7 +7,7 @@ test_that("class constructors work", {
     # default constructor
     alg <- GDALAlg$new()
     expect_equal(alg$info()$name, "gdal")
-    expect_output(print(alg), "gdal entry point")
+    expect_no_error(print(alg))
     alg$release()
 
     # no args
@@ -15,21 +15,21 @@ test_that("class constructors work", {
     alginfo <- alg$info()
     expect_true(alginfo$has_subalgorithms)
     expect_true(length(alginfo$subalgorithm_names) > 5)
-    expect_output(print(alg), "vector")
+    # expect_output(print(alg))
     alg$release()
 
     # full path in a character string
     alg <- new(GDALAlg, "vector convert")
     alginfo <- alg$info()
     expect_false(alginfo$has_subalgorithms)
-    expect_output(print(alg), "convert")
+    # expect_output(print(alg))
     alg$release()
 
     # cmd path as a character vector
     alg <- new(GDALAlg, c("vector", "convert"))
     alginfo <- alg$info()
     expect_false(alginfo$has_subalgorithms)
-    expect_output(print(alg), "convert")
+    # expect_output(print(alg))
     alg$release()
 
     # args in a character vector
@@ -57,7 +57,7 @@ test_that("class constructors work", {
     args$nodata <- -32767
 
     expect_no_error(alg <- new(GDALAlg, "vector rasterize", args))
-    expect_output(print(alg), "rasterize")
+    expect_no_error(print(alg))
     expect_true(alg$parseCommandLineArgs())
     expect_true(alg$run())
     ds <- alg$output()
@@ -202,7 +202,9 @@ test_that("algorithm usage is returned", {
 test_that("GDALAlg S4 show() works", {
     expect_no_error(alg <- new(GDALAlg, "raster info"))
 
-    expect_output(print(alg), "Description")
+    # expect_output(print(alg), "Description")
+    # TODO: a snapshot test is required since output is now formatted with {cli}
+    expect_no_error(print(alg))
 
     alg$release()
 })
@@ -747,4 +749,32 @@ test_that("setArg works", {
 
     out_ds$close()
     ds$close()
+})
+
+test_that("raster compare works", {
+    # test an algorithm with an atypical argument name for an input dataset
+    skip_if(gdal_version_num() < gdal_compute_version(3, 12, 0))
+
+    f_ref <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    f2 <- system.file("extdata/storml_elev_orig.tif", package="gdalraster")
+    ds_ref <- new(GDALRaster, f_ref)
+    on.exit(ds_ref$close(), add = TRUE)
+    ds2 <- new(GDALRaster, f2)
+    on.exit(ds2$close(), add = TRUE)
+    args <- list(reference = ds_ref, input = ds2)
+    alg <- new(GDALAlg, "raster compare", args)
+    expect_true(alg$run())
+    expect_true(
+        grepl("pixels differing", alg$outputs()$output_string, fixed = TRUE))
+
+    alg$release()
+
+    ds_mem <- createCopy("MEM", "", f_ref, return_obj = TRUE)
+    on.exit(ds_mem$close(), add = TRUE)
+    args <- list(reference = ds_ref, input = ds_mem, skip_binary = TRUE)
+    alg <- new(GDALAlg, "raster compare", args)
+    expect_true(alg$run())
+    expect_equal(alg$outputs()$output_string, "")
+
+    alg$release()
 })

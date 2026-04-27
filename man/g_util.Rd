@@ -84,7 +84,7 @@ a M dimension, or \code{FALSE} to remove the M dimension.}
 A geometry as WKB raw vector or WKT string, or a list/character vector of
 geometries as WKB/WKT with length equal to \code{length(geom)}. \code{NULL} is returned
 with a warning if WKB input cannot be converted into an OGR geometry object,
-or if an error occurs in the call to the underlying OGR API.
+or if an error occurs in the call to the underlying OGR API (see Note).
 }
 \description{
 These functions operate on input geometries in OGC WKB or WKT format to
@@ -95,11 +95,12 @@ These functions use the GEOS library via GDAL headers.
 
 \code{g_make_valid()} attempts to make an invalid geometry valid without losing
 vertices. Already-valid geometries are cloned without further intervention.
-Wrapper of \code{OGR_G_MakeValid()}/\code{OGR_G_MakeValidEx()} in the GDAL API.
-Requires the GEOS >= 3.8 library, check it for the definition of the
-geometry operation. If GDAL is built without GEOS >= 3.8, this function
-will return a clone of the input geometry if it is valid, or \code{NULL}
-(\code{as_wkb = TRUE}) / \code{NA} (\code{as_wkb = FALSE}) if it is invalid.
+Wrapper of \code{OGR_G_MakeValidEx()} in the GDAL API.
+Requires GEOS >= 3.8 library. If GDAL is built without GEOS >= 3.8, this
+function will return a clone of the input geometry if it is valid, or \code{NULL}
+(\code{as_wkb = TRUE}) / \code{NA} (\code{as_wkb = FALSE}) if it is invalid. For detailed
+explanations of geometry validity checking and repair, see
+\url{https://gdal.org/en/latest/user/geometry_validity.html}.
 \itemize{
 \item \code{"LINEWORK"} is the default method, which combines all rings into a set
 of noded lines and then extracts valid polygons from that linework
@@ -141,6 +142,13 @@ Wrapper of \code{OGR_G_SetMeasured()} in the GDAL API.
 \code{g_swap_xy()} swaps x and y coordinates of the input geometry.
 Wrapper of \code{OGR_G_SwapXY()} in the GDAL API.
 }
+\note{
+\code{MakeValid()} in GDAL >= 3.13: Certain geometries cannot be read using GEOS,
+e.g., if Polygon rings are not closed or do not contain enough vertices. If
+a geometry cannot be read by GEOS, \code{NULL} will be returned. Starting with
+GDAL 3.13, GDAL will attempt to modify these geometries such that they can
+be read and repaired by GEOS.
+}
 \examples{
 ## g_make_valid() requires GEOS >= 3.8, otherwise is only a validity test
 geos_version()
@@ -153,9 +161,10 @@ g_make_valid(wkt, as_wkb = FALSE)
 wkt <- "POLYGON ((0 0,10 10,0 10,10 0,0 0))"
 g_make_valid(wkt, as_wkb = FALSE)
 
-# invalid - error
+# invalid, note that GDAL >= 3.13 will modify to valid in this case
 wkt <- "LINESTRING (0 0)"
-g_make_valid(wkt)  # NULL
+# NULL if GDAL < 3.13, or "POINT (0 0)" with GDAL >= 3.13:
+g_make_valid(wkt)
 
 ## g_normalize() requires GDAL >= 3.3
 if (gdal_version_num() >= gdal_compute_version(3, 3, 0)) {
@@ -180,5 +189,8 @@ g <- "GEOMETRYCOLLECTION(POINT(1 2),
 g_swap_xy(g, as_wkb = FALSE)
 }
 \seealso{
-\code{\link[=g_is_valid]{g_is_valid()}}, \code{\link[=g_is_3D]{g_is_3D()}}, \code{\link[=g_is_measured]{g_is_measured()}}
+\code{\link[=g_is_valid]{g_is_valid()}}, \code{\link[=g_is_3D]{g_is_3D()}}, \code{\link[=g_is_measured]{g_is_measured()}}\cr\cr
+
+GDAL documentation on geometry validity and repair:
+\url{https://gdal.org/en/latest/user/geometry_validity.html}
 }

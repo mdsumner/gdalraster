@@ -32,7 +32,10 @@
 #include "cmb_table.h"
 #include "ogr_util.h"
 #include "srs_api.h"
+#include "rcpp_util.h"
 #include "transform.h"
+
+using std::string_literals::operator""s;
 
 //' Get GDAL version
 //'
@@ -1697,9 +1700,10 @@ Rcpp::DataFrame combine(const Rcpp::CharacterVector &src_files,
     if (!quiet) {
         pfnProgress(0, nullptr, nullptr);
         if (nrasters == 1)
-            Rcpp::Rcout << "scanning raster...\n";
+            cli_alert_("scanning raster...");
         else
-            Rcpp::Rcout << "combining " << nrasters << " rasters...\n";
+            cli_alert_("combining "s + std::to_string(nrasters) +
+                       " rasters...");
     }
 
     for (int y = 0; y < nrows; ++y) {
@@ -1742,14 +1746,13 @@ Rcpp::DataFrame value_count(const GDALRaster* const &src_ds, int band = 1,
     const int ncols = static_cast<int>(src_ds->getRasterXSize());
     GDALProgressFunc pfnProgress = nullptr;
     void *pProgressData = nullptr;
-    if (!quiet)
-        pfnProgress = GDALTermProgressR;
 
     Rcpp::DataFrame df_out = Rcpp::DataFrame::create();
 
     if (!quiet) {
-        pfnProgress(0, nullptr, nullptr);
-        Rcpp::Rcout << "scanning raster...\n";
+        pfnProgress = GDALTermProgressR;
+        pfnProgress(0.0, nullptr, nullptr);
+        cli_alert_info_("scanning raster...");
     }
 
     // The counter in the unordered_map is a double since it will be returned
@@ -1770,7 +1773,7 @@ Rcpp::DataFrame value_count(const GDALRaster* const &src_ds, int band = 1,
             if (!quiet)
                 pfnProgress(y / (nrows-1.0), nullptr, pProgressData);
 
-            if (y % 10000 == 0)
+            if (y % 100 == 0)
                 Rcpp::checkUserInterrupt();
         }
         Rcpp::IntegerVector value = Rcpp::no_init(tbl.size());
@@ -1801,7 +1804,7 @@ Rcpp::DataFrame value_count(const GDALRaster* const &src_ds, int band = 1,
             if (!quiet)
                 pfnProgress(y / (nrows-1.0), nullptr, pProgressData);
 
-            if (y % 10000 == 0)
+            if (y % 100 == 0)
                 Rcpp::checkUserInterrupt();
         }
         Rcpp::NumericVector value = Rcpp::no_init(tbl.size());
@@ -2152,7 +2155,7 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
 
     if (srsA != "") {
         if (!quiet)
-            Rcpp::Rcout << "transforming 'ptsA'...\n";
+            cli_alert_("transforming {.arg ptsA}...");
 
         if (srs_is_vertical(srsA) && zA_interp_dem_relative)
             Rcpp::stop("CRS is vertical but Z values are not actual heights");
@@ -2162,7 +2165,7 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
 
     if (srsB != "") {
         if (!quiet)
-            Rcpp::Rcout << "transforming 'ptsB'...\n";
+            cli_alert_("transforming {.arg ptsB}...");
 
         if (srs_is_vertical(srsB) && zB_interp_dem_relative)
             Rcpp::stop("CRS is vertical but Z values are not actual heights");
@@ -2194,7 +2197,7 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
     GDALProgressFunc pfnProgress = GDALTermProgressR;
 
     if (!quiet) {
-        Rcpp::Rcout << "checking line-of-sight...\n";
+        cli_alert_("checking line-of-sight...");
         pfnProgress(0, nullptr, nullptr);
     }
 
@@ -3072,7 +3075,8 @@ bool warp(const Rcpp::List &src_datasets,
         GDALRaster *ds = src_datasets[i];
         GDALDatasetH hDS = ds->getGDALDatasetH_();
         if (hDS == nullptr) {
-            Rcpp::Rcout << "error on source " << (i + 1) << "\n";
+            cli_alert_danger_(
+                "source index: "s + std::to_string(i + 1));
             for (R_xlen_t j = 0; j < i; ++j)
                 GDALClose(src_hDS[j]);
             Rcpp::stop("open source raster failed");
@@ -3882,10 +3886,8 @@ bool addFileInZip(const std::string &zip_filename, bool overwrite,
         opt_list.push_back(nullptr);
     }
 
-    if (!quiet) {
-        Rcpp::Rcout << "adding " << in_filename_in.c_str() << " ...\n";
+    if (!quiet)
         GDALTermProgressR(0, nullptr, nullptr);
-    }
 
     CPLErr err = CPLAddFileInZip(
         hZIP.get(), archive_filename_in.c_str(), in_filename_in.c_str(),

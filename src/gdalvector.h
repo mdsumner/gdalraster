@@ -42,6 +42,10 @@ class GDALVector {
     GDALVector(const Rcpp::CharacterVector &dsn, const std::string &layer,
                bool read_only,
                const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
+               const std::string &spatial_filter);
+    GDALVector(const Rcpp::CharacterVector &dsn, const std::string &layer,
+               bool read_only,
+               const Rcpp::Nullable<Rcpp::CharacterVector> &open_options,
                const std::string &spatial_filter, const std::string &dialect);
     ~GDALVector();
 
@@ -161,7 +165,7 @@ class GDALVector {
 
     void OGRFeatureFromList_dumpReadble(const Rcpp::List &feat) const;
 
-    void show() const;
+    void show();
 
     // methods for internal use not exposed to R
     void checkAccess_(GDALAccess access_needed) const;

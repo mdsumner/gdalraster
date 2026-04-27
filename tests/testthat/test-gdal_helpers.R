@@ -40,9 +40,10 @@ test_that("getCreationOptions works", {
     expect_true(is.list(all_opt))
     expect_true(length(names(all_opt)) > 10)
     expect_true(is.list(all_opt$TILED))
+    expect_message(getCreationOptions("AIG"))
+    expect_true(is.null(getCreationOptions("AIG")))
     expect_error(getCreationOptions("invalid format name"))
     expect_error(getCreationOptions(NA))
-
 })
 
 test_that("dump_open_datasets works", {
@@ -145,14 +146,14 @@ test_that("make_chunk_index works", {
     expect_equal(nrow(chunks), 15483)
 })
 
-test_that("vector_to_MEM basic functionality works", {
+test_that("rvector_to_MEM basic functionality works", {
     xsize <- 10L
     ysize <- 10L
 
     ## raw -> Byte / UInt8
     v <- sample(0:255, xsize * ysize, replace = TRUE)
     v_raw <- as.raw(v)
-    expect_no_error(ds_mem <- vector_to_MEM(v_raw, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_raw, xsize, ysize))
     dt <- ds_mem$getDataTypeName(1)
     expect_true(dt == "Byte" || dt == "UInt8")
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
@@ -162,7 +163,7 @@ test_that("vector_to_MEM basic functionality works", {
     expect_equal(res, v_raw)
     ds_mem$close()
     # multi-band
-    expect_no_error(ds_mem <- vector_to_MEM(v_raw, 5, 10, nbands = 2))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_raw, 5, 10, nbands = 2))
     res1 <- ds_mem$read(1, 0, 0, 5, 10, 5, 10)
     expect_equal(res1, v[1:50])
     res2 <- ds_mem$read(2, 0, 0, 5, 10, 5, 10)
@@ -171,7 +172,7 @@ test_that("vector_to_MEM basic functionality works", {
 
     ## integer -> Int32
     v_int <- sample(-32767:32767, xsize * ysize, replace = TRUE)
-    expect_no_error(ds_mem <- vector_to_MEM(v_int, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_int, xsize, ysize))
     dt <- ds_mem$getDataTypeName(1)
     expect_true(dt == "Int32")
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
@@ -180,7 +181,7 @@ test_that("vector_to_MEM basic functionality works", {
 
     ## double -> Float64
     v_dbl <- v_int + 0.5
-    expect_no_error(ds_mem <- vector_to_MEM(v_dbl, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_dbl, xsize, ysize))
     dt <- ds_mem$getDataTypeName(1)
     expect_true(dt == "Float64")
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
@@ -189,7 +190,7 @@ test_that("vector_to_MEM basic functionality works", {
 
     ## complex -> CFloat64
     z <- complex(real = stats::rnorm(100), imaginary = stats::rnorm(100))
-    ds_mem <- vector_to_MEM(z, xsize, ysize)
+    ds_mem <- rvector_to_MEM(z, xsize, ysize)
     dt <- ds_mem$getDataTypeName(1)
     expect_true(dt == "CFloat64")
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
@@ -204,26 +205,26 @@ test_that("vector_to_MEM basic functionality works", {
     ysize = as.integer(dm[2])
     v_elev <- ds$read(1, 0, 0, xsize, ysize, xsize, ysize)
 
-    expect_no_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
-                                            gt = ds$getGeoTransform(),
-                                            srs = ds$getProjection()))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
+                                             gt = ds$getGeoTransform(),
+                                             srs = ds$getProjection()))
 
     expect_equal(ds_mem$bbox(), ds$bbox(), tolerance = 0.1)
     expect_true(srs_is_same(ds_mem$getProjection(), ds$getProjection()))
     ds_mem$close()
 
-    expect_no_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
-                                            bbox = ds$bbox(),
-                                            srs = ds$getProjection()))
+    expect_no_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
+                                             bbox = ds$bbox(),
+                                             srs = ds$getProjection()))
 
     expect_equal(ds_mem$getGeoTransform(), ds$getGeoTransform(),
                  tolerance = 0.1)
     expect_true(srs_is_same(ds_mem$getProjection(), ds$getProjection()))
     ds_mem$close()
 
-    expect_warning(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
-                                           gt = ds$getGeoTransform(),
-                                           srs = "invalid"))
+    expect_warning(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
+                                            gt = ds$getGeoTransform(),
+                                            srs = "invalid"))
 
     ## write to the MEM dataset
     expect_true(ds_mem$setProjection(ds$getProjection()))
@@ -237,21 +238,22 @@ test_that("vector_to_MEM basic functionality works", {
     ds$close()
 
     ## errors / input validation
-    expect_error(ds_mem <- vector_to_MEM(rep("1", 100), xsize, ysize))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, c(10, 10), ysize))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, c(10, 10)))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize, nbands = c(1,2)))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize, nbands = 2))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
+    expect_error(ds_mem <- rvector_to_MEM(rep("1", 100), xsize, ysize))
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, c(10, 10), ysize))
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, c(10, 10)))
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
+                 nbands = c(1,2)))
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize, nbands = 2))
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
                  gt = c(1, 2, 3, 4, 5)))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
                  bbox = c(1, 2, 3)))
-    expect_error(ds_mem <- vector_to_MEM(v_elev, xsize, ysize,
+    expect_error(ds_mem <- rvector_to_MEM(v_elev, xsize, ysize,
                  srs = 4326))
 
 })
 
-test_that("vector_to_MEM works with object dereference and garbage collect", {
+test_that("rvector_to_MEM works with object dereference and garbage collect", {
     # test with
     #   - R object dereferenced and garbage collected
     #   - GDALRaster object garbage collected without explicit close()
@@ -261,7 +263,7 @@ test_that("vector_to_MEM works with object dereference and garbage collect", {
 
     ## R object dereferenced and garbage collected
     v <- sample(-32767:32767, xsize * ysize, replace = TRUE)
-    expect_no_error(ds_mem <- vector_to_MEM(v, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v, xsize, ysize))
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
     expect_equal(res, v)
     rm(v)
@@ -273,7 +275,7 @@ test_that("vector_to_MEM works with object dereference and garbage collect", {
     gc()
 
     v2 <- stats::rnorm(100)
-    expect_no_error(ds_mem <- vector_to_MEM(v2, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v2, xsize, ysize))
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
     expect_equal(res, v2)
     rm(v2)
@@ -286,10 +288,14 @@ test_that("vector_to_MEM works with object dereference and garbage collect", {
 
     ## GDALRaster object garbage collected without explicit close()
     v3 <- sample(0:255, xsize * ysize, replace = TRUE)
-    expect_no_error(ds_mem <- vector_to_MEM(v3, xsize, ysize))
+    expect_no_error(ds_mem <- rvector_to_MEM(v3, xsize, ysize))
     res <- ds_mem$read(1, 0, 0, xsize, ysize, xsize, ysize)
     expect_equal(res, v3)
     rm(v3)
     rm(ds_mem)
     gc()
+})
+
+test_that("progress_bar_clear runs without error", {
+    expect_no_error(progress_bar_clear())
 })

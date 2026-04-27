@@ -157,6 +157,9 @@ ds$clearStatistics()
 ds$getHistogram(band, min, max, num_buckets, incl_out_of_range, approx_ok)
 ds$getDefaultHistogram(band, force)
 
+ds$getInterBandCovMatrix(bands, approx_ok, force, write_in_metadata,
+                         df_correction)
+
 ds$getMetadata(band, domain)
 ds$setMetadata(band, metadata, domain)
 ds$getMetadataItem(band, mdi_name, domain)
@@ -238,11 +241,11 @@ statistics and histograms.
 \code{$readByteAsRaw}\cr
 A logical value, \code{FALSE} by default. This field can be set to \code{TRUE} which
 will affect the data type returned by the \code{$read()} method and the
-\code{\link[=read_ds]{read_ds()}} convenience function. When the underlying band data type is Byte
-and \code{readByteAsRaw} is \code{TRUE} the output type will be raw rather than
-integer. See also the \code{as_raw} argument to \code{\link[=read_ds]{read_ds()}} to control this in a
-non-persistent setting. If the underlying band data type is not Byte this
-setting has no effect.
+\code{\link[=read_ds]{read_ds()}} convenience function. When the underlying band data type is
+Byte/UInt8 and \code{readByteAsRaw} is \code{TRUE} the output type will be raw rather
+than integer. See also the \code{as_raw} argument to \code{\link[=read_ds]{read_ds()}} to control this
+in a non-persistent setting. If the underlying band data type is not
+Byte/UInt8 setting has no effect. (Note Byte = UInt8 in GDAL >= 3.13.)
 }
 
 \subsection{Methods}{
@@ -318,7 +321,8 @@ Adds a band to a dataset if the underlying format supports this action.
 Most formats do not, but \code{"MEM"} and \code{"VRT"} are notable exceptions
 that support adding bands. The added band will always be the last band.
 \code{dataType} is a character string containing the data type name
-(e.g., \code{"Byte"}, \code{"Int16"}, \code{"UInt16"}, \code{"Int32"}, \code{"Float32"}, etc).
+(e.g., \code{"Byte"}, \code{"UInt8"} (GDAL >= 3.13), \code{"Int16"}, \code{"UInt16"}, \code{"Int32"},
+\code{"Float32"}, etc).
 The \code{options} argument is a character vector of NAME=VALUE option strings.
 Supported options are format specific. Note that the \code{options} argument is
 required but may be given as \code{NULL}. Returns logical \code{TRUE} on success
@@ -751,6 +755,37 @@ histogram vector.
 Returns a list of length four containing named elements \code{min} (lower
 bound), \code{max} (upper bound), \code{num_buckets} (number of buckets), and
 \code{histogram} (a numeric vector of length \code{num_buckets}).
+
+\code{$getInterBandCovMatrix(bands, approx_ok, force, write_in_metadata,
+                             df_correction)}\cr
+Fetch or compute the covariance matrix between bands of this dataset. The
+covariance indicates the level to which two bands vary together. Requires
+GDAL >= 3.13. See \code{GDALDatasetGetInterBandCovarianceMatrix()} in:
+\url{https://gdal.org/en/latest/api/raster_c_api.html}. Returns a square
+matrix with dimension equal to the number of bands. \code{bands} may be given as
+\code{0} meaning all bands, or may be an integer vector of specific band numbers.
+\code{approx_ok} specifies whether it is acceptable to use a subsample of values
+(\code{TRUE}), or all pixel values should be used (\code{FALSE}).
+
+\code{force}:
+\itemize{
+\item \code{TRUE}: The raster will be scanned to compute covariances.
+(Note: \code{ComputeInterBandCovarianceMatrix()} in the GDAL API is called
+automatically here. This is a change in the behavior of
+\code{GetInterBandCovarianceMatrix()} in the API, to a definitive \code{force}.)
+\item \code{FALSE}: Results will only be returned if it can be done quickly (i.e.,
+without scanning the raster, by using pre-existing
+\code{STATISTICS_COVARIANCES} metadata items). \code{NA} will be returned if
+inter-band covariances cannot be obtained quickly.
+}
+
+\code{write_in_metadata} specifies whether \code{STATISTICS_COVARIANCES} band metadata
+items should be written if covariances are computed new. \code{df_correction}
+specifies a correction term to subtract in the final averaging phase of the
+covariance computation, often will be \code{1}. A value of \code{df_correction = 1}
+will return an unbiased estimate if the pixels in bands are considered to be
+a sample of the whole population. Otherwise a value of \code{df_correction = 0}
+can be used if they are considered to be the whole population.
 
 \code{$getMetadata(band, domain)}\cr
 Returns a character vector of all metadata \code{NAME=VALUE} pairs that exist in

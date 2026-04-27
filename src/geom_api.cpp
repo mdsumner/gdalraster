@@ -23,6 +23,7 @@
 #include "srs_api.h"
 #include "gdalraster.h"
 
+using std::string_literals::operator""s;
 
 //' get GEOS version
 //' @noRd
@@ -121,7 +122,7 @@ bool exportGeomToWkb_(OGRGeometryH hGeom, unsigned char *wkb, bool as_iso,
         eOrder = wkbXDR;
     }
     else {
-        Rcpp::Rcout << "invalid 'byte_order'\n";
+        cli_alert_danger_("invalid {.arg byte_order}");
         return false;
     }
 
@@ -333,8 +334,8 @@ Rcpp::RawVector g_create(const std::string &geom_type,
         Rcpp::stop("failed to create geometry object");
 
     if (!is_supported_type && nPts > 0) {
-        Rcpp::Rcout << "requested geometry type is not supported for creation, "
-            << "empty geometry returned\n";
+        cli_alert_warning_("The requested geometry type is not supported for "
+                           "creation, empty geometry returned.");
     }
 
     if (nPts == 1 && is_supported_type) {
@@ -672,24 +673,27 @@ Rcpp::RawVector g_build_collection(const Rcpp::List &geoms,
     for (R_xlen_t i = 0; i < nGeom; ++i) {
         if (!Rcpp::is<Rcpp::RawVector>(geoms[i])) {
             ++nSkipped;
-            Rcpp::Rcout << "input geom at index " << (i + 1) <<
-                " is not a WKB raw vector: skipped\n";
+            cli_alert_danger_("Input geometry at index "s +
+                              std::to_string(i + 1) + " is not a WKB raw "
+                              "vector: skipped");
             continue;
         }
 
         const Rcpp::RawVector &this_wkb = geoms[i];
         if (this_wkb.size() == 0) {
             ++nSkipped;
-            Rcpp::Rcout << "input geom at index " << (i + 1) <<
-                " is a size-0 raw vector: skipped\n";
+            cli_alert_danger_("Input geometry at index "s +
+                              std::to_string(i + 1) + " is an empty raw "
+                              "vector: skipped");
             continue;
         }
 
         OGRGeometryH this_geom = createGeomFromWkb_(this_wkb);
         if (!this_geom) {
             ++nSkipped;
-            Rcpp::Rcout << "failed to create geom object from input at index "
-                << (i + 1) << ": skipped\n";
+            cli_alert_danger_("Failed to create geometry object from input "
+                              "at index "s + std::to_string(i + 1) +
+                              ": skipped");
             continue;
         }
 
@@ -699,9 +703,10 @@ Rcpp::RawVector g_build_collection(const Rcpp::List &geoms,
 
             if (OGR_GT_GetCollection(this_geom_type) != coll_geom_type) {
                 ++nSkipped;
-                Rcpp::Rcout << "input geom at index " << (i + 1) <<
-                    " is not a single type of the target collection type: " <<
-                    "skipped\n";
+                cli_alert_danger_("Input geometry at index "s +
+                                  std::to_string(i + 1) + " is not a single "
+                                  "type of the target collection type: "
+                                  "skipped");
                 OGR_G_DestroyGeometry(this_geom);
                 continue;
             }
@@ -711,8 +716,9 @@ Rcpp::RawVector g_build_collection(const Rcpp::List &geoms,
         err = out_geom->addGeometryDirectly(OGRGeometry::FromHandle(this_geom));
         if (err != OGRERR_NONE) {
             ++nSkipped;
-            Rcpp::Rcout << "input geom at index " << (i + 1) <<
-                " failed adding to the geometry collection: skipped\n";
+            cli_alert_danger_("Input geometry at index "s +
+                              std::to_string(i + 1) + " failed adding to the "
+                              "collection: skipped");
             if (this_geom)
                 OGR_G_DestroyGeometry(this_geom);
             continue;
@@ -855,6 +861,42 @@ Rcpp::LogicalVector g_is_valid(const Rcpp::RObject &geom,
     ret = OGR_G_IsValid(hGeom);
     OGR_G_DestroyGeometry(hGeom);
     return ret;
+}
+
+//' @noRd
+// [[Rcpp::export(name = ".g_invalid_reason")]]
+Rcpp::String g_invalid_reason(const Rcpp::RObject &geom, bool quiet = false) {
+// Test if the geometry is valid and, if not, return the invalidity reason.
+
+    if (geom.isNULL() || !Rcpp::is<Rcpp::RawVector>(geom))
+        return "input object is not a raw vector";
+
+    const Rcpp::RawVector geom_in(geom);
+    if (geom_in.size() == 0)
+        return "input raw vector is empty";
+
+#if GDAL_VERSION_NUM < GDAL_COMPUTE_VERSION(3, 13, 0)
+    Rcpp::stop("`g_invalid_reason()` requires GDAL >= 3.13");
+#else
+    OGRGeometryH hGeom = createGeomFromWkb_(geom_in);
+
+    if (hGeom == nullptr) {
+        if (!quiet) {
+            Rcpp::warning(
+                "failed to create geometry object from WKB, NA returned");
+        }
+        return NA_STRING;
+    }
+
+    Rcpp::String ret = NA_STRING;
+    char *pszReason = OGR_G_GetInvalidityReason(hGeom);
+    if (pszReason) {
+        ret = Rcpp::String(pszReason);
+        CPLFree(pszReason);
+    }
+    OGR_G_DestroyGeometry(hGeom);
+    return ret;
+#endif
 }
 
 //' @noRd
@@ -3465,7 +3507,7 @@ Rcpp::NumericVector bbox_from_wkt(const std::string &wkt, double extend_x = 0,
     if (OGR_G_CreateFromWkt(&pszWKT, nullptr, &hGeometry) != OGRERR_NONE) {
         if (hGeometry != nullptr)
             OGR_G_DestroyGeometry(hGeometry);
-        Rcpp::Rcout << "failed to create geometry object from WKT string\n";
+        cli_alert_danger_("Failed to create geometry object from WKT string.");
         Rcpp::NumericVector ret(4, NA_REAL);
         return ret;
     }

@@ -716,6 +716,7 @@ g_build_polygon_from_edges <- function(lines, auto_close = TRUE,
 #' These functions return information about WKB/WKT geometries. The input
 #' geometries may be given as a single raw vector of WKB, a list of WKB raw
 #' vectors, or a character vector containing one or more WKT strings.
+#'
 #' @name g_query
 #' @details
 #' `g_is_empty()` tests whether a geometry has no points. Returns a logical
@@ -725,6 +726,10 @@ g_build_polygon_from_edges <- function(lines, auto_close = TRUE,
 #'
 #' `g_is_valid()` tests whether a geometry is valid. Returns a logical vector
 #' analogous to the above for `g_is_empty()`.
+#'
+#' `g_invalid_reason()` tests if a geometry is valid and, if not, returns the
+#' invalidity reason as a character string. `NA` is returned for valid
+#' geometries. Requires GDAL >= 3.13.
 #'
 #' `g_is_3D()` checks whether a geometry has Z coordinates. Returns a logical
 #' vector analogous to the above for `g_is_empty()`.
@@ -766,6 +771,13 @@ g_build_polygon_from_edges <- function(lines, auto_close = TRUE,
 #' g2 <- "POLYGON ((0 0, 10 10, 10 0))"
 #' g3 <- "POLYGON ((0 0, 10 10, 10 0, 0 1))"
 #' g_is_valid(c(g1, g2, g3))
+#'
+#' # g_invalid_reason() requires GDAL >= 3.13
+#' if (gdal_version_num() >= gdal_compute_version(3, 13, 0)) {
+#'   g_invalid_reason("LINESTRING(0 0)") |> print()
+#'
+#'   g_invalid_reason("LINESTRING(0 0, 1 1)") |> print()
+#' }
 #'
 #' g_is_3D(g1)
 #' g_is_measured(g1)
@@ -842,6 +854,34 @@ g_is_valid <- function(geom, quiet = FALSE) {
             ret <- .g_is_valid(g_wk2wk(geom), quiet)
         } else {
             ret <- sapply(g_wk2wk(geom), .g_is_valid, quiet)
+        }
+    } else {
+        stop("'geom' must be a character vector, raw vector, or list",
+             call. = FALSE)
+    }
+
+    return(ret)
+}
+
+#' @name g_query
+#' @export
+g_invalid_reason <- function(geom, quiet = FALSE) {
+    # quiet
+    if (is.null(quiet))
+        quiet <- FALSE
+    if (!is.logical(quiet) || length(quiet) > 1)
+        stop("'quiet' must be a single logical value", call. = FALSE)
+
+    ret <- NULL
+    if (.is_raw_or_null(geom)) {
+        ret <- .g_invalid_reason(geom, quiet)
+    } else if (is.list(geom) && .is_raw_or_null(geom[[1]])) {
+        ret <- sapply(geom, .g_invalid_reason, quiet)
+    } else if (is.character(geom)) {
+        if (length(geom) == 1) {
+            ret <- .g_invalid_reason(g_wk2wk(geom), quiet)
+        } else {
+            ret <- sapply(g_wk2wk(geom), .g_invalid_reason, quiet)
         }
     } else {
         stop("'geom' must be a character vector, raw vector, or list",
@@ -1029,11 +1069,12 @@ g_geom_count <- function(geom, quiet = FALSE) {
 #'
 #' `g_make_valid()` attempts to make an invalid geometry valid without losing
 #' vertices. Already-valid geometries are cloned without further intervention.
-#' Wrapper of `OGR_G_MakeValid()`/`OGR_G_MakeValidEx()` in the GDAL API.
-#' Requires the GEOS >= 3.8 library, check it for the definition of the
-#' geometry operation. If GDAL is built without GEOS >= 3.8, this function
-#' will return a clone of the input geometry if it is valid, or `NULL`
-#' (`as_wkb = TRUE`) / `NA` (`as_wkb = FALSE`) if it is invalid.
+#' Wrapper of `OGR_G_MakeValidEx()` in the GDAL API.
+#' Requires GEOS >= 3.8 library. If GDAL is built without GEOS >= 3.8, this
+#' function will return a clone of the input geometry if it is valid, or `NULL`
+#' (`as_wkb = TRUE`) / `NA` (`as_wkb = FALSE`) if it is invalid. For detailed
+#' explanations of geometry validity checking and repair, see
+#' \url{https://gdal.org/en/latest/user/geometry_validity.html}.
 #'
 #' * `"LINEWORK"` is the default method, which combines all rings into a set
 #' of noded lines and then extracts valid polygons from that linework
@@ -1093,10 +1134,20 @@ g_geom_count <- function(geom, quiet = FALSE) {
 #' A geometry as WKB raw vector or WKT string, or a list/character vector of
 #' geometries as WKB/WKT with length equal to `length(geom)`. `NULL` is returned
 #' with a warning if WKB input cannot be converted into an OGR geometry object,
-#' or if an error occurs in the call to the underlying OGR API.
+#' or if an error occurs in the call to the underlying OGR API (see Note).
 #'
 #' @seealso
-#' [g_is_valid()], [g_is_3D()], [g_is_measured()]
+#' [g_is_valid()], [g_is_3D()], [g_is_measured()]\cr\cr
+#'
+#' GDAL documentation on geometry validity and repair:
+#' \url{https://gdal.org/en/latest/user/geometry_validity.html}
+#'
+#' @note
+#' `MakeValid()` in GDAL >= 3.13: Certain geometries cannot be read using GEOS,
+#' e.g., if Polygon rings are not closed or do not contain enough vertices. If
+#' a geometry cannot be read by GEOS, `NULL` will be returned. Starting with
+#' GDAL 3.13, GDAL will attempt to modify these geometries such that they can
+#' be read and repaired by GEOS.
 #'
 #' @examples
 #' ## g_make_valid() requires GEOS >= 3.8, otherwise is only a validity test
@@ -1110,9 +1161,10 @@ g_geom_count <- function(geom, quiet = FALSE) {
 #' wkt <- "POLYGON ((0 0,10 10,0 10,10 0,0 0))"
 #' g_make_valid(wkt, as_wkb = FALSE)
 #'
-#' # invalid - error
+#' # invalid, note that GDAL >= 3.13 will modify to valid in this case
 #' wkt <- "LINESTRING (0 0)"
-#' g_make_valid(wkt)  # NULL
+#' # NULL if GDAL < 3.13, or "POINT (0 0)" with GDAL >= 3.13:
+#' g_make_valid(wkt)
 #'
 #' ## g_normalize() requires GDAL >= 3.3
 #' if (gdal_version_num() >= gdal_compute_version(3, 3, 0)) {

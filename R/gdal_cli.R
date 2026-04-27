@@ -38,6 +38,21 @@
 #' object, its \code{$release()} method can be called to close datasets and
 #' free resources.
 #'
+#' `gdal_run_piped()` is a variation of `gdal_run()`. It is suitable for use
+#' with the R native pipe operator (`|>`), but may be useful stand-alone when
+#' it is desirable to obtain the output of the algorithm directly, and access
+#' to the `GDALAlg` object itself is not needed. The first argument to this
+#' function is passed to the `"input"` (or `"dataset"` or `"source"`) argument
+#' of the algorithm (i.e., as input to the GDAL command specified in `cmd`). The
+#' function returns (invisibly) the output of the CLI algorithm if it has one.
+#' If the algorithm has multiple outputs, the first by index is returned by
+#' default but this can be controlled by the `output_index` argument (numeric
+#' index or character name of the desired output). Logical `TRUE` is returned
+#' invisibly if the algorithm has no output and no error was reported by the
+#' `run()` method of the algorithm object. Logical `FALSE` is returned invisibly
+#' but a message printed if an error occurs. The algorithm object used
+#' internally is always finalized before return.
+#'
 #' `gdal_alg()` instantiates and returns an object of class [`GDALAlg`][GDALAlg]
 #' without running it. Passing argument values to the requested CLI algorithm is
 #' optional. This function may be useful (with or without argument values) for
@@ -69,11 +84,42 @@
 #' Defaults to `"gdal"`, the main entry point to CLI commands.
 #' @param args Either a character vector or a named list containing input
 #' arguments of the algorithm (see section `Algorithm Argument Syntax` below).
+#' @param close Logical value, `FALSE` by default. Set to `TRUE` to finalize
+#' the algorithm immediately after it is run, which completes any pending
+#' actions such as closing output datasets. This is useful if you do not need to
+#' access the output as objects, e.g., when only generating file output for
+#' later use. See `GDALAlg$close()`.
+#' @param quiet Logical value, `FALSE` by default. Set to `TRUE` to suppress
+#' progress reporting along with various messages and warnings. Sets the value
+#' of `GDALAlg$quiet`.
 #' @param setVectorArgsFromObject Logical value, `TRUE` to set algorithm
 #' arguments automatically when the `"input"` argument or the `"like"` argument
 #' is an object of class `GDALVector` (the default). Can be set to `FALSE` to
 #' disable automatically setting algorithm arguments from `GDALVector` input
 #' (see Note).
+#' @param input Value passed as input to the GDAL algorithm specified in `cmd`
+#' (i.e., the `"input"`, `"dataset"` or `"source"` argument for the command).
+#' Typically this is a dataset name (e.g., file or database connection string),
+#' or an object of class `GDALRaster` or `GDALVector`.
+#' @param output Value passed for the `"output"` (or `"destination"`) argument
+#' of `cmd`. Typically this is a filename for commands that generate a raster
+#' or vector dataset or other file output. May be `NULL` or empty string (`""`)
+#' if `output_format` is `"MEM"` (in-memory dataset).
+#' @param output_format Optional character string specifying the output format,
+#' e.g., a format driver short name when output is a raster or vector dataset.
+#' Will be passed to the algorithm's optional `"output-format"` argument.
+#' @param other_args Either a character vector or a named list containing other
+#' input arguments of the algorithm (i.e., other than those already specified
+#' via `input`, `output` and `output_format` above, see also the section
+#' `Algorithm Argument Syntax` below).
+#' @param output_index Optional numeric value or character string giving the
+#' list index or output argument name for an algorithm with more than one
+#' output. Defaults to `1`.
+#' @param outputLayerNameForOpen Optional character string specifying a layer
+#' name to open when obtaining algorithm output as an object of class
+#' `GDALVector` (see the class method [GDALAlg$output()][GDALAlg]). Defaults to
+#' empty string (`""`) in which case the first layer by index is opened.
+#' Ignored if output is not a vector dataset.
 #' @param parse Logical value, `TRUE` to attempt parsing `args` if they are
 #' given in `gdal_alg()` (the default). Set to `FALSE` to instantiate the
 #' algorithm without parsing arguments. The \code{$parseCommandLineArgs()}
@@ -189,8 +235,13 @@
 #'
 #' f_tif <- system.file("extdata/storml_elev.tif", package="gdalraster")
 #' f_gpkg <- file.path(tempdir(), "storml_elev.gpkg")
-#'
 #' args <- c("--overwrite", f_tif, f_gpkg)
+#'
+#' # finalize the algorithm immediately after it is run if only generating
+#' # file output for later use:
+#' # gdal_run("raster convert", args, close = TRUE)
+#'
+#' # or, assign to a variable and access algorithm output as a dataset object
 #' (alg <- gdal_run("raster convert", args))
 #'
 #' (ds <- alg$output())
@@ -201,6 +252,16 @@
 #'
 #' ds$close()
 #' unlink(f_gpkg)
+#'
+#' ## use the R native pipe operator
+#'
+#' # make a of plot of 'terrain ruggedness index' (TRI) for Storm Lake AOI
+#' system.file("extdata/storml_elev.tif", package="gdalraster") |>
+#'   gdal_run_piped("raster tri", "", "MEM") |>
+#'   plot_raster(legend = TRUE,
+#'               minmax_pct_cut = c(0, 99),
+#'               col_map_fn = rev(ltc::ltc("heatmap3")),
+#'               main = "Storm Lake AOI: terrain ruggedness index")
 #'
 #' ## get help for vector commands
 #' gdal_usage("vector")
@@ -260,7 +321,7 @@
 #' ds$close()
 #' deleteDataset(f_out)
 #'
-#' ## pipeline syntax
+#' ## GDAL CLI pipeline syntax
 #' # "raster pipeline" example 2 from:
 #' # https://gdal.org/en/latest/programs/gdal_raster_pipeline.html
 #' # serialize the command to reproject a GTiff file into GDALG format, and
@@ -329,7 +390,9 @@ gdal_usage <- function(cmd = NULL) {
 
 #' @name gdal_cli
 #' @export
-gdal_run <- function(cmd, args, setVectorArgsFromObject = TRUE) {
+gdal_run <- function(cmd, args, close = FALSE, quiet = FALSE,
+                     setVectorArgsFromObject = TRUE) {
+
     if (gdal_version_num() < gdal_compute_version(3, 11, 3)) {
         stop("gdal_run() requires GDAL >= 3.11.3", call. = FALSE)
     }
@@ -344,7 +407,17 @@ gdal_run <- function(cmd, args, setVectorArgsFromObject = TRUE) {
     if (!is.character(args) && !is.list(args))
         stop("'args' must be a character vector or named list", call. = FALSE)
 
-    if (missing(setVectorArgsFromObject) || is.null(setVectorArgsFromObject) ||
+    if (is.null(close) || all(is.na(close)))
+        close <- FALSE
+    if (!is.logical(close) || length(close) != 1)
+        stop("'close' must be a single logical value", call. = FALSE)
+
+    if (is.null(quiet) || all(is.na(quiet)))
+        quiet <- TRUE
+    if (!is.logical(quiet) || length(quiet) != 1)
+        stop("'quiet' must be a single logical value", call. = FALSE)
+
+    if (is.null(setVectorArgsFromObject) ||
         all(is.na(setVectorArgsFromObject))) {
 
         setVectorArgsFromObject <- TRUE
@@ -357,21 +430,178 @@ gdal_run <- function(cmd, args, setVectorArgsFromObject = TRUE) {
     }
 
     alg <- new(GDALAlg, cmd, args)
+    alg$quiet <- quiet
     alg$setVectorArgsFromObject <- setVectorArgsFromObject
 
     if (!alg$parseCommandLineArgs()) {
-        cat("parseCommandLineArgs() failed\n")
         alg$release()
-        stop("failed to parse arguments and set their values", call. = FALSE)
+        stop("failed to parse algorithm arguments and set their values",
+             call. = FALSE)
     }
 
     if (!alg$run()) {
-        cat("run() failed\n")
         alg$release()
         stop("failed to execute the command", call. = FALSE)
     }
 
-    return(alg)
+    if (close) {
+        res <- alg$close()
+        if (!res && !quiet)
+            cli::cli_alert_warning("Error reported during algorithm finalize.")
+    }
+
+    if (quiet)
+        return(invisible(alg))
+    else
+        return(alg)
+}
+
+#' @name gdal_cli
+#' @export
+gdal_run_piped <- function(input, cmd, output = NULL, output_format = NULL,
+                           other_args = NULL, output_index = 1,
+                           outputLayerNameForOpen = NULL) {
+
+    if (gdal_version_num() < gdal_compute_version(3, 11, 3)) {
+        stop("gdal_run_piped() requires GDAL >= 3.11.3", call. = FALSE)
+    }
+
+    if (missing(cmd) || is.null(cmd) || all(is.na(cmd)))
+        stop("'cmd' is required", call. = FALSE)
+    if (!is.character(cmd))
+        stop("'cmd' must be a character vector", call. = FALSE)
+
+    if (missing(output) || is.null(output) || all(is.na(output))) {
+        output <- ""
+    } else if (!(is.character(output) && length(output) == 1)) {
+        stop("'output' must be a single character string", call. = FALSE)
+    }
+
+    if (is.null(output_format) || all(is.na(output_format))) {
+        output_format <- NULL
+    } else if (!(is.character(output_format) && length(output_format) == 1)) {
+        stop("'output_format' must be a single character string", call. = FALSE)
+    }
+
+    if (is.null(output_index) || all(is.na(output_index))) {
+        output_index <- 1
+    } else if (!((is.character(output_index) || is.numeric(output_index))
+                 && length(output_index) == 1)) {
+        stop(
+            "'output_index' must be a single numeric value or character string",
+            call. = FALSE)
+    } else if (is.numeric(output_index) && output_index < 1) {
+        stop("'output_index' must be greater than or equal to 1", call. = FALSE)
+    }
+
+    if (!is.null(other_args)) {
+        if (!is.character(other_args) && !is.list(other_args)) {
+            stop("'other_args' must be a character vector or named list",
+                 call. = FALSE)
+        }
+    }
+
+    if (missing(outputLayerNameForOpen) ||
+        is.null(outputLayerNameForOpen) ||
+        all(is.na(outputLayerNameForOpen))) {
+
+        outputLayerNameForOpen <- ""
+    }
+
+    alg <- new(GDALAlg, cmd, other_args)
+    alg$quiet <- TRUE
+    alg$outputLayerNameForOpen <- outputLayerNameForOpen
+
+    input_arg_name <- "input"
+    alg_info <- alg$info()
+    # TODO:
+    # should it check for other input argument names here
+    # or use any positional one that exists
+    if (!("input" %in% alg_info$arg_names)) {
+        if ("dataset" %in% alg_info$arg_names) {
+            input_arg_name <- "dataset"
+        } else if ("source" %in% alg_info$arg_names) {
+            input_arg_name <- "source"
+        } else {
+            cli::cli_alert_danger(paste0(
+                "Algorithm does not have an {.arg input}, {.arg dataset} or ",
+                "{.arg source} argument"))
+            return(invisible(FALSE))
+        }
+    }
+
+    if (!alg$setArg(input_arg_name, input)) {
+        alg$release()
+        cli::cli_alert_danger("Failed to set the input argument.")
+        return(invisible(FALSE))
+    }
+
+    output_arg_name <- "output"
+    alg_has_output_or_destination <- TRUE
+    if (!("output" %in% alg_info$arg_names)) {
+        if ("destination" %in% alg_info$arg_names) {
+            output_arg_name <- "destination"
+        }
+        else {
+            alg_has_output_or_destination <- FALSE
+        }
+    }
+    if (alg_has_output_or_destination) {
+        if (!alg$setArg(output_arg_name, output)) {
+            cli::cli_alert_warning(
+                "Failed to set {.arg {output_arg_name}} argument.")
+        }
+    }
+
+    if (!is.null(output_format)) {
+        if (!alg$setArg("output-format", output_format)) {
+            cli::cli_alert_warning("Failed to set 'output-format'.")
+        }
+    }
+
+    if (!alg$parseCommandLineArgs()) {
+        alg$release()
+        cli::cli_alert_danger(
+            "Failed to parse algorithm arguments and set their values.")
+        return(invisible(FALSE))
+    }
+
+    if (!alg$run()) {
+        alg$release()
+        cli::cli_alert_danger("Failed to execute {.str {cmd}}")
+        return(invisible(FALSE))
+    }
+
+    out <- TRUE
+    if (length(alg$outputs()) != 0) {
+        if (is.numeric(output_index)) {
+            if (output_index > length(alg$outputs())) {
+                cli::cli_alert_danger(paste0(
+                    "{.arg output_index = {output_index}} is greater than the ",
+                    "number of outputs ({length(alg$outputs())})."))
+                out <- FALSE
+            }
+        } else {
+            if (!(output_index %in% names(alg$outputs()))) {
+                cli::cli_alert_danger(paste0(
+                    "{.arg output_index = {output_index}} is not an element name ",
+                    "in the algorithm output list"))
+                out <- FALSE
+            }
+        }
+
+        if (out)
+            out <- alg$outputs()[[output_index]]
+    }
+
+    if (!alg$close()) {
+        warning(cli::format_warning(
+            "Error reported during algorithm finalize."), call. = FALSE)
+    }
+
+    alg$release()
+
+    invisible(out)
 }
 
 #' @name gdal_cli
@@ -405,7 +635,6 @@ gdal_alg <- function(cmd = NULL, args = NULL, parse = TRUE) {
 
     if (has_args && parse) {
         if (!alg$parseCommandLineArgs()) {
-            cat("parseCommandLineArgs() failed\n")
             alg$release()
             stop("failed to parse arguments and set their values",
                  call. = FALSE)
@@ -450,7 +679,8 @@ gdal_global_reg_names <- function() {
         }
     }
 
-    cat("\nUsage:", cmd)
+    cli::cat_line()
+    cat(cli::format_inline("{.strong Usage}: "), cmd, sep = "")
 
     if (alginfo$has_subalgorithms) {
         cat(" <SUBCOMMAND>")
@@ -564,21 +794,35 @@ gdal_global_reg_names <- function() {
                 if (this_arg$min_count != 1)
                     cat("    [", this_arg$max_count, " values]\n", sep = "")
 
-            } else if (this_arg$min_count > 0 &&
+            } else if (this_arg$min_count >= 0 &&
                        this_arg$max_count < .Machine$integer.max) {
 
                 cat("    [", this_arg$min_count, "..", this_arg$max_count,
                     " values]\n", sep = "")
 
-            } else if (this_arg$min_count > 0) {
-                cat("    [", this_arg$min_count, "..", " values]\n", sep = "")
-            } else if (this_arg$max_count > 1) {
-                cat("    [may be repeated]\n")
+            } else if (this_arg$min_count >= 0) {
+                cat("    [", this_arg$min_count, " or more values]\n", sep = "")
+            }
+
+            if (this_arg$max_count > 1) {
+                if (this_arg$packed_values_allowed &&
+                    this_arg$repeated_arg_allowed) {
+                    cat("    [packed values allowed, repeated arg allowed]")
+                } else if (!this_arg$packed_values_allowed &&
+                           this_arg$repeated_arg_allowed) {
+                    cat("    [packed values not allowed, repeated arg allowed]")
+                } else if (this_arg$packed_values_allowed &&
+                           !this_arg$repeated_arg_allowed) {
+                    cat("    [packed values allowed, repeated arg not allowed]")
+                }
+                cat("\n")
             }
         }
 
-        if (this_arg$is_required)
-            cat("    [required]\n")
+        if (this_arg$is_required) {
+            cat("    [", cli::format_inline("{.emph required}"), "]\n",
+                sep = "")
+        }
 
         if (nzchar(this_arg$mutual_exclusion_group)) {
             other_args <- character()
@@ -694,7 +938,10 @@ gdal_global_reg_names <- function() {
     }
 
     if (alginfo$name == "pipeline") {
-        x <- alg$usageAsJSON() |> yyjsonr::read_json_str()
+        # workaround for non-standard Infinity value in GDAL JSON
+        x <- gsub("Infinity", '"Infinity"', alg$usageAsJSON(), fixed = TRUE) |>
+            yyjsonr::read_json_str()
+
         if (!is.null(x$pipeline_algorithms) &&
             is.data.frame(x$pipeline_algorithms) &&
             nrow(x$pipeline_algorithms) > 0) {
@@ -718,8 +965,10 @@ gdal_global_reg_names <- function() {
         cat("\n")
     }
 
-    if (alginfo$URL != "")
-        cat("For more details: ", alginfo$URL, "\n", sep = "")
+    if (alginfo$URL != "") {
+        cat("For more details: ", cli::format_inline("{.url {alginfo$URL}}"),
+            "\n", sep = "")
+    }
 
     alg$release()
 }

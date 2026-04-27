@@ -31,10 +31,9 @@
   \item raster creation: \code{\link[=create]{create()}},
   \code{\link[=createCopy]{createCopy()}},
   \code{\link[=rasterFromRaster]{rasterFromRaster()}},
-  \code{\link[=translate]{translate()}},
   \code{\link[=getCreationOptions]{getCreationOptions()}},
   \code{\link[=validateCreationOptions]{validateCreationOptions()}},
-  \code{\link[=vector_to_MEM]{vector_to_MEM()}}
+  \code{\link[=rvector_to_MEM]{rvector_to_MEM()}}
 
   \item virtual raster:
   \code{\link[=autoCreateWarpedVRT]{autoCreateWarpedVRT()}},
@@ -42,6 +41,7 @@
   \code{\link[=rasterToVRT]{rasterToVRT()}}
 
   \item algorithms/utilities: \code{\link[=dem_proc]{dem_proc()}},
+  \code{\link[=dem_derivatives]{dem_derivatives}},
   \code{\link[=fillNodata]{fillNodata()}},
   \code{\link[=footprint]{footprint()}},
   \code{\link[=is_los_visible]{is_los_visible()}},
@@ -49,6 +49,7 @@
   \code{\link[=polygonize]{polygonize()}},
   \code{\link[=rasterize]{rasterize()}},
   \code{\link[=sieveFilter]{sieveFilter()}},
+  \code{\link[=translate]{translate()}},
   \code{\link[=warp]{warp()}},
   \code{\link[=GDALRaster]{GDALRaster$getChecksum()}}
 

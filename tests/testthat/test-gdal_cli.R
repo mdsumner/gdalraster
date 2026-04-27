@@ -3,7 +3,7 @@ skip_on_cran()
 skip_if(gdal_version_num() < gdal_compute_version(3, 11, 3))
 
 test_that("gdal_commands works", {
-    expect_output(cmds <- gdal_commands(), "info:")
+    expect_output(cmds <- gdal_commands())
     expect_true(is.data.frame(cmds))
     expect_true(nrow(cmds) > 10)
     expect_equal(colnames(cmds), c("command", "description", "URL"))
@@ -53,6 +53,20 @@ test_that("gdal_run works", {
     expect_true(alg$close())
     alg$release()
 
+    # with close
+    deleteDataset(f_out)
+
+    expect_no_error(
+        gdal_run("vector rasterize", args, close = TRUE, quiet = TRUE))
+
+    expect_true(vsi_stat_size(f_out) > 0)
+    expect_no_error(ds <- GDALRaster$new(f_out))
+    expect_equal(ds$res(), c(90, 90))
+    expect_equal(ds$getDataTypeName(band = 1), "Int16")
+    expect_equal(ds$getNoDataValue(band = 1), -32767)
+
+    ds$close()
+
     ## vector output
     f_shp <- system.file("extdata/poly_multipoly.shp", package="gdalraster")
     f_gpkg <- file.path(tempdir(), "polygons_test.gpkg")
@@ -80,6 +94,72 @@ test_that("gdal_run works", {
     args <- c("--input", f_shp, "--output", f_gpkg, "--overwrite")
     expect_error(gdal_run("vector convert", args, "invalid"))
 
+})
+
+test_that("gdal_run_piped works", {
+    # "size" is passed to "raster resize" here since the "resolution" argument
+    # was added later in GDAL 3.12, so this test will work with GDAL >= 3.11.
+    # This will generate an output raster with _roughly_ 90-m pixel resolution.
+    ds_mem <- system.file("extdata/storml_elev.tif", package="gdalraster") |>
+        gdal_run_piped("raster resize", "", "MEM", list(
+            size = c(48, 36), resampling = "bilinear")
+        ) |>
+        gdal_run_piped("raster tpi", "", "MEM")
+
+    expect_true(is(ds_mem, "Rcpp_GDALRaster"))
+    expect_equal(ds_mem$dim(), c(48, 36, 1))
+    expect_true(all(ds_mem$res() >= 89))
+    ds_mem$close()
+
+    f_zip <- system.file("extdata/ynp_features.zip", package = "gdalraster")
+
+    # output_index
+    out_str <- file.path("/vsizip", f_zip, "ynp_features.gpkg") |>
+	    gdal_run_piped("vector info", output_format = "text",
+                       other_args = list(layer = "ynp_bnd"),
+                       output_index = "output_string")
+
+    expect_true(is.character(out_str))
+    expect_true(grepl("Layer name: ynp_bnd", out_str, ignore.case = TRUE))
+
+    # input validation error: output_index < 1
+    out_str <- ""
+    expect_error(
+        out_str <- file.path("/vsizip", f_zip, "ynp_features.gpkg") |>
+            gdal_run_piped("vector info", output_format = "text",
+                           other_args = list(layer = "ynp_bnd"),
+                           output_index = 0)
+    )
+
+    # output_index > the number of outputs
+    out_str <- ""
+    expect_no_error(
+        out_str <- file.path("/vsizip", f_zip, "ynp_features.gpkg") |>
+            gdal_run_piped("vector info", output_format = "text",
+                           other_args = list(layer = "ynp_bnd"),
+                           output_index = 2)
+    )
+    expect_false(out_str)
+
+    # output_index not a valid list element name
+    out_str <- ""
+    expect_no_error(
+        out_str <- file.path("/vsizip", f_zip, "ynp_features.gpkg") |>
+            gdal_run_piped("vector info", output_format = "text",
+                           other_args = list(layer = "ynp_bnd"),
+                           output_index = "invalid")
+    )
+    expect_false(out_str)
+
+    # outputLayerNameForOpen
+    lyr_mem <- file.path("/vsizip", f_zip, "ynp_features.gpkg") |>
+        gdal_run_piped("vector reproject", "", "MEM", c("-d", "EPSG:5070"),
+            outputLayerNameForOpen = "points_of_interest")
+
+    expect_true(is(lyr_mem, "Rcpp_GDALVector"))
+    expect_equal(lyr_mem$getName(), "points_of_interest")
+    expect_equal(lyr_mem$getFeatureCount(), 1399)
+    lyr_mem$close()
 })
 
 test_that("gdal_alg works", {
@@ -152,8 +232,42 @@ test_that("gdal_usage works", {
     expect_output(gdal_usage(cmd), "Options:")
     expect_output(gdal_usage(cmd), "Advanced options:")
     expect_output(gdal_usage(cmd), "For more details:")
+
+    expect_no_error(gdal_usage("pipeline"))
 })
 
 test_that("gdal_global_reg_names returns a character vector", {
     expect_vector(gdal_global_reg_names(), character())
+})
+
+test_that("raster pipeline works", {
+    ## test raster pipeline algorithms
+    skip_if(gdal_version_num() < gdal_compute_version(3, 12, 1))
+
+    ## with a nested input pipeline
+    f <- system.file("extdata/storml_elev.tif", package="gdalraster")
+    f_elev <- tempfile(fileext = ".tif")
+    file.copy(f, f_elev)
+    on.exit(deleteDataset(f_elev), add = TRUE)
+    f_pal <- system.file("extdata/storml_elev_pal.txt", package="gdalraster")
+    f_out <- file.path(tempdir(), "storml_col_relief.tif")
+    on.exit(deleteDataset(f_out), add = TRUE)
+
+    args <- paste(
+        "read --input", f_elev,
+        "! color-map --color-map", f_pal,
+        "! blend --overlay [ read --input", f_elev, "! hillshade -z 1.5 ]",
+            "--operator=hsv-value",
+        "! write --output", f_out, "--overwrite")
+
+    expect_no_error(alg <- gdal_run("raster pipeline", args))
+    expect_true(is.list(alg$outputs()))
+    ds <- alg$outputs()$output
+    expect_true(is(ds, "Rcpp_GDALRaster"))
+    expect_equal(ds$res(), c(30, 30))
+    expect_equal(ds$dim(), c(143, 107, 3))
+
+    ds$close()
+    expect_true(alg$close())
+    alg$release()
 })

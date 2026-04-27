@@ -1,3 +1,43 @@
+# gdalraster 2.5.0.9101 (dev)
+
+* add `GDALRaster$getInterBandCovMatrix()`: class method to fetch or compute the covariance matrix between bands of a dataset using `GDALDatasetGetInterBandCovarianceMatrix()` in GDAL 3.13 (2026-04-26)
+
+* rename `vector_to_MEM()` as `rvector_to_MEM()` but keep an alias for now (#957) (2026-04-25)
+
+* add `gdal_run_piped()` (GDAL CLI): a variation of `gdal_run()` suitable for use with the R native pipe operator (#956) (2026-04-25)
+
+* add `g_invalid_reason()`: interface to `OGR_G_GetInvalidityReason()` in GDAL >=3.13 (#957) (2026-04-25)
+
+* add `.rasterize_polygon()` for internal use (#955) (2026-04-23)
+
+* `calc()`: use a unique temp name when the output dataset is MEM and a specific name is not given (#954) (2026-04-18)
+
+* `gdal_usage()`: replace `[may be repeated]` with packed values, repeated arg allowed or not (#953) (2026-04-18)
+
+* add `northness()` and `eastness()`: convenience functions for transforming aspect degrees, and use in a new [CLI pipeline example](https://firelab.github.io/gdalraster/articles/use-gdal-cli-from-r.html#pipeline-examples) for `gdal raster calc` (2026-04-18)
+
+* `GDALAlg::setArg()`: more robust handling of algorithm arguments with object input (#949, also adding a new pipeline example in [use-gdal-cli-from-r](https://firelab.github.io/gdalraster/articles/use-gdal-cli-from-r.html)) (2026-04-17)
+
+* class `GDALVector`: lint/cleanup class constructors, also addressing [Rcpp 1471 comment](https://github.com/RcppCore/Rcpp/pull/1471#issuecomment-4225783579) (2026-04-12)
+
+* suppress warning messages in the `show()` method for `GDALRaster` and `GDALVector` (e.g., if no spatial reference is defined) (2026-04-03)
+
+* complete formatting console messages with **cli** (#942) (2026-04-02)
+
+* `gdal_run()`: add arguments `close` and `quiet` (#941) (2026-04-02)
+
+* **cli**-format the global error handler and class `GDALRaster` messages (#940) (2026-04-02)
+
+* progress bar improvements and format console messages with **cli** [WIP] (#939) (2026-04-01)
+
+* configure the default progress bar to show elapsed time upon completion (adding **glue** in `Suggests` for **cli**, #935, #936) (2026-03-30)
+
+* `g_make_valid()`: condition tests for changes to `MakeValid()` in GDAL 3.13 and update documentation to describe the new behavior (#934) (2026-03-28)
+
+* update (primarily documentation) for the `"UInt8"` pixel data type in GDAL >= 3.13 (#933) (2026-03-28)
+
+* doc: add links to the new GDAL documentation on [geometry validity and repair](https://gdal.org/en/latest/user/geometry_validity.html) (#932) (2026-03-28)
+
 # gdalraster 2.5.0
 
 ## Dependencies

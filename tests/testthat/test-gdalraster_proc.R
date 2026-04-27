@@ -51,6 +51,7 @@ test_that("calc writes correct results", {
     ds <- calc(expr = expr,
                rasterfiles = c(b4_file, b5_file),
                var.names = c("B4", "B5"),
+               dstfile = "test_mem",
                fmt = "MEM",
                dtName = "Float32",
                nodata_value = -32767,
@@ -58,6 +59,7 @@ test_that("calc writes correct results", {
                quiet = TRUE,
                return_obj = TRUE)
     expect_true(is(ds, "Rcpp_GDALRaster"))
+    expect_equal(ds$getDescription(0), "test_mem")
     dm <- ds$dim()
     chk <- ds$getChecksum(1, 0, 0, dm[1], dm[2])
     ds$close()
@@ -818,7 +820,7 @@ test_that("pixel_extract wrapper returns correct data", {
 
     # force to use /vsimem/ instead
     expect_message(extr <- pixel_extract(f, pts, max_ram = 1),
-                   "copy completed")
+                   "copying remote file")
     colnames(extr) <- NULL
     dim(extr) <- NULL
     expected_values <- c(99, 188, 185, 185, 185, 185, 185, 185, 162, 165, 162,

@@ -1,6 +1,6 @@
 Package: gdalraster
 Title: Bindings to 'GDAL'
-Version: 2.5.0
+Version: 2.5.0.9101
 Authors@R: c(
     person("Chris", "Toney", email = "jctoney@gmail.com",
             role = c("aut", "cre"), comment = c(ORCID = "0000-0001-5734-6510")),
@@ -66,8 +66,10 @@ Imports:
     yyjsonr
 LinkingTo: cli, nanoarrow, Rcpp, RcppInt64
 Suggests:
+    glue (>= 1.6.0),
     gt,
     knitr,
+    ltc,
     rmarkdown,
     scales,
     testthat (>= 3.0.0),

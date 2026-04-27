@@ -260,17 +260,27 @@ addFilesInZip <- function(
         }
         archive_fname <- .check_gdal_filename(archive_fname)
 
+        if (!quiet) {
+            cli::cli_progress_step(
+                "Adding {.val {archive_fname}}",
+                msg_failed = "Failed to add {.val {archive_fname}}")
+        }
+
         if (!.addFileInZip(zip_file,
                            overwrite = FALSE,
                            archive_fname,
                            f,
                            opt,
-                           quiet)) {
+                           quiet = TRUE)) {
             ret <- FALSE
+            if (!quiet)
+                cli::cli_progress_done("failed")
             break
         } else {
             ret <- TRUE
         }
+        if (!quiet)
+            cli::cli_progress_done()
     }
 
     if (!ret)
@@ -349,7 +359,7 @@ getCreationOptions <- function(format, filter = NULL) {
     }
 
     if (.getCreationOptions(format) == "") {
-        message("no creation options found for ", format)
+        cli::cli_alert_warning("no creation options found for {.val {format}}")
         return(NULL)
     }
 
@@ -831,7 +841,7 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 
 #' Create a GDAL in-memory dataset from R data without copying
 #'
-#' `vector_to_MEM()` creates a GDAL MEM dataset that references pixel data in
+#' `rvector_to_MEM()` creates a GDAL MEM dataset that references pixel data in
 #' an existing R vector. It returns an object of class `GDALRaster` for a
 #' writable in-memory dataset without copying the source data. The underlying
 #' R object is protected from garbage collection until the returned dataset is
@@ -855,6 +865,10 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 #' raw                \tab  UInt8 (Byte in GDAL < 3.13)\cr
 #' complex            \tab  CFloat64
 #' }
+#'
+#' `vector_to_MEM()` is an alias of `rvector_to_MEM()` for backward
+#' compatibility. It is a deprecated name of the function that will be removed
+#' in a future version. Please use `rvector_to_MEM()` instead.
 #'
 #' @param data An R vector of type `"double"`, `"integer"`, `"raw"` or
 #' `"complex"`, containing pixel values to be exposed as a GDAL in-memory
@@ -884,12 +898,16 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 #' longer needed so that resources can be freed. MEM datasets cannot be
 #' re-opened once the object's `$close()` method has been called.
 #'
+#' `vector_to_MEM()` is a deprecated name for the function, currently set as
+#' an alias of `rvector_to_MEM()`. _The `vector_to_MEM()` alias will be removed
+#' in a future version_.
+#'
 #' @seealso
 #' [`GDALRaster-class`][GDALRaster]
 #'
 #' @examples
 #' v <- sample(0:255, 50, replace = TRUE)
-#' (ds_mem <- vector_to_MEM(v, xsize = 10, ysize = 5))
+#' (ds_mem <- rvector_to_MEM(v, xsize = 10, ysize = 5))
 #'
 #' all((ds_mem$read(1, 0, 0, 10, 5, 10, 5) == v))
 #'
@@ -898,8 +916,9 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 #'
 #' ds_mem$close()
 #' @export
-vector_to_MEM <- function(data, xsize, ysize, nbands = 1L, gt = NULL,
-                          bbox = NULL, srs = NULL) {
+#' @rdname rvector_to_MEM
+rvector_to_MEM <- function(data, xsize, ysize, nbands = 1L, gt = NULL,
+                           bbox = NULL, srs = NULL) {
 
     if (!is.vector(data) && !is.numeric(data) && !is.raw(data) &&
         !is.complex(data)) {
@@ -995,4 +1014,23 @@ vector_to_MEM <- function(data, xsize, ysize, nbands = 1L, gt = NULL,
         set_config_option("GDAL_MEM_ENABLE_OPEN", orig_opt)
 
     return(ds_mem)
+}
+
+#' @export
+#' @rdname rvector_to_MEM
+vector_to_MEM <- rvector_to_MEM
+
+#' Clear progress bar
+#'
+#' `progress_bar_clear()` terminates any active \pkg{cli} progress bars and
+#' resets the global progress bar in C++. Generally not needed unless a process
+#' using a progress bar terminates abnormally, or with ctrl-c interrupt, and
+#' a progress bar display anomaly results.
+#'
+#' @return
+#' No return value, call for side effects.
+progress_bar_clear <- function() {
+    cli::cli_progress_cleanup()
+    cli::cli_progress_message("")
+    .progress_bar_cleanup()
 }

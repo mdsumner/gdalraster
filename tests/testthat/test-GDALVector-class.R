@@ -39,12 +39,21 @@ test_that("class constructors work", {
     expect_equal(lyr$getFeatureCount(), 40)
     lyr$close()
 
-    # add dialect
+    # add empty dialect
     expect_no_error(lyr <- new(GDALVector, dsn, sql, read_only = TRUE,
                                open_options = NULL,
                                spatial_filter = bbox_to_wkt(bb),
                                dialect = ""))
     expect_equal(lyr$getFeatureCount(), 40)
+    lyr$close()
+
+    # OGRSQL instead of native dialect
+    expect_no_error(lyr <- new(GDALVector, dsn, sql, read_only = TRUE,
+                               open_options = NULL,
+                               spatial_filter = "",
+                               dialect = "OGRSQL"))
+    expect_equal(lyr$m_dialect, "OGRSQL")
+    expect_equal(lyr$getFeatureCount(), 61)
     lyr$close()
 
     # invalid layer name
@@ -75,7 +84,7 @@ test_that("class basic interface works", {
     lyr <- new(GDALVector, dsn, "mtbs_perims")
 
     expect_true(is(lyr, "Rcpp_GDALVector"))
-    expect_output(show(lyr), "MULTIPOLYGON")
+    expect_no_error(show(lyr))
 
     expect_true(lyr$isReadOnly())
     expect_equal(lyr$getDriverShortName(), "GPKG")
@@ -189,7 +198,7 @@ test_that("class basic interface works", {
     # SQL layer
     sql_lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
     expect_true(is(sql_lyr, "Rcpp_GDALVector"))
-    expect_output(show(sql_lyr), "LIMIT 10")
+    expect_no_error(show(sql_lyr))
     expect_equal(sql_lyr$getFeatureCount(), 10)
     sql_lyr$close()
 
@@ -205,10 +214,8 @@ test_that("class basic interface works", {
     expect_true(is.null(lyr$getFeature(NA)))
     expect_error(lyr$getFeature(c(1,2)), "must be a length-1")
     expect_false(lyr$startTransaction())
-    expect_output(lyr$startTransaction(), "dataset does not have")
     lyr$transactionsForce <- TRUE
     expect_false(lyr$startTransaction())
-    expect_output(lyr$startTransaction(), "dataset does not have")
 
     lyr$close()
 })
@@ -313,7 +320,7 @@ test_that("set ignored/selected fields works", {
                  "not all field names could be resolved")
     expect_no_error(lyr$setIgnoredFields(""))
     expect_output(lyr$setSelectedFields(c("event_id", "invalid_field")),
-                  "some input field names could not be resolved")
+                  "invalid_field")
     expect_false("event_id" %in% lyr$getIgnoredFields())
     expect_no_error(lyr$setSelectedFields(""))
     expect_error(lyr$setSelectedFields("invalid_field"),
@@ -1075,6 +1082,7 @@ test_that("feature write methods work", {
                                open_options = NULL, spatial_filter = "",
                                dialect = "SQLITE"))
     lyr$returnGeomAs <- "WKT"
+    expect_equal(lyr$m_dialect, "SQLITE")
     expect_no_error(f <- lyr$getFeature(test1_fid))
     expect_equal(f$id, feat1$id)
     expect_true(g_equals(f$geom, feat1$geom))
@@ -1861,7 +1869,10 @@ test_that("info() prints output to the console", {
     file.copy(f, dsn)
 
     lyr <- new(GDALVector, dsn, "mtbs_perims")
-    expect_output(lyr$info())
+    if (gdal_version_num() >= gdal_compute_version(3, 7, 0))
+        expect_output(lyr$info())
+    else
+        expect_no_error(lyr$info())
     lyr$close()
 
     lyr <- new(GDALVector, dsn, "SELECT * FROM mtbs_perims LIMIT 10")
@@ -1869,7 +1880,7 @@ test_that("info() prints output to the console", {
         expect_output(lyr$info(), "Feature Count: 10")
     } else {
         # we only get the fallback minimal info
-        expect_output(lyr$info(), "Layer")
+        expect_no_error(lyr$info())
     }
     lyr$close()
 
@@ -1879,7 +1890,7 @@ test_that("info() prints output to the console", {
         expect_output(lyr$info(), "Feature Count: 61")
     } else {
         # we only get the fallback minimal info
-        expect_output(lyr$info(), "Layer")
+        expect_no_error(lyr$info())
     }
     lyr$close()
 

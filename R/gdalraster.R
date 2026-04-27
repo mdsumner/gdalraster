@@ -126,6 +126,9 @@
 #' ds$getHistogram(band, min, max, num_buckets, incl_out_of_range, approx_ok)
 #' ds$getDefaultHistogram(band, force)
 #'
+#' ds$getInterBandCovMatrix(bands, approx_ok, force, write_in_metadata,
+#'                          df_correction)
+#'
 #' ds$getMetadata(band, domain)
 #' ds$setMetadata(band, metadata, domain)
 #' ds$getMetadataItem(band, mdi_name, domain)
@@ -203,11 +206,11 @@
 #' \code{$readByteAsRaw}\cr
 #' A logical value, `FALSE` by default. This field can be set to `TRUE` which
 #' will affect the data type returned by the \code{$read()} method and the
-#' [read_ds()] convenience function. When the underlying band data type is Byte
-#' and `readByteAsRaw` is `TRUE` the output type will be raw rather than
-#' integer. See also the `as_raw` argument to [read_ds()] to control this in a
-#' non-persistent setting. If the underlying band data type is not Byte this
-#' setting has no effect.
+#' [read_ds()] convenience function. When the underlying band data type is
+#' Byte/UInt8 and `readByteAsRaw` is `TRUE` the output type will be raw rather
+#' than integer. See also the `as_raw` argument to [read_ds()] to control this
+#' in a non-persistent setting. If the underlying band data type is not
+#' Byte/UInt8 setting has no effect. (Note Byte = UInt8 in GDAL >= 3.13.)
 #'
 #' ## Methods
 #'
@@ -282,7 +285,8 @@
 #' Most formats do not, but `"MEM"` and `"VRT"` are notable exceptions
 #' that support adding bands. The added band will always be the last band.
 #' `dataType` is a character string containing the data type name
-#' (e.g., `"Byte"`, `"Int16"`, `"UInt16"`, `"Int32"`, `"Float32"`, etc).
+#' (e.g., `"Byte"`, `"UInt8"` (GDAL >= 3.13), `"Int16"`, `"UInt16"`, `"Int32"`,
+#' `"Float32"`, etc).
 #' The `options` argument is a character vector of NAME=VALUE option strings.
 #' Supported options are format specific. Note that the `options` argument is
 #' required but may be given as `NULL`. Returns logical \code{TRUE} on success
@@ -710,6 +714,35 @@
 #' Returns a list of length four containing named elements `min` (lower
 #' bound), `max` (upper bound), `num_buckets` (number of buckets), and
 #'`histogram` (a numeric vector of length `num_buckets`).
+#'
+#' \code{$getInterBandCovMatrix(bands, approx_ok, force, write_in_metadata,
+#'                              df_correction)}\cr
+#' Fetch or compute the covariance matrix between bands of this dataset. The
+#' covariance indicates the level to which two bands vary together. Requires
+#' GDAL >= 3.13. See `GDALDatasetGetInterBandCovarianceMatrix()` in:
+#' \url{https://gdal.org/en/latest/api/raster_c_api.html}. Returns a square
+#' matrix with dimension equal to the number of bands. `bands` may be given as
+#' `0` meaning all bands, or may be an integer vector of specific band numbers.
+#' `approx_ok` specifies whether it is acceptable to use a subsample of values
+#' (`TRUE`), or all pixel values should be used (`FALSE`).
+#'
+#' \code{force}:
+#'   * `TRUE`: The raster will be scanned to compute covariances.
+#'   (Note: `ComputeInterBandCovarianceMatrix()` in the GDAL API is called
+#'   automatically here. This is a change in the behavior of
+#'   `GetInterBandCovarianceMatrix()` in the API, to a definitive `force`.)
+#'   * `FALSE`: Results will only be returned if it can be done quickly (i.e.,
+#'   without scanning the raster, by using pre-existing
+#'   `STATISTICS_COVARIANCES` metadata items). \code{NA} will be returned if
+#'   inter-band covariances cannot be obtained quickly.
+#'
+#' `write_in_metadata` specifies whether `STATISTICS_COVARIANCES` band metadata
+#' items should be written if covariances are computed new. `df_correction`
+#' specifies a correction term to subtract in the final averaging phase of the
+#' covariance computation, often will be `1`. A value of `df_correction = 1`
+#' will return an unbiased estimate if the pixels in bands are considered to be
+#' a sample of the whole population. Otherwise a value of `df_correction = 0`
+#' can be used if they are considered to be the whole population.
 #'
 #' \code{$getMetadata(band, domain)}\cr
 #' Returns a character vector of all metadata `NAME=VALUE` pairs that exist in

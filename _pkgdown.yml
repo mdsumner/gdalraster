@@ -231,6 +231,7 @@ articles:
   - articles/vector-read-benchmarks
   - gdal-config-quick-ref
   - articles/use-gdal-cli-from-r
+  - articles/r-and-gdal-in-conda
 - title: Archive
   navbar: Archived articles
   contents:

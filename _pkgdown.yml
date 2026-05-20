@@ -9,7 +9,7 @@ template:
 home:
   title: R Bindings to GDAL
   sidebar:
-    structure: [dev, links, community, authors, license, citation]
+    structure: [links, community, authors, license, citation, dev]
   links:
   - text: Discussions
     href: https://github.com/firelab/gdalraster/discussions

@@ -1094,4 +1094,5 @@ progress_bar_clear <- function() {
     cli::cli_progress_cleanup()
     cli::cli_progress_message("")
     .progress_bar_cleanup()
+    cli::cat_line()
 }

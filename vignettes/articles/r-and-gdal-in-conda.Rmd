@@ -12,9 +12,9 @@ knitr::opts_chunk$set(
 
 DRAFT: last updated 2026-05-25
 
-Conda is an open-source, cross-platform, language-agnostic package manager and environment management system. It was originally developed to solve package management challenges faced by Python data scientists [[Wikipedia](https://en.wikipedia.org/wiki/Conda_(package_manager))]. Today, conda is a general purpose packaging format that covers a wide selection of programming languages, including C, C++, Fortran, Rust, Go, Python, and R.
+Conda is an open-source, cross-platform, language-agnostic package manager and environment management system. The conda package format is general purpose and covers a wide selection of programming languages, including C, C++, Fortran, Rust, Go, Python, and R.
 
-Conda uses the concept of channels as the base for hosting and managing packages. Conda is often associated with the commercial company Anaconda which provides the [Anaconda.org](https://anaconda.org/) channel of packages. Alternatively, the conda-forge project builds and distributes packages via [conda-forge.org](https://conda-forge.org/), specializing in hard-to-build or unique packages that often arise in a scientific computing context. Conda-forge is community-driven and community-curated. Both conda and conda-forge are [NumFocus-affiliated](https://numfocus.org/project/conda-forge) projects.
+Conda uses the concept of channels as the base for hosting and managing packages. Conda is often associated with the commercial company Anaconda which provides the [Anaconda.org](https://anaconda.org/) channel of packages. Alternatively, the conda-forge project builds and distributes packages via [conda-forge.org](https://conda-forge.org/). Conda-forge is community-driven and community-curated. Both conda and conda-forge are [NumFocus-affiliated](https://numfocus.org/project/conda-forge) projects.
 
 Conda offers features potentially of interest to R users who work with geospatial data:
 
@@ -29,7 +29,7 @@ Conda-forge provides pre-compiled binary packages for **gdalraster** that track 
 
 [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/r-gdalraster.svg)](https://anaconda.org/conda-forge/r-gdalraster)
 
-Several tools are available for managing packages in the [conda ecosystem](https://pixi.prefix.dev/latest/conda_ecosystem/). The next few sections describe `conda`, the original package manager written in Python. [Pixi](https://pixi.prefix.dev/latest/) might also be considered as a fast, modern, and reproducible package management tool. The section "Pixi for conda package management" further below describes a Pixi-equivalent setup.
+Several tools are available for managing packages in the [conda ecosystem](https://pixi.prefix.dev/latest/conda_ecosystem/). The next few sections describe `conda`. [Pixi](https://pixi.prefix.dev/latest/) might also be considered as a fast, modern, and reproducible package management tool. The section "Pixi for conda package management" further below describes a Pixi-equivalent setup.
 
 ## Using conda from Miniforge
 
@@ -126,18 +126,18 @@ conda install libgdal-arrow-parquet
 
 Pixi is an alternative to using `conda` as described above. It is a modern, Rust-based package manager with lockfiles, tasks, and multi-environment support. Pixi introduces a workspace-centric approach rather than focusing solely on environments.
 
-Installation instructions can be found in the Pixi [Getting Started](https://pixi.prefix.dev/latest/installation/) guide. Once installed you can create an environment in a pixi workspace, basically equivalent to the setup described above for conda:
+Installation instructions can be found in the Pixi [Getting Started](https://pixi.prefix.dev/latest/installation/) guide. Once installed you can create an environment in a Pixi workspace, basically equivalent to the setup described above for conda:
 
 ```bash
 pixi init r_example
 cd r_example
 pixi add r-essentials r-gdalraster libgdal-arrow-parquet
-pixel shell
+pixi shell
 ```
 
-The last command starts an interactive shell within the environment (use `exit` to leave the shell). You get a digest-level lock file automatically, so the environment is fully reproducible.
+The last command starts an interactive subshell with the environment activated (use `exit` to leave the shell). You get a digest-level `pixi.lock` lock file automatically, so the environment is fully reproducible as long as the lock file is commited with the rest of the project.
 
-Pixi also supports using tools and libraries globally, similar to conda's base environment without having to use an activate command:
+Pixi also supports using tools and libraries [globally](https://pixi.prefix.dev/latest/global_tools/introduction/), similar to conda's base environment without having to use an activate command:
 
 ```bash
 pixi global install gdal libgdal-core

@@ -13,7 +13,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-# gdalraster
+# gdalraster <a href="https://firelab.github.io/gdalraster/"><img src="man/figures/logo.svg" align="right" height="139" alt="gdalraster website" /></a>
 
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/firelab/gdalraster/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/firelab/gdalraster/actions/workflows/R-CMD-check.yaml)

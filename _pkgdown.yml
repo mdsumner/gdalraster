@@ -242,7 +242,7 @@ figures:
   bg: white
 
 authors:
-  before: "<strong>GDAL is by</strong>: Frank Warmerdam, Even Rouault and others (<a href=\"https://github.com/OSGeo/gdal/graphs/contributors\" class=\"external-link\">GDAL contributors</a>)</p><br><p><i>gdalraster</i> logo designed by: Sylvain Beorchia</p>"
+  before: "<strong>GDAL is by</strong>: Frank Warmerdam, Even Rouault and others (<a href=\"https://github.com/OSGeo/gdal/graphs/contributors\" class=\"external-link\">GDAL contributors</a>)<br><p><i>gdalraster</i> logo designed by: Sylvain Beorchia</p>"
   after: "<small class=\"dont-index\">See file <a href=\"https://github.com/firelab/gdalraster/blob/HEAD/inst/COPYRIGHTS\" class=\"external-link\"><code>inst/COPYRIGHTS</code></a> for details.</small>"
 
 footer:

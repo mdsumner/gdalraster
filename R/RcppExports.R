@@ -649,7 +649,10 @@ inv_geotransform <- function(gt) {
 }
 
 #' Raster pixel/line from geospatial x,y coordinates
-#' alternate version for GDALRaster input, with bounds checking
+#' alternate version for GDALRaster input, with raster bounds checking
+#' input coordinates exactly on the bottom or right edges are considered inside
+#' matches behavior in https://github.com/OSGeo/gdal/pull/12087
+#' also consistent with GDALRaster::pixel_extract()
 #' @noRd
 .get_pixel_line_ds <- function(xy, ds) {
     .Call(`_gdalraster_get_pixel_line_ds`, xy, ds)
@@ -1541,9 +1544,7 @@ gdal_get_driver_md <- function(format, mdi_name = "") {
 #' `mdim_info()` is an interface to the \command{gdalmdiminfo} command-line
 #' utility (see \url{https://gdal.org/en/stable/programs/gdalmdiminfo.html}).
 #' This function lists various information about a GDAL supported
-#' multidimensional raster dataset as JSON output. It follows the JSON schema
-#' [gdalmdiminfo_output.schema.json](https://github.com/OSGeo/gdal/blob/release/3.11/apps/data/gdalmdiminfo_output.schema.json).
-#' Requires GDAL >= 3.2.
+#' multidimensional raster dataset as JSON output. Requires GDAL >= 3.2.
 #'
 #' @param dsn Character string giving the data source name of the
 #' multidimensional raster (e.g., file, VSI path).
@@ -2967,6 +2968,16 @@ has_geos <- function() {
 }
 
 #' @noRd
+.g_point_on_surface <- function(geom, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
+    .Call(`_gdalraster_g_point_on_surface`, geom, as_iso, byte_order, quiet)
+}
+
+#' @noRd
+.g_segmentize <- function(geom, max_length, as_iso, byte_order, quiet) {
+    .Call(`_gdalraster_g_segmentize`, geom, max_length, as_iso, byte_order, quiet)
+}
+
+#' @noRd
 .g_simplify <- function(geom, tolerance, preserve_topology = TRUE, as_iso = FALSE, byte_order = "LSB", quiet = FALSE) {
     .Call(`_gdalraster_g_simplify`, geom, tolerance, preserve_topology, as_iso, byte_order, quiet)
 }
@@ -3245,6 +3256,11 @@ bbox_to_wkt <- function(bbox, extend_x = 0, extend_y = 0) {
 #' @noRd
 .get_data_ptr <- function(x) {
     .Call(`_gdalraster_get_data_ptr`, x)
+}
+
+#' @noRd
+.equal_within_ulps <- function(x, y, n = 4L) {
+    .Call(`_gdalraster_equal_within_ulps_r_`, x, y, n)
 }
 
 #' @noRd

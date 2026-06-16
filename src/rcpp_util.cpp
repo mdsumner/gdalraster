@@ -179,10 +179,12 @@ bool contains_str_(const Rcpp::CharacterVector &v, const Rcpp::String &s,
 
 // does std::string contain a space character
 bool has_space_char_(const std::string &s) {
-    for (char c : s) {
-        if (std::isspace(static_cast<unsigned char>(c)))
-            return true;
+    if (std::any_of(s.begin(), s.end(), [](unsigned char ch) {
+                    return std::isspace(ch);})) {
+
+        return true;
     }
+
     return false;
 }
 
@@ -335,4 +337,21 @@ void cli_cat_line_() {
     Rcpp::Environment pkg = Rcpp::Environment::namespace_env("cli");
     Rcpp::Function fn = pkg["cat_line"];
     fn();
+}
+
+// expose equal_within_ulps_() in R for unit tests
+//' @noRd
+// [[Rcpp::export(name = ".equal_within_ulps")]]
+bool equal_within_ulps_r_(double x, double y, int n = 4) {
+    if (n < 0)
+        Rcpp::stop("`n` must be >= 0");
+
+    return equal_within_ulps_(x, y, n);
+}
+
+// wrapper for nanoarrow::as_nanoarrow_array_stream() on a data frame
+SEXP as_nanoarrow_array_stream_(const Rcpp::DataFrame &df) {
+    Rcpp::Environment pkg = Rcpp::Environment::namespace_env("nanoarrow");
+    Rcpp::Function fn = pkg["as_nanoarrow_array_stream"];
+    return fn(df);
 }

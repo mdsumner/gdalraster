@@ -4,7 +4,6 @@
 */
 
 #include <gdal.h>
-#include <gdal_priv.h>
 #include <cpl_port.h>
 #include <cpl_conv.h>
 #include <cpl_http.h>
@@ -1205,7 +1204,10 @@ Rcpp::IntegerMatrix get_pixel_line_gt(const Rcpp::RObject &xy,
 
 
 //' Raster pixel/line from geospatial x,y coordinates
-//' alternate version for GDALRaster input, with bounds checking
+//' alternate version for GDALRaster input, with raster bounds checking
+//' input coordinates exactly on the bottom or right edges are considered inside
+//' matches behavior in https://github.com/OSGeo/gdal/pull/12087
+//' also consistent with GDALRaster::pixel_extract()
 //' @noRd
 // [[Rcpp::export(name = ".get_pixel_line_ds")]]
 Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
@@ -1214,7 +1216,7 @@ Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
     const Rcpp::NumericMatrix xy_in = xy_robject_to_matrix_(xy);
 
     if (xy_in.nrow() == 0)
-        Rcpp::stop("input matri cox is empty");
+        Rcpp::stop("input matrix is empty");
 
     const Rcpp::LogicalVector na_in =
         Rcpp::is_na(xy_in.column(0)) | Rcpp::is_na(xy_in.column(1));
@@ -1225,26 +1227,41 @@ Rcpp::IntegerMatrix get_pixel_line_ds(const Rcpp::RObject& xy,
 
     Rcpp::IntegerMatrix pixel_line = Rcpp::no_init(xy_in.nrow(), 2);
     uint64_t num_outside = 0;
+
+    // GDALRaster class methods for raster X/Y size return double in order to be
+    // <numeric> values in R (prevents integer overflow if they are multiplied
+    // in R). Here we're using them as int.
+    const int num_cols = static_cast<int>(ds->getRasterXSize());
+    const int num_rows = static_cast<int>(ds->getRasterYSize());
+    const Rcpp::NumericVector bbox = ds->bbox();
+
     for (R_xlen_t i = 0; i < xy_in.nrow(); ++i) {
         if (na_in[i]) {
             pixel_line(i, 0) = NA_INTEGER;
             pixel_line(i, 1) = NA_INTEGER;
         }
         else {
-            double geo_x = xy_in(i, 0);
-            double geo_y = xy_in(i, 1);
+            const double geo_x = xy_in(i, 0);
+            const double geo_y = xy_in(i, 1);
+
+            double grid_x = inv_gt[0] + inv_gt[1] * geo_x + inv_gt[2] * geo_y;
+            double grid_y = inv_gt[3] + inv_gt[4] * geo_x + inv_gt[5] * geo_y;
+
+            // allow input coordinates "exactly" on the right or bottom edges
+            // match behavior in: https://github.com/OSGeo/gdal/pull/12087
+            // https://github.com/OSGeo/gdal/pull/12080#discussion_r2028790673
+            if (equal_within_ulps_(geo_x, bbox[2]))
+                grid_x -= 0.25;
+            if (equal_within_ulps_(geo_y, bbox[1]))
+                grid_y -= 0.25;
+
             // column
-            pixel_line(i, 0) = static_cast<int>(std::floor(inv_gt[0] +
-                                                inv_gt[1] * geo_x +
-                                                inv_gt[2] * geo_y));
+            pixel_line(i, 0) = static_cast<int>(std::floor(grid_x));
             // row
-            pixel_line(i, 1) = static_cast<int>(std::floor(inv_gt[3] +
-                                                inv_gt[4] * geo_x +
-                                                inv_gt[5] * geo_y));
+            pixel_line(i, 1) = static_cast<int>(std::floor(grid_y));
 
             if (pixel_line(i, 0) < 0 || pixel_line(i, 1) < 0 ||
-                    pixel_line(i, 0) >= ds->getRasterXSize() ||
-                    pixel_line(i, 1) >= ds->getRasterYSize()) {
+                pixel_line(i, 0) >= num_cols || pixel_line(i, 1) >= num_rows) {
 
                 num_outside += 1;
                 pixel_line(i, 0) = NA_INTEGER;
@@ -2185,12 +2202,13 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
 
     const R_xlen_t num_pts = ptsB_in.nrow();
 
-    Rcpp::NumericVector inv_gt = inv_geotransform(ds->getGeoTransform());
+    const Rcpp::NumericVector inv_gt = inv_geotransform(ds->getGeoTransform());
     if (Rcpp::any(Rcpp::is_na(inv_gt)))
         Rcpp::stop("failed to get inverse geotransform");
 
     const double raster_xsize = ds->getRasterXSize();
     const double raster_ysize = ds->getRasterYSize();
+    const Rcpp::NumericVector bbox = ds->bbox();
     GDALRasterBandH hBand = ds->getBand_(band);
     Rcpp::LogicalVector out = Rcpp::no_init(num_pts);
     R_xlen_t pts_outside = 0;
@@ -2243,9 +2261,9 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
         double grid_xA = inv_gt[0] + inv_gt[1] * geo_xA + inv_gt[2] * geo_yA;
         double grid_yA = inv_gt[3] + inv_gt[4] * geo_xA + inv_gt[5] * geo_yA;
 
-        if (ARE_REAL_EQUAL(grid_xA, raster_xsize))
+        if (equal_within_ulps_(geo_xA, bbox[2]))
             grid_xA -= 0.25;
-        if (ARE_REAL_EQUAL(grid_yA, raster_ysize))
+        if (equal_within_ulps_(geo_yA, bbox[1]))
             grid_yA -= 0.25;
 
         if ((grid_xA < 0 || grid_xA > raster_xsize ||
@@ -2260,9 +2278,9 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
         double grid_xB = inv_gt[0] + inv_gt[1] * geo_xB + inv_gt[2] * geo_yB;
         double grid_yB = inv_gt[3] + inv_gt[4] * geo_xB + inv_gt[5] * geo_yB;
 
-        if (ARE_REAL_EQUAL(grid_xB, raster_xsize))
+        if (equal_within_ulps_(geo_xB, bbox[2]))
             grid_xB -= 0.25;
-        if (ARE_REAL_EQUAL(grid_yB, raster_ysize))
+        if (equal_within_ulps_(geo_yB, bbox[1]))
             grid_yB -= 0.25;
 
         if ((grid_xB < 0 || grid_xB > raster_xsize ||
@@ -2317,6 +2335,9 @@ Rcpp::LogicalVector isLineOfSightVisible(const GDALRaster* const &ds,
 
         if (!quiet)
             pfnProgress((i + 1.0) / num_pts, nullptr, nullptr);
+
+        if (i % 1000 == 0)
+            Rcpp::checkUserInterrupt();
     }
 
     if (!quiet && pts_outside > 0) {

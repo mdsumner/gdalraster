@@ -64,6 +64,43 @@ gdal_compute_version <- function(maj, min, rev) {
 }
 
 
+#' Return library version information for GDAL and its dependencies
+#'
+#' `lib_versions()` returns a named list of library version information for
+#' GDAL and its major dependencies, currently PROJ and GEOS. It provides library
+#' versions in a consistent format, as an alternative to the separate
+#' `gdal_version()`, `proj_version()` and `geos_version()`.
+#'
+#' @returns
+#' A named list with elements `"gdal"`, `"proj"` and `"geos"`, each
+#' containing a named list with the following elements:
+#' * `"name"`: character string version as `"major.minor.patch"`
+#' * `"major"`: integer major version number
+#' * `"minor"`: integer minor version number
+#' * `"patch"`: integer patch version number
+#'
+#' @seealso
+#' [gdal_version()], [proj_version()], [geos_version()]
+#'
+#' @examples
+#' lib_versions()
+#' @export
+lib_versions <- function() {
+    out <- vector("list", 3)
+    names(out) <- c("gdal", "proj", "geos")
+
+    gdal_parts <- gdal_version()[4] |> strsplit(".", fixed = TRUE) |> unlist()
+    out$gdal <- list(name = gdal_version()[4],
+                     major = as.integer(gdal_parts[1]),
+                     minor = as.integer(gdal_parts[2]),
+                     patch = as.integer(gdal_parts[3]))
+    out$proj <- proj_version()
+    out$geos <- geos_version()
+
+    return(out)
+}
+
+
 #' Create/append to a potentially Seek-Optimized ZIP file (SOZip)
 #'
 #' `addFilesInZip()` will create new or open existing ZIP file, and
@@ -542,7 +579,8 @@ apply_geotransform <- function(col_row, gt) {
 #' raster extent and a warning emitted giving the number points that were
 #' outside. This latter case is equivalent to calling the
 #' \code{$get_pixel_line()} class method on the `GDALRaster` object (see
-#' Examples).
+#' Examples). Points exactly on the raster right or bottom edge are considered
+#' inside as of \pkg{gdalraster} 2.7.0.
 #'
 #' @seealso [`GDALRaster$getGeoTransform()`][GDALRaster], [inv_geotransform()]
 #'
@@ -894,6 +932,9 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 #' MEM dataset fails.
 #'
 #' @note
+#' MEM datasets also support `addBand()` from existing R data without copying
+#' (see Examples).
+#'
 #' The `$close()` method should be called when the `GDALRaster` object is no
 #' longer needed so that resources can be freed. MEM datasets cannot be
 #' re-opened once the object's `$close()` method has been called.
@@ -906,14 +947,34 @@ make_chunk_index <- function(raster_xsize, raster_ysize,
 #' [`GDALRaster-class`][GDALRaster]
 #'
 #' @examples
-#' v <- sample(0:255, 50, replace = TRUE)
-#' (ds_mem <- rvector_to_MEM(v, xsize = 10, ysize = 5))
+#' v <- sample(0:255, 20, replace = TRUE)
+#' (ds_mem <- rvector_to_MEM(v, xsize = 5, ysize = 4))
 #'
-#' all((ds_mem$read(1, 0, 0, 10, 5, 10, 5) == v))
+#' all((ds_mem$read(1, 0, 0, 5, 4, 5, 4) == v))
 #'
-#' ds_mem$write(1, 0, 0, 10, 5, (v * -1))
+#' ds_mem$write(1, 0, 0, 5, 4, (v * -1))
 #' print(v)
 #'
+#' ds_mem$close()
+#'
+#' # MEM also supports no-copy addBand() from R data
+#' xsize <- 400
+#' ysize <- 300
+#' r <- sample(0:255, xsize * ysize, replace = TRUE) |> as.raw()
+#' ds_mem <- rvector_to_MEM(r, xsize, ysize)
+#' ds_mem$setRasterColorInterp(1, "Red")
+#'
+#' g <- sample(0:255, xsize * ysize, replace = TRUE) |> as.raw()
+#' ds_mem$addBand("Byte", g)
+#' ds_mem$setRasterColorInterp(2, "Green")
+#'
+#' b <- sample(0:255, xsize * ysize, replace = TRUE) |> as.raw()
+#' ds_mem$addBand("Byte", b)
+#' ds_mem$setRasterColorInterp(3, "Blue")
+#'
+#' ds_mem$info()
+#'
+#' plot_raster(ds_mem, main = "random RGB")
 #' ds_mem$close()
 #' @export
 #' @rdname rvector_to_MEM
@@ -1033,4 +1094,5 @@ progress_bar_clear <- function() {
     cli::cli_progress_cleanup()
     cli::cli_progress_message("")
     .progress_bar_cleanup()
+    cli::cat_line()
 }

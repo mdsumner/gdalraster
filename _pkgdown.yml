@@ -9,7 +9,7 @@ template:
 home:
   title: R Bindings to GDAL
   sidebar:
-    structure: [dev, links, community, authors, license, citation]
+    structure: [links, community, authors, license, citation, dev]
   links:
   - text: Discussions
     href: https://github.com/firelab/gdalraster/discussions
@@ -189,6 +189,7 @@ reference:
 - contents:
   - gdal_version
   - gdal_compute_version
+  - lib_versions
   - gdal_formats
   - gdal_get_driver_md
   - get_cache_max
@@ -226,10 +227,11 @@ articles:
   - articles/raster-display
   - raster-attribute-tables
   - articles/gdal-block-cache
-  - articles/vector-api-overview
+  - vector-api-overview
   - articles/vector-read-benchmarks
   - gdal-config-quick-ref
   - articles/use-gdal-cli-from-r
+  - articles/r-and-gdal-in-conda
 - title: Archive
   navbar: Archived articles
   contents:
@@ -240,5 +242,12 @@ figures:
   bg: white
 
 authors:
-  before: "<strong>GDAL is by</strong>: Frank Warmerdam, Even Rouault and others (<a href=\"https://github.com/OSGeo/gdal/graphs/contributors\" class=\"external-link\">GDAL contributors</a>)"
+  before: "<ul class=\"list-unstyled\"><li><p><strong>GDAL is by</strong>: Frank Warmerdam, Even Rouault and others (<a href=\"https://github.com/OSGeo/gdal/graphs/contributors\" class=\"external-link\">GDAL contributors</a>)</p></li><li><p><strong>*gdalraster*</strong> logo designed by: Sylvain Beorchia</p></li></ul>"
   after: "<small class=\"dont-index\">See file <a href=\"https://github.com/firelab/gdalraster/blob/HEAD/inst/COPYRIGHTS\" class=\"external-link\"><code>inst/COPYRIGHTS</code></a> for details.</small>"
+
+footer:
+  structure:
+    left: logo_by
+    right: built_with
+  components:
+    logo_by: Logo designed by Sylvain Beorchia.

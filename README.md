@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# gdalraster
+# gdalraster <a href="https://firelab.github.io/gdalraster/"><img src="man/figures/logo.svg" align="right" height="139" alt="gdalraster website" /></a>
 
 <!-- badges: start -->
 
@@ -223,15 +223,9 @@ from R-universe instead.
 
 ### Docker
 
-The `r-gdalraster` build at
-<https://github.com/mdsumner/gdal-builds/pkgs/container/gdal-builds> is
-based on the GDAL [`ubuntu-full-latest`
-image](https://github.com/OSGeo/gdal/tree/master/docker#full-ghcrioosgeogdalubuntu-full-latest-aliased-to-osgeogdal),
-and adds the current released version of R along with development
-version of **gdalraster** and its dependencies (thanks to Michael
-Sumner):
+See <https://github.com/hypertidy/gdal-r-ci> (thanks to Michael Sumner):
 
-    docker pull ghcr.io/mdsumner/gdal-builds:r-gdalraster
+    docker pull ghcr.io/hypertidy/gdal-r-full:latest
 
 ## Documentation
 

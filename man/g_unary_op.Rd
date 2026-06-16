@@ -7,6 +7,8 @@
 \alias{g_convex_hull}
 \alias{g_concave_hull}
 \alias{g_delaunay_triangulation}
+\alias{g_point_on_surface}
+\alias{g_segmentize}
 \alias{g_simplify}
 \alias{g_unary_union}
 \title{Unary operations on WKB or WKT geometries}
@@ -52,6 +54,23 @@ g_delaunay_triangulation(
   constrained = FALSE,
   tolerance = 0,
   only_edges = FALSE,
+  as_wkb = TRUE,
+  as_iso = FALSE,
+  byte_order = "LSB",
+  quiet = FALSE
+)
+
+g_point_on_surface(
+  geom,
+  as_wkb = TRUE,
+  as_iso = FALSE,
+  byte_order = "LSB",
+  quiet = FALSE
+)
+
+g_segmentize(
+  geom,
+  max_length,
   as_wkb = TRUE,
   as_iso = FALSE,
   byte_order = "LSB",
@@ -119,6 +138,9 @@ improved robustness (ignored if \code{constrained = TRUE}).}
 will return a MULTILINESTRING, otherwise it will return a GEOMETRYCOLLECTION
 containing triangular POLYGONs (the default). Ignored if \code{constrained = TRUE}}
 
+\item{max_length}{Numeric maximum distance between 2 points after
+segmentization.}
+
 \item{preserve_topology}{Logical value, \code{TRUE} to simplify geometries while
 preserving topology (the default). Setting to \code{FALSE} simplifies geometries
 using the standard Douglas-Peucker algorithm which is significantly faster
@@ -167,6 +189,16 @@ API. Requires GEOS >= 3.4.
 vertices of the given polygon(s). For non-polygonal inputs, silently returns
 an empty geometry collection. Requires GDAL >= 3.12 and GEOS >= 3.10.
 }
+
+\code{g_point_on_surface()} returns a point guaranteed to lie on the surface.
+Applies to surface and multisurface geometry types (e.g., POLYGON,
+MULTIPOLYGON, CURVEPOLYGON), otherwise \code{NULL} is returned. The point returned
+by this function is guaranteed to lie within polygons, whereas the centroid
+may be outside. Wrapper of \code{OGR_G_PointOnSurface()} in the GDAL API.
+
+\code{g_segmentize()} modifies a geometry such that it has no segment longer then
+the given \code{max_length}. Interpolated points will have Z and M values
+(if needed) set to \code{0}. Distance computation is performed in 2D only.
 
 \code{g_simplify()} computes a simplified geometry. By default, it simplifies
 the input geometries while preserving topology (see Note). Wrapper of
@@ -250,6 +282,17 @@ if (geos_version()$major > 3 || geos_version()$minor >= 4) {
   g <- "MULTIPOINT(0 0,0 1,1 1,1 0)"
   g_delaunay_triangulation(g, as_wkb = FALSE)
 }
+
+# https://postgis.net/docs/ST_PointOnSurface.html
+g <- "POLYGON ((130 120, 120 190, 30 140, 50 20, 190 20, 170 100, 90 60, 90 130, 130 120))"
+pt <- g_point_on_surface(g)
+plot_geom(g)
+plot_geom(pt, pch = 16, add = TRUE)
+centroid <- g_create("POINT", g_centroid(g))
+plot_geom(centroid, add = TRUE)
+
+g <- "LINESTRING(0 0,0 10)"
+g_segmentize(g, 1) |> g_wk2wk()
 
 g <- "LINESTRING(0 0,1 1,10 0)"
 g_simplify(g, tolerance = 5, as_wkb = FALSE)

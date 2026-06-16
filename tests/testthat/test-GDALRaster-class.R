@@ -607,16 +607,124 @@ test_that("get/set default RAT works", {
 })
 
 test_that("add band works", {
-    ds <- create(format="MEM", dst_filename="", xsize=20, ysize=10,
-                 nbands=1, dataType="Byte", return_obj = TRUE)
+    ds_mem <- create(format="MEM", dst_filename="", xsize=20, ysize=10,
+                     nbands=1, dataType="Byte", return_obj = TRUE)
 
-    ds$setProjection(epsg_to_wkt(4326))
-    ds$setGeoTransform(c(-180, 18, 0, 90, 0, -18))
-    ds$fillRaster(1, 255, 0)
-    expect_true(ds$addBand("Byte", NULL))
-    expect_no_error(ds$fillRaster(2, 255, 0))
+    on.exit(ds_mem$close(), add = TRUE)
 
-    ds$close()
+    ds_mem$setProjection(epsg_to_wkt(4326))
+    ds_mem$setGeoTransform(c(-180, 18, 0, 90, 0, -18))
+    ds_mem$fillRaster(1, 255, 0)
+    expect_true(ds_mem$addBand("Byte", NULL))
+    expect_no_error(ds_mem$fillRaster(2, 255, 0))
+    expect_equal(ds_mem$getRasterCount(), 2)
+    expect_true(all(ds_mem$read(2, 0, 0, 20, 10, 20, 10) == 255))
+
+    ## add bands from pointers to R data without copy
+    v <- sample(0:255, 200, replace = TRUE)
+
+    # raw vector as Byte/UInt8 band
+    expect_true(ds_mem$addBand("Byte", as.raw(v)))
+    expect_equal(ds_mem$getRasterCount(), 3)
+    # make the data type check robust to Byte/UInt8 name change at GDAL 3.13:
+    expect_equal(dt_size(ds_mem$getDataTypeName(3), as_bytes = FALSE), 8)
+    expect_false(dt_is_signed(ds_mem$getDataTypeName(3)))
+    # by default, it is read as Int32 (R integer)
+    expect_equal(ds_mem$read(3, 0, 0, 20, 10, 20, 10), v)
+    # read as Byte/UInt8 (R raw bytes)
+    ds_mem$readByteAsRaw <- TRUE
+    expect_equal(ds_mem$read(3, 0, 0, 20, 10, 20, 10), as.raw(v))
+    ds_mem$readByteAsRaw <- FALSE
+
+    # integer vector as Int32 band
+    expect_true(ds_mem$addBand("Int32", v))
+    expect_equal(ds_mem$getRasterCount(), 4)
+    expect_equal(ds_mem$getDataTypeName(4), "Int32")
+    v_chk <- ds_mem$read(4, 0, 0, 20, 10, 20, 10)
+    expect_equal(v_chk, v)
+
+    # "numeric" (double) vector as Float64 band
+    v_dbl <- v + 0.5
+    expect_true(ds_mem$addBand("Float64", v_dbl))
+    expect_equal(ds_mem$getRasterCount(), 5)
+    expect_equal(ds_mem$getDataTypeName(5), "Float64")
+    v_dbl_chk <- ds_mem$read(5, 0, 0, 20, 10, 20, 10)
+    expect_equal(v_dbl_chk, v_dbl, tolerance = 1e4)
+
+    # complex vector as CFloat64 band
+    z <- complex(real = stats::rnorm(200), imaginary = stats::rnorm(200))
+    expect_true(ds_mem$addBand("CFloat64", z))
+    expect_equal(ds_mem$getRasterCount(), 6)
+    expect_equal(ds_mem$getDataTypeName(6), "CFloat64")
+    z_chk <- ds_mem$read(6, 0, 0, 20, 10, 20, 10)
+    expect_equal(z_chk, z, tolerance = 1e4)
+
+    # test that the underlying data objects are preserved from garbage collect
+    rm(v)
+    rm(v_dbl)
+    rm(z)
+    gc()
+    expect_equal(ds_mem$read(4, 0, 0, 20, 10, 20, 10), v_chk)
+    expect_equal(ds_mem$read(5, 0, 0, 20, 10, 20, 10), v_dbl_chk,
+                 tolerance = 1e4)
+    expect_equal(ds_mem$read(6, 0, 0, 20, 10, 20, 10), z_chk, tolerance = 1e4)
+
+    ## input validation
+    # unknown data type
+    expect_false(ds_mem$addBand("invalid", NULL))
+
+    # invalid size of vector
+    v <- integer(201)
+    expect_false(ds_mem$addBand("Byte", as.raw(v)))
+    expect_false(ds_mem$addBand("Int32", v))
+    v_dbl <- v + 0.5
+    expect_false(ds_mem$addBand("Float64", v_dbl))
+    z <- complex(real = stats::rnorm(201), imaginary = stats::rnorm(201))
+    expect_false(ds_mem$addBand("CFloat64", z))
+    expect_equal(ds_mem$getRasterCount(), 6)
+
+    # invalid object type
+    v_list <- vector("list", 200)
+    v_list[1:200] <- 0L
+    expect_false(ds_mem$addBand("Int32", v_list))
+
+    ## specified data type should be overridden when adding a MEM band from
+    ## datapointer if specified type is not compatible with the underlying
+    ## array
+    v <- integer(200)
+
+    # raw vector as Byte/UInt8 band
+    expect_true(ds_mem$addBand("Int32", as.raw(v)))
+    expect_equal(ds_mem$getRasterCount(), 7)
+    # make the data type check robust to Byte/UInt8 name change at GDAL 3.13:
+    expect_equal(dt_size(ds_mem$getDataTypeName(7), as_bytes = FALSE), 8)
+    expect_false(dt_is_signed(ds_mem$getDataTypeName(7)))
+    # by default, it is read as Int32 (R integer)
+    expect_equal(ds_mem$read(7, 0, 0, 20, 10, 20, 10), v)
+    # read as Byte/UInt8 (R raw bytes)
+    ds_mem$readByteAsRaw <- TRUE
+    expect_equal(ds_mem$read(7, 0, 0, 20, 10, 20, 10), as.raw(v))
+    ds_mem$readByteAsRaw <- FALSE
+
+    # integer vector as Int32 band
+    expect_true(ds_mem$addBand("Byte", v))
+    expect_equal(ds_mem$getRasterCount(), 8)
+    expect_equal(ds_mem$getDataTypeName(8), "Int32")
+    expect_equal(ds_mem$read(8, 0, 0, 20, 10, 20, 10), v)
+
+    # "numeric" (double) vector as Float64 band
+    v_dbl <- v + 0.5
+    expect_true(ds_mem$addBand("Float32", v_dbl))
+    expect_equal(ds_mem$getRasterCount(), 9)
+    expect_equal(ds_mem$getDataTypeName(9), "Float64")
+    expect_equal(ds_mem$read(9, 0, 0, 20, 10, 20, 10), v_dbl, tolerance = 1e4)
+
+    # complex vector as CFloat64 band
+    z <- complex(real = stats::rnorm(200), imaginary = stats::rnorm(200))
+    expect_true(ds_mem$addBand("Float64", z))
+    expect_equal(ds_mem$getRasterCount(), 10)
+    expect_equal(ds_mem$getDataTypeName(10), "CFloat64")
+    expect_equal(ds_mem$read(10, 0, 0, 20, 10, 20, 10), z, tolerance = 1e4)
 })
 
 test_that("pixel extract internal class method returns correct data", {
@@ -754,12 +862,13 @@ test_that("pixel extract internal class method returns correct data", {
 
     geo_xy <- matrix(c(0, 0), ncol = 2)
 
+    ds$quiet <- TRUE
     # warning for no geotransform
-    expect_warning(extr_nodata <- ds$pixel_extract(xy = geo_xy,
-                                                   bands = 0,
-                                                   interp_method = "near",
-                                                   krnl_dim = 1,
-                                                   xy_srs = ""))
+    expect_no_error(extr_nodata <- ds$pixel_extract(xy = geo_xy,
+                                                    bands = 0,
+                                                    interp_method = "near",
+                                                    krnl_dim = 1,
+                                                    xy_srs = ""))
 
     expect_true(length(extr_nodata) == 1)
     expect_true(is.na(extr_nodata))
@@ -777,15 +886,18 @@ test_that("pixel extract internal class method returns correct data", {
     raster_data_2 <- c(10.5, 1.3, -2.4, 3.8)
     ds$write(band = 2, xoff = 0, yoff = 0, xsize = 2, ysize = 2, raster_data_2)
 
+    ds$quiet <-TRUE
+
     geo_xy <- matrix(c(1, -1), ncol = 2)
     # bands = 0 for all bands
     # krnl_dim ignored with bilinear but a required arg for the internal method
     # warning for no geotransform
-    expect_warning(extr_bilinear <- ds$pixel_extract(xy = geo_xy,
-                                                     bands = 0,
-                                                     interp_method = "bilinear",
-                                                     krnl_dim = 2,
-                                                     xy_srs = ""))
+    expect_no_error(extr_bilinear <-
+        ds$pixel_extract(xy = geo_xy,
+                         bands = 0,
+                         interp_method = "bilinear",
+                         krnl_dim = 2,
+                         xy_srs = ""))
 
     expect_true(is.matrix(extr_bilinear))
     expect_equal(dim(extr_bilinear), c(1, 2))
@@ -1307,4 +1419,37 @@ test_that("read to nativeRaster works", {
     r4 <- read_to_nativeRaster(ds)
     expect_true(attr(r4, "channels") == 3)
     ds$close()
+})
+
+test_that("/vsistdout/ redirection works", {
+    f <- system.file("extdata/ynp_features.zip", package = "gdalraster")
+    zf_gpkg <- file.path("/vsizip", f, "ynp_features.gpkg")
+
+    expected_output <- 'X,Y,poiname,poitype,createdate,editdate
+-110.692921344,44.7390491040001,Norris Campground Loop C Comfort Station,Flush Toilet,2024/02/23,2024/02/23
+-110.157825952,44.4784871940001,Sylvan Lake Picnic Area Vault Toilet,Vault Toilet,2024/02/23,2024/02/23
+-110.182290061,44.324319185,"5E1",Campsite,2015/12/30,2018/06/13
+-110.386556517,44.8907427240001,Tower Fall Parking Area Northern End Vault Toilet,Vault Toilet,2024/02/23,2024/02/23
+-110.826393985,44.5316894210001,,Parking Lot,2016/02/22,2020/09/21
+-110.570605761,44.41759791,Big Cone,Geyser,2016/02/17,2018/06/13
+-110.450915693,44.948928046,,Parking Lot,2016/02/22,2020/09/21
+-110.860329219,44.61843165,Firehole Canyon Swimming Area Vault Toilet,Vault Toilet,2024/02/23,2024/02/23
+-110.800428191,44.535760318,Surprise Pool,Geyser,2016/09/13,2018/06/13
+-110.235181696,44.6354910580001,The Mudkettles,Geyser,2015/11/27,2018/06/13'
+
+    expect_output(
+        ogr2ogr(zf_gpkg, "/vsistdout/", "points_of_interest",
+                c("-f", "CSV", "-lco", "GEOMETRY=AS_XY", "-limit", 10)),
+        expected_output)
+
+    skip_if(gdal_version_num() < gdal_compute_version(3, 11, 3))
+    skip_if(length(gdal_global_reg_names()) == 0)  # GDAL CLI bindings availability
+
+    expected_output <- 'admn_type,state_fips,state_name,sub_region
+"Park, monument, etc.",56,Wyoming,Mtn'
+
+    expect_output(
+        gdal_run_piped(zf_gpkg, "vector sql", "/vsistdout/", "CSV",
+                       list(sql = "SELECT * FROM ynp_bnd")),
+        expected_output)
 })

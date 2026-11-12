@@ -3829,3 +3829,24 @@ transform_bounds <- function(bbox, srs_from, srs_to, densify_pts = 21L, traditio
     .Call(`_gdalraster_transform_bounds`, bbox, srs_from, srs_to, densify_pts, traditional_gis_order)
 }
 
+#' Create a wk_trans object for a GDAL coordinate transformation
+NULL
+
+#' Inverse of a gdalraster wk_trans object
+NULL
+
+#' Source and target SRS names of a gdalraster wk_trans object
+NULL
+
+.transform_create <- function(srs_from, srs_to, use_z, use_m, area_of_interest, coord_op, coord_op_inverse, allow_ballpark, accuracy) {
+    .Call(`_gdalraster_transform_create`, srs_from, srs_to, use_z, use_m, area_of_interest, coord_op, coord_op_inverse, allow_ballpark, accuracy)
+}
+
+.transform_inverse <- function(trans, use_z, use_m) {
+    .Call(`_gdalraster_transform_inverse`, trans, use_z, use_m)
+}
+
+.transform_info <- function(trans) {
+    .Call(`_gdalraster_transform_info`, trans)
+}
+

@@ -2703,6 +2703,49 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// transform_create
+SEXP transform_create(const std::string& srs_from, const std::string& srs_to, int use_z, int use_m, const Rcpp::Nullable<Rcpp::NumericVector>& area_of_interest, const Rcpp::Nullable<Rcpp::CharacterVector>& coord_op, bool coord_op_inverse, bool allow_ballpark, double accuracy);
+RcppExport SEXP _gdalraster_transform_create(SEXP srs_fromSEXP, SEXP srs_toSEXP, SEXP use_zSEXP, SEXP use_mSEXP, SEXP area_of_interestSEXP, SEXP coord_opSEXP, SEXP coord_op_inverseSEXP, SEXP allow_ballparkSEXP, SEXP accuracySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const std::string& >::type srs_from(srs_fromSEXP);
+    Rcpp::traits::input_parameter< const std::string& >::type srs_to(srs_toSEXP);
+    Rcpp::traits::input_parameter< int >::type use_z(use_zSEXP);
+    Rcpp::traits::input_parameter< int >::type use_m(use_mSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::NumericVector>& >::type area_of_interest(area_of_interestSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Nullable<Rcpp::CharacterVector>& >::type coord_op(coord_opSEXP);
+    Rcpp::traits::input_parameter< bool >::type coord_op_inverse(coord_op_inverseSEXP);
+    Rcpp::traits::input_parameter< bool >::type allow_ballpark(allow_ballparkSEXP);
+    Rcpp::traits::input_parameter< double >::type accuracy(accuracySEXP);
+    rcpp_result_gen = Rcpp::wrap(transform_create(srs_from, srs_to, use_z, use_m, area_of_interest, coord_op, coord_op_inverse, allow_ballpark, accuracy));
+    return rcpp_result_gen;
+END_RCPP
+}
+// transform_inverse
+SEXP transform_inverse(const Rcpp::RObject& trans, int use_z, int use_m);
+RcppExport SEXP _gdalraster_transform_inverse(SEXP transSEXP, SEXP use_zSEXP, SEXP use_mSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::RObject& >::type trans(transSEXP);
+    Rcpp::traits::input_parameter< int >::type use_z(use_zSEXP);
+    Rcpp::traits::input_parameter< int >::type use_m(use_mSEXP);
+    rcpp_result_gen = Rcpp::wrap(transform_inverse(trans, use_z, use_m));
+    return rcpp_result_gen;
+END_RCPP
+}
+// transform_info
+Rcpp::CharacterVector transform_info(const Rcpp::RObject& trans);
+RcppExport SEXP _gdalraster_transform_info(SEXP transSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::RObject& >::type trans(transSEXP);
+    rcpp_result_gen = Rcpp::wrap(transform_info(trans));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 RcppExport SEXP _rcpp_module_boot_mod_cmb_table();
 RcppExport SEXP _rcpp_module_boot_mod_GDALAlg();
@@ -2924,6 +2967,9 @@ static const R_CallMethodDef CallEntries[] = {
     {"_gdalraster_inv_project", (DL_FUNC) &_gdalraster_inv_project, 3},
     {"_gdalraster_transform_xy", (DL_FUNC) &_gdalraster_transform_xy, 3},
     {"_gdalraster_transform_bounds", (DL_FUNC) &_gdalraster_transform_bounds, 5},
+    {"_gdalraster_transform_create", (DL_FUNC) &_gdalraster_transform_create, 9},
+    {"_gdalraster_transform_inverse", (DL_FUNC) &_gdalraster_transform_inverse, 3},
+    {"_gdalraster_transform_info", (DL_FUNC) &_gdalraster_transform_info, 1},
     {"_rcpp_module_boot_mod_cmb_table", (DL_FUNC) &_rcpp_module_boot_mod_cmb_table, 0},
     {"_rcpp_module_boot_mod_GDALAlg", (DL_FUNC) &_rcpp_module_boot_mod_GDALAlg, 0},
     {"_rcpp_module_boot_mod_GDALRaster", (DL_FUNC) &_rcpp_module_boot_mod_GDALRaster, 0},

@@ -64,7 +64,7 @@ Imports:
     wk,
     xml2,
     yyjsonr
-LinkingTo: cli, nanoarrow, Rcpp, RcppInt64
+LinkingTo: cli, nanoarrow, Rcpp, RcppInt64, wk
 Suggests:
     glue (>= 1.6.0),
     gt,

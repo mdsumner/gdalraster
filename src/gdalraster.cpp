@@ -1735,9 +1735,21 @@ SEXP GDALRaster::read(int band, int xoff, int yoff, int xsize, int ysize,
                  (GDALGetDataTypeSizeBits(eDT) <= 32 &&
                   CPL_TO_BOOL(GDALDataTypeIsSigned(eDT))))) {
 
-            // if signed integer <= 32 bits or any integer <= 16 bits:
-            // use int32 buffer, unless we are reading Byte as R raw type
-            if (this->readByteAsRaw && eDT == GDT_Byte) {
+          // if signed integer <= 32 bits or any integer <= 16 bits:
+          // use int32 buffer, unless we are reading Byte as R raw type, or reading AsNativeRaster
+          if (this->readByteAsNativeRaster && eDT == GDT_Byte) {
+            // nativeRaster path 
+            Rcpp::RawVector v = Rcpp::no_init(buf_size);
+            
+            err = GDALRasterIO(hBand, GF_Read, xoff, yoff, xsize, ysize,
+                               v.begin(), out_xsize, out_ysize, GDT_Byte,
+                               0, 0);
+            
+            if (err == CE_Failure)
+              Rcpp::stop("read raster failed");
+            
+            return v;
+          } else if (this->readByteAsRaw && eDT == GDT_Byte) {
                 Rcpp::RawVector v = Rcpp::no_init(buf_size);
 
                 err = GDALRasterIO(hBand, GF_Read, xoff, yoff, xsize, ysize,

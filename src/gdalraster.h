@@ -50,7 +50,7 @@ class GDALRaster {
     Rcpp::CharacterVector infoOptions = Rcpp::CharacterVector::create();
     bool quiet = false;
     bool readByteAsRaw = false;
-
+    bool readByteAsNativeRaster = false;
     // methods exported to R
     std::string getFilename() const;
     void setFilename(const std::string &filename);
